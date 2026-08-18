@@ -1,8 +1,14 @@
 """Assemble le rapport Markdown final.
 
 Trois entrées : les raccourcis système (out/system-shortcuts.json), les raccourcis
-moissonnés app par app (out/apps/*.json), et un fichier curé de descriptions
-(data/app-descriptions.json) qui sert aussi à corriger le classement d'une app.
+moissonnés app par app (out/apps/*.json), et les descriptions d'apps, qui servent
+aussi à corriger le classement d'une app.
+
+Les descriptions viennent de deux fichiers : `data/app-descriptions.json`, l'amorce
+versionnée qui ne décrit que des apps livrées avec macOS, et `out/app-descriptions.json`,
+propre à la machine et non versionné — c'est là que se remplissent les apps installées,
+puisque leur énumération n'a pas sa place dans un dépôt public. Le second prime sur
+la première.
 
 Le classement par défaut vient de `LSApplicationCategoryType`, déclaré par l'éditeur
 dans l'app elle-même : factuel et vérifiable. Il est parfois grossier — d'où la
@@ -86,8 +92,13 @@ def load_apps():
 
 
 def load_descriptions():
-    path = ROOT / "data" / "app-descriptions.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    """Amorce versionnée, puis descriptions propres à la machine qui la surchargent."""
+    descriptions = {}
+    for path in (ROOT / "data" / "app-descriptions.json",
+                 ROOT / "out" / "app-descriptions.json"):
+        if path.exists():
+            descriptions.update(json.loads(path.read_text(encoding="utf-8")))
+    return descriptions
 
 
 def escape(text):
@@ -227,6 +238,6 @@ def build_report():
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         globals()["APPS_DIR"] = Path(sys.argv[1])
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "out" / "raccourcis-macos.md"
+    out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "out" / "raccourcis.md"
     out.write_text(build_report(), encoding="utf-8")
     print(f"✅ {out}")

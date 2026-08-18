@@ -57,7 +57,7 @@ un modificateur seul — la dictée en est l'exemple courant. macOS les stocke a
 (`DoubleTapCommandRight` → « Appuyer deux fois sur Commande de droite »). Ces
 raccourcis sont marqués « double frappe » dans la page, et comptés comme **une** touche.
 
-**`out/raccourcis-macos.md`** — le même inventaire à plat, versionnable et relisible
+**`out/raccourcis.md`** — le même inventaire à plat, versionnable et relisible
 hors ligne, groupé par catégorie d'app.
 
 ### Qui gagne une combinaison
@@ -154,7 +154,8 @@ src/tables.py         codes de touches et glyphes, extraits de BridgeSupport
 src/system_shortcuts.py   raccourcis système → out/system-shortcuts.json
 src/Harvester.swift   moissonneur d'accessibilité → out/apps/<bundle-id>.json
 src/report.py         assemblage du Markdown final
-data/app-descriptions.json   rôles des apps (curé à la main)
+data/app-descriptions.json   amorce des rôles d'app (apps macOS uniquement)
+out/app-descriptions.json    rôles des apps installées (propre à la machine, ignoré)
 ```
 
 ## Ce que le dépôt contient, et ce qu'il ne contient pas

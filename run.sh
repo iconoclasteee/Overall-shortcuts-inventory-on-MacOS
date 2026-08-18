@@ -32,10 +32,10 @@ case "${1:---test}" in
   --test) APPS_DIR=out/apps-test; REPORT=out/raccourcis-test.md
           INDEX=out/index-test.json; PAGE=out/raccourcis-test.html
           TARGET=(--bundle-ids "$TEST_APPS") ;;
-  --all)  APPS_DIR=out/apps;      REPORT=out/raccourcis-macos.md
+  --all)  APPS_DIR=out/apps;      REPORT=out/raccourcis.md
           INDEX=out/index.json;    PAGE=out/raccourcis.html
           TARGET=(--all) ;;
-  --sources) APPS_DIR=out/apps; REPORT=out/raccourcis-macos.md
+  --sources) APPS_DIR=out/apps; REPORT=out/raccourcis.md
           INDEX=out/index.json;  PAGE=out/raccourcis.html
           TARGET=() ;;
   *) echo "Usage: $0 [--test|--all|--sources]"; exit 2 ;;
