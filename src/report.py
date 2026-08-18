@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tables import glyph_labels
+from overrides import load as load_overrides, normalise_title
 
 ROOT = Path(__file__).parent.parent
 
@@ -69,54 +70,6 @@ def render_shortcut(entry, glyphs):
     else:
         return None
     return mods + key
-
-
-# Syntaxe des équivalents clavier Cocoa, telle qu'écrite dans NSUserKeyEquivalents.
-COCOA_MODIFIERS = [("^", "⌃"), ("~", "⌥"), ("$", "⇧"), ("@", "⌘")]
-
-
-def parse_cocoa_key_equivalent(raw):
-    """Traduit "@~^$m" en "⌃⌥⇧⌘M"."""
-    mods = "".join(sym for token, sym in COCOA_MODIFIERS if token in raw)
-    key = "".join(c for c in raw if c not in "@~^$")
-    return mods + key.upper()
-
-
-def normalise_title(title):
-    """Rapproche un titre de menu d'une clé NSUserKeyEquivalents.
-
-    Les deux décrivent le même élément mais pas toujours à l'identique : points de
-    suspension typographiques contre trois points, casse, espaces.
-    """
-    return (title or "").replace("...", "…").rstrip("… ").strip().casefold()
-
-
-def load_overrides(bundle_id):
-    """Raccourcis redéfinis par l'utilisateur pour une app (Réglages → Clavier).
-
-    Ils vivent dans les préférences de l'app, indexés par *titre* d'élément de menu —
-    c'est donc le titre qui sert de clé de jointure avec ce que l'accessibilité renvoie.
-    """
-    result = subprocess.run(
-        ["defaults", "read", bundle_id, "NSUserKeyEquivalents"],
-        capture_output=True, text=True)
-    if result.returncode != 0:
-        return {}
-    # `defaults read` sort de l'ancien format texte ; le relire en plist est plus sûr
-    # que de l'analyser à la main.
-    export = subprocess.run(["defaults", "export", bundle_id, "-"], capture_output=True)
-    if export.returncode != 0 or not export.stdout:
-        return {}
-    import plistlib
-    try:
-        prefs = plistlib.loads(export.stdout)
-    except Exception:
-        return {}
-    return {normalise_title(title): (title, parse_cocoa_key_equivalent(value))
-            for title, value in (prefs.get("NSUserKeyEquivalents") or {}).items()}
-
-
-APPS_DIR = ROOT / "out" / "apps"
 
 
 def load_apps():

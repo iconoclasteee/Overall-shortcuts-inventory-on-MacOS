@@ -170,9 +170,15 @@ const ORDRE = ORDRE_COUCHES_JS;
 const NOMS = NOMS_COUCHES_JS;
 
 const caps = (combo) => {
-  const mods = [...combo].filter(c => "⌃⌥⇧⌘".includes(c));
-  const reste = [...combo].filter(c => !"⌃⌥⇧⌘".includes(c)).join("");
-  return [...mods.map(m => `<span class="cap">${m}</span>`),
+  // « fn » s'écrit sur deux caractères : il faut le retirer avant de parcourir le reste,
+  // sinon il finirait collé à la touche principale sur une seule capsule.
+  const mods = [];
+  let reste = combo;
+  if (reste.includes("fn")) { reste = reste.replace("fn", ""); }
+  for (const c of [...reste]) if ("⌃⌥⇧⌘".includes(c)) mods.push(c);
+  if (combo.includes("fn")) mods.push("fn");
+  reste = [...reste].filter(c => !"⌃⌥⇧⌘".includes(c)).join("");
+  return [...mods.map(m => `<span class="cap${m.length > 1 ? " large" : ""}">${m}</span>`),
           reste ? `<span class="cap${reste.length > 1 ? " large" : ""}">${esc(reste)}</span>` : ""
          ].join("");
 };

@@ -20,8 +20,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from tables import keycode_labels, render_modifiers
-from model import Keyboard, from_nsevent
+from tables import keycode_labels
+from model import Keyboard, from_nsevent, render_modifiers
 
 APPEX = Path(
     "/System/Library/ExtensionKit/Extensions/KeyboardSettings.appex/Contents/Resources"
@@ -136,7 +136,7 @@ def _render(char_code, key_code, modifier_mask):
         key = labels.get(code, f"touche-{code}")
     else:
         return None
-    return {"combo": render_modifiers(modifier_mask or 0) + key, "mods": mods, "code": code}
+    return {"combo": render_modifiers(mods) + key, "mods": mods, "code": code}
 
 
 def build():

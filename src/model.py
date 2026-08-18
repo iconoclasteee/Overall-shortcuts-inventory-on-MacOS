@@ -23,15 +23,16 @@ ROOT = Path(__file__).parent.parent
 
 # Représentation interne des modificateurs. Volontairement distincte des masques
 # NSEvent, Carbon et AX : chaque source a le sien, on convertit vers celui-ci.
-SHIFT, CTRL, ALT, CMD = 1, 2, 4, 8
-MOD_SYMBOLS = [(CTRL, "⌃"), (ALT, "⌥"), (SHIFT, "⇧"), (CMD, "⌘")]  # ordre Apple
+SHIFT, CTRL, ALT, CMD, FN = 1, 2, 4, 8, 16
+MOD_SYMBOLS = [(CTRL, "⌃"), (ALT, "⌥"), (SHIFT, "⇧"), (CMD, "⌘"), (FN, "fn")]  # ordre Apple
 
 
 def from_nsevent(mask):
     """Masque NSEvent.ModifierFlags (plists Apple, Alfred)."""
     mask = mask or 0
     return ((SHIFT if mask & 0x020000 else 0) | (CTRL if mask & 0x040000 else 0)
-            | (ALT if mask & 0x080000 else 0) | (CMD if mask & 0x100000 else 0))
+            | (ALT if mask & 0x080000 else 0) | (CMD if mask & 0x100000 else 0)
+            | (FN if mask & 0x800000 else 0))
 
 
 def from_carbon(mask):
