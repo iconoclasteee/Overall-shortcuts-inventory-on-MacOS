@@ -11,6 +11,7 @@
 
 import AppKit
 import ApplicationServices
+import Carbon.HIToolbox
 
 // MARK: - Options
 
@@ -23,6 +24,7 @@ struct Options {
     var force = false              // refaire les apps déjà moissonnées
     var includeGames = false       // les jeux sont écartés par défaut
     var dryRun = false             // lister les cibles sans rien lancer
+    var keymap = false             // exporter la correspondance code de touche -> caractère
     var keepRunning = false        // ne pas quitter les apps qu'on a lancées
 }
 
@@ -37,6 +39,7 @@ func parseArgs() -> Options {
         case "--keep-running": o.keepRunning = true
         case "--include-games": o.includeGames = true
         case "--dry-run": o.dryRun = true
+        case "--keymap": o.keymap = true
         case "--bundle-ids": o.bundleIDs = (it.next() ?? "").split(separator: ",").map(String.init)
         case "--out": o.outDir = it.next() ?? o.outDir
         case "--timeout": o.timeout = Double(it.next() ?? "") ?? o.timeout
@@ -266,6 +269,62 @@ func process(bundleID: String, options: Options) -> AppResult {
 // MARK: - Entrée
 
 let options = parseArgs()
+
+// Correspondance code de touche -> caractère, pour la disposition clavier active.
+//
+// Indispensable pour comparer des raccourcis venus de sources différentes : les menus
+// exposent un caractère ("V"), les outils tiers un code de touche brut (9). Traduire
+// l'un en l'autre avec une table ANSI donnerait des résultats faux sur un clavier
+// AZERTY — le code 41 y produit « m », pas « ; ». On demande donc la réponse au
+// système, pour la disposition réellement en service.
+func dumpKeymap() {
+    guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+          let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
+    else {
+        FileHandle.standardError.write("Disposition clavier illisible\n".data(using: .utf8)!)
+        exit(1)
+    }
+    let layoutData = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue() as Data
+    var entries: [String] = []
+
+    layoutData.withUnsafeBytes { raw in
+        guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self)
+        else { return }
+
+        func translate(_ code: UInt16, shifted: Bool) -> String? {
+            var deadKeyState: UInt32 = 0
+            var length = 0
+            var characters = [UniChar](repeating: 0, count: 8)
+            // UCKeyTranslate attend l'état des modificateurs décalé de 8 bits.
+            let modifierState = shifted ? UInt32(shiftKey >> 8) : 0
+            let status = UCKeyTranslate(
+                layout, code, UInt16(kUCKeyActionDown), modifierState, UInt32(LMGetKbdType()),
+                UInt32(kUCKeyTranslateNoDeadKeysMask), &deadKeyState,
+                characters.count, &length, &characters)
+            guard status == noErr, length > 0 else { return nil }
+            let text = String(utf16CodeUnits: characters, count: length)
+            // Les caractères de contrôle (retour, tabulation) ne sont pas affichables :
+            // leur libellé vient de la table des glyphes, pas d'ici.
+            guard text.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) })
+            else { return nil }
+            return text.replacingOccurrences(of: "\\", with: "\\\\")
+                       .replacingOccurrences(of: "\"", with: "\\\"")
+        }
+
+        for code in UInt16(0)...127 {
+            guard let plain = translate(code, shifted: false) else { continue }
+            // Les deux niveaux sont nécessaires : sur AZERTY la touche du « 4 » produit
+            // « ' » sans Maj. Apple affiche pourtant ⇧⌘4 — c'est le caractère décalé
+            // qui sert de libellé dès que Maj fait partie de la combinaison.
+            let shifted = translate(code, shifted: true) ?? plain
+            entries.append("  \"\(code)\": [\"\(plain)\", \"\(shifted)\"]")
+        }
+    }
+    print("{\n" + entries.joined(separator: ",\n") + "\n}")
+    exit(0)
+}
+
+if options.keymap { dumpKeymap() }
 
 guard AX.isTrusted() else {
     FileHandle.standardError.write("""

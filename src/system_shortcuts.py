@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tables import keycode_labels, render_modifiers
+from model import Keyboard, from_nsevent
 
 APPEX = Path(
     "/System/Library/ExtensionKit/Extensions/KeyboardSettings.appex/Contents/Resources"
@@ -105,20 +106,37 @@ def load_user_state():
     return state
 
 
+_keyboard = None
+
+
 def _render(char_code, key_code, modifier_mask):
-    """Assemble une combinaison lisible : modificateurs + touche."""
+    """Assemble une combinaison lisible et sa forme comparable.
+
+    Renvoie un dict {combo, mods, code} : `combo` pour l'affichage, `mods` et `code`
+    pour la comparaison avec les raccourcis venus des menus et des outils tiers.
+    """
+    global _keyboard
+    if _keyboard is None:
+        _keyboard = Keyboard()
     labels = keycode_labels()
+    mods = from_nsevent(modifier_mask or 0)
     # charKey d'abord : c'est le caractère réellement produit, donc juste quelle que
     # soit la disposition clavier (un code de touche brut supposerait un clavier ANSI).
     # Mais un caractère non imprimable (espace, tabulation) n'est pas lisible tel quel :
     # dans ce cas on retombe sur le libellé du code de touche.
+    code = key_code if isinstance(key_code, int) and key_code != NO_CHAR else None
     if isinstance(char_code, int) and char_code not in (0, NO_CHAR) and chr(char_code).strip():
         key = chr(char_code).upper()
-    elif isinstance(key_code, int) and key_code != NO_CHAR:
-        key = labels.get(key_code, f"touche-{key_code}")
+        # Le caractère prime sur le code de touche. La table d'Apple stocke des codes
+        # de clavier ANSI : pour ⌘M elle donne 46, qui sur AZERTY produit « , ».
+        # macOS déclenche sur la touche portant réellement le M, donc on remonte au
+        # code par le caractère, dans la disposition active.
+        code = _keyboard.code_for(chr(char_code)) or code
+    elif code is not None:
+        key = labels.get(code, f"touche-{code}")
     else:
         return None
-    return render_modifiers(modifier_mask or 0) + key
+    return {"combo": render_modifiers(modifier_mask or 0) + key, "mods": mods, "code": code}
 
 
 def build():
@@ -131,11 +149,11 @@ def build():
         record = dict(entry)
         if state is None:
             # Absent du plist utilisateur = jamais modifié = réglage d'usine actif.
-            record["combinaison"] = entry["defaut"]
+            record["touche"] = entry["defaut"]
             record["actif"] = entry["defaut"] is not None
             record["etat"] = "défaut"
         else:
-            record["combinaison"] = state["combinaison"] or entry["defaut"]
+            record["touche"] = state["combinaison"] or entry["defaut"]
             record["actif"] = state["actif"]
             if not state["actif"]:
                 record["etat"] = "désactivé"
@@ -145,6 +163,11 @@ def build():
                 record["etat"] = "personnalisé"
             else:
                 record["etat"] = "défaut"
+        touche = record.pop("touche", None)
+        record["combinaison"] = touche["combo"] if touche else None
+        record["mods"] = touche["mods"] if touche else 0
+        record["code"] = touche["code"] if touche else None
+        record["defaut"] = entry["defaut"]["combo"] if entry["defaut"] else None
         results.append(record)
 
     # Les IDs présents chez l'utilisateur mais absents de la table Apple sont conservés
@@ -160,7 +183,9 @@ def build():
             "nom": f"Raccourci système #{hotkey_id}",
             "nom_en": f"Symbolic hotkey #{hotkey_id}",
             "defaut": None,
-            "combinaison": state["combinaison"],
+            "combinaison": (state["combinaison"] or {}).get("combo"),
+            "mods": (state["combinaison"] or {}).get("mods", 0),
+            "code": (state["combinaison"] or {}).get("code"),
             "actif": state["actif"],
             "etat": "non documenté",
         })

@@ -85,6 +85,16 @@ def keycode_labels():
     return labels
 
 
+def keypad_codes():
+    """Codes des touches du pavé numérique.
+
+    Elles produisent les mêmes caractères que la rangée du haut ; sans les écarter,
+    remonter du caractère « 4 » à sa touche tomberait sur le pavé plutôt que sur la
+    touche principale.
+    """
+    return {code for name, code in _load_enums("kVK_ANSI_Keypad").items()}
+
+
 # --- Glyphes de menu -----------------------------------------------------------
 
 _GLYPH = {

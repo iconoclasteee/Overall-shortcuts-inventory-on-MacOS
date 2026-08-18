@@ -27,13 +27,28 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
 
 ## Ce que ça produit
 
-`out/raccourcis-macos.md` :
+**`out/raccourcis.html`** — une page autonome, trois vues :
 
-1. **Raccourcis système** — les ~100 raccourcis macOS, en français, avec leur état
-   (défaut / redéfini / désactivé).
-2. **Raccourcis par application** — groupés par catégorie, chaque app avec sa version
-   et une description de son rôle.
-3. **Applications non lisibles** — avec la raison. Jamais d'omission silencieuse.
+1. **Conflits** — les combinaisons réclamées par plusieurs preneurs, avec qui gagne
+   et pourquoi.
+2. **Par combinaison** — cherche une touche ou une commande, vois partout où elle sert.
+3. **Par application** — les raccourcis de l'app, puis les raccourcis globaux rangés
+   selon qu'ils agissent *dans* l'app, *sur* elle, ou à côté d'elle.
+
+**`out/raccourcis-macos.md`** — le même inventaire à plat, versionnable et relisible
+hors ligne, groupé par catégorie d'app.
+
+### Qui gagne une combinaison
+
+Une frappe descend une pile et le premier étage qui la réclame l'avale :
+pilote clavier (Karabiner) → capture d'événements (Keyboard Maestro) → raccourci
+système macOS → raccourci global Carbon (Alfred, CleanShot X) → menu d'application.
+
+L'ordre est fiable. Le départage entre deux outils accrochés au **même** étage ne
+l'est pas : il dépend de leur ordre d'enregistrement, que rien sur le disque ne
+consigne. L'outil dit « égalité » plutôt que de désigner un gagnant au hasard.
+Modèle repris de [HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash) (GPL-2.0) —
+voir la note de licence en fin de fichier.
 
 ## Utilisation
 
@@ -94,6 +109,8 @@ Aucune table n'est écrite de mémoire — tout est extrait de macOS :
 | Raccourcis d'app | API d'accessibilité, attributs `AXMenuItemCmdChar` / `CmdGlyph` / `CmdModifiers` |
 | Catégorie et version d'app | `LSApplicationCategoryType` et `CFBundleShortVersionString` de chaque `Info.plist` |
 | Raccourcis redéfinis par l'utilisateur | `NSUserKeyEquivalents` dans les préférences de chaque app |
+| Correspondance touche ↔ caractère | `UCKeyTranslate` sur la disposition clavier active — indispensable en AZERTY, où le code 41 produit « m » et non « ; » |
+| Raccourcis globaux tiers | `Alfred.alfredpreferences`, `Keyboard Maestro Macros.plist`, préférences CleanShot X — lus, jamais écrits |
 
 Les descriptions de rôle des apps, elles, sont écrites à la main dans
 `data/app-descriptions.json`. Une app sans description s'affiche « Rôle non
@@ -110,3 +127,10 @@ src/Harvester.swift   moissonneur d'accessibilité → out/apps/<bundle-id>.json
 src/report.py         assemblage du Markdown final
 data/app-descriptions.json   rôles des apps (curé à la main)
 ```
+
+## Licence
+
+Le modèle de priorité entre couches d'interception est repris de
+[HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash), sous GPL-2.0. Usage
+personnel sans conséquence ; une publication de ce projet poserait la question du
+travail dérivé.
