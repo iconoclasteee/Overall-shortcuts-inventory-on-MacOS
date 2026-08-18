@@ -236,6 +236,11 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 }
 .conflit-detail .verdict { border-left-color: var(--vermillon); }
 .verdict.convention { border-left-color: var(--sourdine); color: var(--sourdine); }
+.hors-app {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  margin-left: 9px; padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+  border: 1px solid var(--creux); color: var(--sourdine);
+}
 
 /* — Contrôles — */
 .controles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
@@ -443,7 +448,8 @@ function ligne(c, i, prefixe) {
       data-cible="${prefixe}-${i}">
       <span class="combo">${caps(c.combo)}</span>
       <span><span class="titre">${esc(c.usages[0].action)}</span>
-      <span class="sous">${esc(c.usages[0].proprietaire)}${nb > 1 ? ` et ${nb - 1} autre${nb > 2 ? "s" : ""}` : ""}</span></span>
+      <span class="sous">${esc(c.usages[0].proprietaire)}${nb > 1 ? ` et ${nb - 1} autre${nb > 2 ? "s" : ""}` : ""}${
+        c.horsApp ? `<span class="hors-app">${T("hors_app")}</span>` : ""}</span></span>
     </button>
     <div class="detail ${c.conflit ? "conflit-detail" : ""}" id="${prefixe}-${i}" hidden>
       ${pile(c.usages)}
@@ -459,9 +465,21 @@ function rendreConflits() {
   const disputees = id
     ? new Set(atteignables(id).filter(it => it.conflit).map(it => it.combo))
     : null;
-  const conflits = D.combinaisons.filter(c =>
+  let conflits = D.combinaisons.filter(c =>
     (disputees ? disputees.has(c.combo) : c.conflit)
     && passe(f, c.combo, c.mods, c.usages, c.double));
+
+  /* Filtré sur une app, la fiche doit montrer les mêmes prétendants que la liste :
+     les menus des *autres* apps ne sont pas en lice pendant que celle-ci est devant.
+     Et un conflit purement global — deux outils qui se disputent la touche — est
+     actif ici sans concerner l'app : le dire, plutôt que de laisser chercher son nom
+     dans une fiche où il ne figure pas. */
+  if (id) {
+    conflits = conflits.map(c => {
+      const usages = c.usages.filter(u => u.couche !== "menu" || u.bundle_id === id);
+      return { ...c, usages, horsApp: !usages.some(u => u.bundle_id === id && u.actif) };
+    }).sort((a, b) => (a.horsApp ? 1 : 0) - (b.horsApp ? 1 : 0));
+  }
   document.getElementById("vue-conflits").innerHTML = conflits.length
     ? conflits.map((c, i) => ligne(c, i, "cf")).join("")
     : `<p class="vide">${T("aucun_conflit")}${f.actifs || f.touche || f.libre || f.texte
@@ -490,6 +508,7 @@ const TEXTES = {
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
     double: "double frappe", fermer: "Fermer",
     rien_atteignable: "Rien d'atteignable dans cette app.",
+    hors_app: "actif ici, mais ne concerne pas cette app",
     convention: (n) => `Commande standard de macOS : ${n} applications l'exposent dans `
                      + `leur propre menu. Le raccourci système et ces entrées désignent `
                      + `la même action — ce n'est pas un conflit.`,
@@ -561,6 +580,7 @@ const TEXTES = {
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
     double: "double press", fermer: "Close",
     rien_atteignable: "Nothing reachable in this app.",
+    hors_app: "live here, but does not involve this app",
     convention: (n) => `Standard macOS command: ${n} applications expose it in their own `
                      + `menu. The system shortcut and those entries mean the same action `
                      + `— this is not a conflict.`,
