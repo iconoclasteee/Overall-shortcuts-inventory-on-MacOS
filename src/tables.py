@@ -66,7 +66,7 @@ def _keycode_label(name):
         body = body[len("ANSI_"):]
         if body.startswith("Keypad"):
             rest = body[len("Keypad"):]
-            return f"Pave {rest}" if rest else "Pave"
+            return f"Pavé {rest}" if rest else "Pavé"
         if len(body) == 1:
             return body.upper()
         return _PUNCT.get(body, body)

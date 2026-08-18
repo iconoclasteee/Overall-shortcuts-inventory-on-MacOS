@@ -64,6 +64,7 @@ class Keyboard:
         self.by_code = {int(k): v for k, v in raw.items()}
         self.names = keycode_labels()      # libellés des touches sans caractère (F5, ←)
         keypad = keypad_codes()
+        self.keypad = keypad
         self.by_char = {}
         for code, (plain, shifted) in self.by_code.items():
             if code in keypad:
@@ -75,6 +76,11 @@ class Keyboard:
 
     def label(self, code, mods):
         """Libellé d'affichage. Avec Maj, Apple montre le caractère décalé (⇧⌘4)."""
+        # Le pavé numérique produit les mêmes caractères que la rangée du haut :
+        # afficher « 1 » pour l'un et pour l'autre rendrait les deux frappes
+        # indiscernables. Son nom prime donc sur son caractère.
+        if code in self.keypad:
+            return self.names.get(code)
         pair = self.by_code.get(code)
         if pair:
             text = pair[1] if mods & SHIFT else pair[0]
