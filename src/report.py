@@ -235,8 +235,15 @@ def build_report():
                 # commande renommée), donc un raccourci qui ne fonctionne plus.
                 orphans = [overrides[k] for k in overrides if k not in matched]
                 if orphans:
-                    lines += ["> ⚠️ Raccourcis redéfinis sans commande de menu "
-                              "correspondante (probablement inactifs) : "
+                    # Sans document ouvert, une partie du menu n'existe pas : l'absence
+                    # de correspondance n'y prouve pas que le raccourci est cassé.
+                    cause = ("sans correspondance dans le menu lu — mais cette app a été "
+                             "lue sans document ouvert, donc la commande peut simplement "
+                             "être absente à ce moment-là"
+                             if app["lance_par_nous"]
+                             else "sans commande de menu correspondante, donc probablement "
+                                  "inactifs (titre renommé ou app traduite)")
+                    lines += [f"> ⚠️ Raccourcis que tu as redéfinis, {cause} : "
                               + ", ".join(f"`{combo}` → « {title} »"
                                           for title, combo in sorted(orphans)), ""]
 

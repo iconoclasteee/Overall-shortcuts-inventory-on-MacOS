@@ -201,6 +201,14 @@ func process(bundleID: String, options: Options) -> AppResult {
                       [], running: false, launched: false)
     }
 
+    // Les apps publiées par Parallels sont des passerelles vers un Windows en machine
+    // virtuelle : les ouvrir démarrerait la VM. Hors périmètre, et jamais lancées,
+    // même si un identifiant de bundle y mène.
+    if url.path.contains("Applications (Parallels)") {
+        return result("hors_perimetre", "App Windows publiée par Parallels",
+                      [], running: false, launched: false)
+    }
+
     var running = workspace.runningApplications.first { $0.bundleIdentifier == bundleID }
     let wasRunning = running != nil
     var launchedByUs = false
@@ -274,6 +282,8 @@ if options.checkOnly {
 
 var targets = options.bundleIDs
 if options.scanAll {
+    // Chemins explicites, sans récursion : "~/Applications (Parallels)" n'y figure pas
+    // et ne peut donc pas être atteint par balayage.
     let directories = ["/Applications", "/Applications/Utilities", "/System/Applications",
                        NSHomeDirectory() + "/Applications"]
     var seen = Set<String>()
