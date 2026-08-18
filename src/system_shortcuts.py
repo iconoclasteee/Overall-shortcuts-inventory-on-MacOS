@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tables import keycode_labels
-from model import Keyboard, from_nsevent, render_modifiers
+from model import Keyboard, from_nsevent, render_modifiers, SHIFT
 
 APPEX = Path(
     "/System/Library/ExtensionKit/Extensions/KeyboardSettings.appex/Contents/Resources"
@@ -180,14 +180,19 @@ def _render(char_code, key_code, modifier_mask):
     # dans ce cas on retombe sur le libellé du code de touche.
     code = key_code if isinstance(key_code, int) and key_code != NO_CHAR else None
     if isinstance(char_code, int) and char_code not in (0, NO_CHAR) and chr(char_code).strip():
+        resolu, besoin_maj = _keyboard.resoudre(chr(char_code))
+        if besoin_maj:
+            mods |= SHIFT
         key = chr(char_code).upper()
         # Le caractère prime sur le code de touche. La table d'Apple stocke des codes
         # de clavier ANSI : pour ⌘M elle donne 46, qui sur AZERTY produit « , ».
         # macOS déclenche sur la touche portant réellement le M, donc on remonte au
         # code par le caractère, dans la disposition active.
-        code = _keyboard.code_for(chr(char_code)) or code
+        code = resolu or code
     elif code is not None:
-        key = labels.get(code, f"touche-{code}")
+        # Le libellé doit venir de la disposition active : le nom de constante ANSI
+        # dirait « 1 » là où le clavier français produit « & ».
+        key = _keyboard.label(code, mods) or labels.get(code, f"touche-{code}")
     else:
         return None
     return {"combo": render_modifiers(mods) + key, "mods": mods, "code": code}

@@ -89,6 +89,16 @@ class Keyboard:
         found = self.by_char.get((char or "").lower())
         return found[0] if found else None
 
+    def resoudre(self, char):
+        """(code, Maj nécessaire) pour produire ce caractère sur cette disposition.
+
+        Une app déclare son raccourci par un caractère — « 2 » — sans dire quelle
+        frappe le produit. En AZERTY il faut Maj+é : la frappe réelle comporte donc
+        un Maj que le menu n'affiche pas.
+        """
+        found = self.by_char.get((char or "").lower())
+        return (None, False) if not found else found
+
 
 @dataclass
 class Binding:

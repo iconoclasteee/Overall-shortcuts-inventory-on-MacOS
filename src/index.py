@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import global_hotkeys
 import overrides as user_overrides
-from model import Binding, Keyboard, from_ax, rang, render_modifiers, COUCHES
+from model import Binding, Keyboard, SHIFT, from_ax, rang, render_modifiers, COUCHES
 from tables import glyph_labels, glyph_to_keycode
 
 ROOT = Path(__file__).parent.parent
@@ -70,7 +70,11 @@ def app_bindings(keyboard, apps_dir):
         for ordre, item in enumerate(app["raccourcis"]):
             mods = from_ax(item["modificateurs"])
             char = item.get("caractere") or ""
-            code = keyboard.code_for(char) if char.strip() and char.isprintable() else None
+            code = None
+            if char.strip() and char.isprintable():
+                code, besoin_maj = keyboard.resoudre(char)
+                if besoin_maj:
+                    mods |= SHIFT
             glyphe = item.get("glyphe")
             if code is None and glyphe is not None:
                 # Ramener le glyphe à sa touche physique : c'est ce qui permet de
