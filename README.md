@@ -173,10 +173,12 @@ et d'identifiants de machine.
 
 ## Licence
 
-Le modèle de priorité entre couches d'interception est repris de
-[HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash), sous GPL-2.0. Usage
-personnel sans conséquence ; une publication de ce projet poserait la question du
-travail dérivé.
+**GPL-2.0** — voir [LICENSE](LICENSE).
+
+Le modèle de priorité entre couches d'interception, ainsi que la manière de lire les
+raccourcis de menu via l'API d'accessibilité, sont repris de
+[HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash) de Wunderlandmedia,
+distribué sous GPL-2.0. Ce projet adopte donc la même licence.
 
 ## Désactiver un raccourci système
 
