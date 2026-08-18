@@ -15,6 +15,10 @@ import sys
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from model import Keyboard
+from tables import keypad_codes
+
 ROOT = Path(__file__).parent.parent
 
 ORDRE_COUCHES = ["pilote", "capture", "systeme", "global", "autre", "menu"]
@@ -243,7 +247,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
    de libellé. Les séparer évite de les prendre pour un même réglage. */
 .filtre {
   display: grid; grid-template-columns: minmax(0, max-content) auto minmax(200px, 1fr);
-  gap: 12px 36px; margin: 0 0 28px; padding: 18px 20px; align-items: start;
+  gap: 12px 36px; margin: 0 0 28px; padding: 18px 20px; align-items: stretch;
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
 }
 .colonne-touches { display: grid; gap: 12px; }
@@ -261,15 +265,13 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 }
 .colonne-texte input { width: 100%; font-size: 14px; padding: 10px 13px; }
 .colonne-texte .etiquette { width: auto; }
-.rangee-filtre { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.rangee-filtre { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.rangee-filtre .etiquette { padding-top: 10px; }
 /* Chercher un texte n'est pas filtrer une combinaison : la ligne est séparée pour
    qu'on ne prenne pas les deux pour un même réglage. */
 /* Les touches de fonction occupent leur propre rangée : mêlées aux flèches et aux
    touches d'édition, elles formeraient un pavé de vingt boutons illisible. */
 .rangees-touches { display: flex; flex-direction: column; gap: 6px; }
-.bloc-touches { display: grid; gap: 6px; }
-/* Le bouton se pose au-dessus de la grille, du côté où elle se termine. */
-.entete-touches { display: flex; justify-content: flex-end; }
 .etiquette {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
   text-transform: uppercase; color: var(--sourdine); width: 104px; flex: none;
@@ -287,7 +289,13 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   box-shadow: none;
 }
 .capsules button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
-#touche-libre { width: 150px; flex: none; text-align: center; }
+/* Le champ libre est une touche parmi les autres : même gabarit que les capsules. */
+#touche-libre {
+  width: 118px; flex: none; text-align: center; font-family: var(--mono);
+  font-size: 13px; padding: 8px 6px; border-radius: 5px;
+}
+#touche-libre::placeholder { font-size: 11px; }
+#vider-touches { margin-left: auto; align-self: center; }
 .bloc-app { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .bascule {
   display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 13px;
@@ -1202,8 +1210,18 @@ def build(index_path):
 
     vues = {c["combo"].replace("fn", "").translate(str.maketrans("", "", "⌃⌥⇧⌘"))
             for c in data["combinaisons"]}
+    # Le pavé numérique est proposé au complet, comme les touches de fonction : il
+    # forme un bloc physique, en montrer la moitié laisserait croire que le reste
+    # n'existe pas. Les libellés viennent de la disposition active.
+    clavier = Keyboard()
+    pave = [t for t in (clavier.label(c, 0) for c in keypad_codes()) if t]
+    # Chiffres d'abord, opérateurs ensuite : l'ordre des codes de touches n'a aucun
+    # rapport avec la façon dont on lit un pavé.
+    pave.sort(key=lambda t: (not t.split()[-1].isdigit(), t.split()[-1]))
+
     autres = sorted({t for t in vues if t.strip() and t.upper() not in ecrivables
-                     and not (t.startswith("F") and t[1:].isdigit())},
+                     and not (t.startswith("F") and t[1:].isdigit())
+                     and t not in pave},
                     key=_ordre_touche)
     # Les touches de fonction sont proposées au complet, y compris celles qu'aucun
     # raccourci n'utilise : savoir qu'une touche est libre fait partie de la réponse.
@@ -1217,6 +1235,7 @@ def build(index_path):
             for t in touches)
 
     touches_html = (f'<div class="capsules">{capsules(fonctions)}</div>'
+                    f'<div class="capsules">{capsules(pave)}</div>'
                     f'<div class="capsules">{capsules(autres)}</div>')
     mods_html = "".join(
         f'<button type="button" aria-pressed="false" data-bit="{bit}">{sym}</button>'
@@ -1291,16 +1310,12 @@ def build(index_path):
     <div class="rangee-filtre">
       <span class="etiquette" data-t="l_modificateurs"></span>
       <div id="mods" class="capsules">{mods_html}</div>
-      <input type="text" id="touche-libre" maxlength="6" data-tp="ph_touche">
+      <input type="text" id="touche-libre" maxlength="4" data-tp="ph_touche">
+      <button type="button" id="vider-touches" class="lien" data-t="effacer_touches"></button>
     </div>
     <div class="rangee-filtre">
       <span class="etiquette" data-t="l_touche"></span>
-      <div class="bloc-touches">
-        <div class="entete-touches">
-          <button type="button" id="vider-touches" class="lien" data-t="effacer_touches"></button>
-        </div>
-        <div id="touches" class="rangees-touches">{touches_html}</div>
-      </div>
+      <div id="touches" class="rangees-touches">{touches_html}</div>
     </div>
   </div>
   <div class="colonne-nombre">
