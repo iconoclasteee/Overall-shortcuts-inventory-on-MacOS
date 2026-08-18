@@ -766,18 +766,21 @@ function brancherFiltres() {
     rendreTout();
   });
   document.getElementById("filtre-nombre").addEventListener("change", rendreTout);
-  // Efface la sélection de touche — capsules et saisie libre — sans toucher aux
-  // modificateurs ni à la recherche de libellé, qui répondent à d'autres questions.
-  document.getElementById("vider-touches").addEventListener("click", () => {
-    document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
-    document.getElementById("touche-libre").value = "";
-    document.getElementById("pave-select").value = "";
-    rendreTout();
-  });
-  document.getElementById("vider-filtre").addEventListener("click", () => {
+  // Rend le panneau de touches à son état neutre : modificateurs compris, puisqu'ils
+  // sont des touches eux aussi. Ne touche ni à la recherche de libellé ni au nombre de
+  // touches, qui répondent à d'autres questions — c'est « tout effacer » qui les vide.
+  const viderTouches = () => {
     document.querySelectorAll("#mods button, #touches button")
       .forEach(x => x.setAttribute("aria-pressed", "false"));
     document.getElementById("touche-libre").value = "";
+    document.getElementById("pave-select").value = "";
+  };
+  document.getElementById("vider-touches").addEventListener("click", () => {
+    viderTouches();
+    rendreTout();
+  });
+  document.getElementById("vider-filtre").addEventListener("click", () => {
+    viderTouches();
     document.getElementById("recherche").value = "";
     document.getElementById("filtre-nombre").value = "";
     rendreTout();
