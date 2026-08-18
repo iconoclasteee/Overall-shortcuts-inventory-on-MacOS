@@ -100,6 +100,14 @@ def load_reference(lang="fr"):
         cat_fr, cat_en = translate(category.get("name", ""))
         walk(category, cat_fr, cat_en, category.get("identifier", ""), [])
 
+    # Apple range les raccourcis de bureaux dans un second fichier, à plat. Sans lui,
+    # « Passer au Bureau 1 » et ses quinze voisins ressortent en « non documenté ».
+    spaces_path = APPEX / "DefaultSpacesShortcuts.xml"
+    if spaces_path.exists():
+        cat_fr, cat_en = translate("DO_NOT_LOCALIZE: Mission Control")
+        walk({"elements": plistlib.loads(spaces_path.read_bytes())},
+             cat_fr, cat_en, "expose", [])
+
     return entries
 
 

@@ -120,7 +120,7 @@ Aucune table n'est écrite de mémoire — tout est extrait de macOS :
 
 | Donnée | Source sur la machine |
 |---|---|
-| Les ~100 raccourcis système + leurs libellés français | `KeyboardSettings.appex/…/DefaultShortcutsTable.xml` + `.loctable` |
+| Les raccourcis système + leurs libellés français | `KeyboardSettings.appex/…/DefaultShortcutsTable.xml` et `DefaultSpacesShortcuts.xml` (bureaux), traduits par `.loctable` |
 | État réel (activé, redéfini) | `defaults export com.apple.symbolichotkeys` |
 | Codes de touches et glyphes de menu | `HIToolbox.framework/…/BridgeSupport` (énumérations Carbon `kVK_*` et `kMenu*Glyph`) |
 | Raccourcis d'app | API d'accessibilité, attributs `AXMenuItemCmdChar` / `CmdGlyph` / `CmdModifiers` |
@@ -151,3 +151,18 @@ Le modèle de priorité entre couches d'interception est repris de
 [HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash), sous GPL-2.0. Usage
 personnel sans conséquence ; une publication de ce projet poserait la question du
 travail dérivé.
+
+## Désactiver un raccourci système
+
+Réglages Système → Clavier → Raccourcis clavier ne montre que les raccourcis
+qu'Apple documente. Les autres vivent au même endroit sur le disque, mais sans
+interface. Pour ceux-là :
+
+```bash
+python3 src/raccourci_systeme.py liste --actifs --inconnus   # ce qui n'est exposé nulle part
+python3 src/raccourci_systeme.py off 62                       # essai à blanc
+python3 src/raccourci_systeme.py off 62 --oui                 # applique
+```
+
+Rien n'est écrit sans `--oui`. Une sauvegarde horodatée du domaine complet est faite
+avant toute modification, et la commande de retour en arrière est affichée.
