@@ -384,6 +384,9 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
   padding: 11px 0; border-bottom: 1px solid var(--creux);
 }
 .resultat .titre { font-size: 15px; }
+/* Vert : la commande appartient à l'application elle-même. Le reste — raccourcis
+   système et outils globaux — garde la couleur du texte courant. */
+.resultat.propre-app .titre { color: var(--petrol); }
 /* Une combinaison disputée se repère à la couleur : la ligne dit ce que la commande
    fait, pas qu'un autre preneur pourrait la lui prendre. */
 .resultat.rang-conflit .titre { color: var(--vermillon); }
@@ -892,7 +895,8 @@ function vueCeQuiSePasse(app) {
         const multi = it.vainqueurs.length > 1;
         const perdus = it.perdants.map(u =>
           `${esc(u.proprietaire)} — ${esc(u.action)}`).join(" · ");
-        return `<div class="resultat${it.conflit ? " rang-conflit ouvrable" : ""}"${
+        return `<div class="resultat${
+          it.couche === "menu" ? " propre-app" : ""}${it.conflit ? " rang-conflit ouvrable" : ""}"${
           it.conflit ? ` role="button" tabindex="0" data-cle="${esc(it.cle)}"` : ""}>
           <span class="combo">${caps(it.combo)}${it.double ? `<span class="marque-double">${T("double")}</span>` : ""}</span>
           <span>
@@ -938,7 +942,8 @@ function vueParMenu(app) {
         || Math.min(...a[1].map(u => u.ordre)) - Math.min(...b[1].map(u => u.ordre));
   });
 
-  const rangee = (u, sousTitre) => `<div class="resultat${u.conflit ? " rang-conflit ouvrable" : ""}"${
+  const rangee = (u, sousTitre) => `<div class="resultat${
+      u.couche === "menu" ? " propre-app" : ""}${u.conflit ? " rang-conflit ouvrable" : ""}"${
       u.conflit ? ` role="button" tabindex="0" data-cle="${esc(u.cle)}"` : ""}>
       <span class="combo">${caps(u.combo)}${u.double ? `<span class="marque-double">${T("double")}</span>` : ""}</span>
       <span><span class="titre">${esc(u.action.split(" > ").slice(1).join(" > ") || u.action)}</span>
