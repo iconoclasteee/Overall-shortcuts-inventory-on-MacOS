@@ -18,6 +18,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from model import Binding, Keyboard, from_carbon, from_nsevent, render_modifiers
 
+ROOT = Path(__file__).parent.parent
+
 HOME = Path.home()
 
 
@@ -133,53 +135,106 @@ def scan_keyboard_maestro(keyboard):
     return found
 
 
-def scan_cleanshot(keyboard):
-    """CleanShot X : ses raccourcis sont des blobs JSON dans ses préférences.
+# --- Balayage générique des préférences ------------------------------------------
 
-    Couche « global » : les champs `carbonKey`/`carbonModifiers` trahissent un
-    enregistrement Carbon. Seules les clés `LAVA*` sont lues — rien d'autre du
-    fichier de préférences n'est touché.
-    """
-    path = HOME / "Library/Preferences/pl.maketheweb.cleanshotx.plist"
-    if not path.exists():
-        return []
-    try:
-        data = plistlib.loads(path.read_bytes())
-    except Exception:
-        return []
+# Deux conventions couvrent la plupart des apps qui enregistrent un raccourci global :
+#   · un dictionnaire {keyCode, modifierFlags} — masque NSEvent (Rectangle Pro)
+#   · une chaîne JSON sous une clé préfixée, avec carbonKeyCode/carbonModifiers —
+#     c'est la bibliothèque KeyboardShortcuts, très répandue (ChatGPT, CleanShot X)
+# Les lire génériquement plutôt qu'app par app fait apparaître les nouvelles sources
+# sans qu'il faille les prévoir.
+PREFIXES_JSON = ("KeyboardShortcuts_", "LAVA")
 
-    labels = {
-        "LAVAtakeArea": "Capturer une zone", "LAVAtakeFullscreen": "Capturer l'écran",
-        "LAVAtakeAllInOne": "Capture tout-en-un", "LAVAtakeOCR": "Reconnaissance de texte",
-    }
+
+def _nom_app(bundle_id, catalogue):
+    return catalogue.get(bundle_id, bundle_id)
+
+
+def _catalogue():
+    chemin = ROOT / "out" / "catalogue.json"
+    if not chemin.exists():
+        return {}
+    return {a["bundleID"]: a["nom"] for a in json.loads(chemin.read_text(encoding="utf-8"))}
+
+
+def scan_preferences(keyboard, ignorer=()):
+    """Raccourcis globaux déclarés dans les préférences, toutes apps confondues."""
+    # Un fichier de préférences survit à la désinstallation de son app. Sans ce
+    # recoupement avec les apps réellement installées, on attribuerait des raccourcis
+    # actifs à un logiciel absent — vu ici avec com.openai.chat, dont les prefs
+    # traînent alors que l'app installée est com.openai.codex.
+    catalogue = _catalogue()
+    orphelins = set()
     found = []
-    for key, value in data.items():
-        if not key.startswith("LAVA"):
+
+    def ajouter(bundle_id, action, code, mods):
+        if catalogue and bundle_id not in catalogue:
+            orphelins.add(bundle_id)
+            return
+        combo = _combo(keyboard, code, mods)
+        if not combo:
+            return
+        nom = _nom_app(bundle_id, catalogue)
+        found.append(Binding(
+            mods=mods, combo=combo, action=f"{nom} — {action}", source="outil",
+            couche="global", portee="systeme", proprietaire=nom,
+            bundle_id=bundle_id, code=code))
+
+    for chemin in sorted((HOME / "Library/Preferences").glob("*.plist")):
+        bundle_id = chemin.stem
+        if any(bundle_id.startswith(prefixe) for prefixe in ignorer):
             continue
         try:
-            spec = json.loads(value if isinstance(value, (str, bytes)) else "")
-        except (json.JSONDecodeError, TypeError):
+            prefs = plistlib.loads(chemin.read_bytes())
+        except Exception:
             continue
-        code = spec.get("carbonKey")
-        if code is None:
+        if not isinstance(prefs, dict):
             continue
-        mods = from_carbon(spec.get("carbonModifiers"))
-        combo = _combo(keyboard, code, mods)
-        if combo:
-            found.append(Binding(
-                mods=mods, combo=combo,
-                action=f"CleanShot X — {labels.get(key, key.removeprefix('LAVA'))}",
-                source="outil", couche="global", portee="systeme",
-                proprietaire="CleanShot X", bundle_id="pl.maketheweb.cleanshotx", code=code))
+
+        for cle, valeur in prefs.items():
+            # Convention 1 : dictionnaire à masque NSEvent.
+            if isinstance(valeur, dict) and "keyCode" in valeur:
+                masque = valeur.get("modifierFlags")
+                if valeur.get("keyCode") is not None and masque is not None:
+                    ajouter(bundle_id, cle, valeur["keyCode"], from_nsevent(masque))
+                continue
+            # Convention 2 : JSON sous clé préfixée, masques Carbon.
+            if not any(cle.startswith(prefixe) for prefixe in PREFIXES_JSON):
+                continue
+            brut = valeur if isinstance(valeur, (str, bytes)) else None
+            if brut is None:
+                continue
+            try:
+                spec = json.loads(brut)
+            except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+                continue
+            code = spec.get("carbonKeyCode", spec.get("carbonKey"))
+            if code is None:
+                continue
+            action = cle
+            for prefixe in PREFIXES_JSON:
+                action = action.removeprefix(prefixe)
+            ajouter(bundle_id, action, code, from_carbon(spec.get("carbonModifiers")))
+
+    if orphelins:
+        print(f"  ℹ️  {len(orphelins)} domaines de préférences sans app installée, "
+              f"ignorés : {', '.join(sorted(orphelins))}")
     return found
 
 
 def scan_all(keyboard=None):
     keyboard = keyboard or Keyboard()
+    # Alfred et Keyboard Maestro ont des formats qui leur sont propres ; tout le reste
+    # passe par le balayage générique, y compris les apps qu'on n'a pas prévues.
     return (scan_alfred(keyboard) + scan_keyboard_maestro(keyboard)
-            + scan_cleanshot(keyboard))
+            + scan_preferences(keyboard,
+                               ignorer=("com.runningwithcrayons.Alfred",
+                                        "com.stairways.keyboardmaestro")))
 
 
 if __name__ == "__main__":
-    for binding in scan_all():
+    from collections import Counter
+    tout = scan_all()
+    print(Counter(b.proprietaire for b in tout).most_common(), "\n")
+    for binding in sorted(tout, key=lambda b: (b.proprietaire, b.combo)):
         print(f"{binding.couche:8} {binding.combo:12} {binding.action}")

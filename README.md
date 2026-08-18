@@ -139,7 +139,7 @@ Aucune table n'est écrite de mémoire — tout est extrait de macOS :
 | Catégorie et version d'app | `LSApplicationCategoryType` et `CFBundleShortVersionString` de chaque `Info.plist` |
 | Raccourcis redéfinis par l'utilisateur | `NSUserKeyEquivalents` dans les préférences de chaque app |
 | Correspondance touche ↔ caractère | `UCKeyTranslate` sur la disposition clavier active — indispensable en AZERTY, où le code 41 produit « m » et non « ; » |
-| Raccourcis globaux tiers | `Alfred.alfredpreferences`, `Keyboard Maestro Macros.plist`, préférences CleanShot X — lus, jamais écrits |
+| Raccourcis globaux tiers | `Alfred.alfredpreferences` et `Keyboard Maestro Macros.plist` pour leurs formats propres ; pour tout le reste, un balayage de `~/Library/Preferences` reconnaissant deux conventions répandues — `{keyCode, modifierFlags}` et les clés `KeyboardShortcuts_*`. Lus, jamais écrits. Un domaine de préférences sans app installée est écarté : un fichier de prefs survit à la désinstallation. |
 
 Les descriptions de rôle des apps, elles, sont écrites à la main dans
 `data/app-descriptions.json`. Une app sans description s'affiche « Rôle non
