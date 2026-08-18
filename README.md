@@ -98,7 +98,7 @@ autorisation accordée explicitement doit être retirée puis remise.
 | Écarté | Pourquoi |
 |---|---|
 | Jeux et lanceurs de jeux | Plusieurs gigaoctets de chargement pour une barre de menu vide. Détectés par la catégorie déclarée `*games*`, plus Steam qui n'en déclare aucune. `--include-games` les réintègre. |
-| `~/Applications` | Bibliothèque Steam : 23 jeux sur 25 apps. Réintégré par `--include-games`. |
+| `~/Applications` | Emplacement des jeux installés par Steam. Réintégré par `--include-games`. |
 | `~/Applications (Parallels)` | Passerelles vers un Windows en machine virtuelle — les ouvrir démarrerait la VM. Jamais réintégré. |
 | Assistant de migration, Assistant Boot Camp | Les ouvrir ferme la session ou lance un partitionnement de disque. |
 | Désinstalleurs | Rien à inventorier, action destructrice. |
@@ -150,6 +150,26 @@ src/Harvester.swift   moissonneur d'accessibilité → out/apps/<bundle-id>.json
 src/report.py         assemblage du Markdown final
 data/app-descriptions.json   rôles des apps (curé à la main)
 ```
+
+## Ce que le dépôt contient, et ce qu'il ne contient pas
+
+Le code est publiable tel quel. Tout ce qui décrit **une machine** est produit dans
+`out/`, qui n'est pas versionné :
+
+| Versionné | Ignoré (`out/`) |
+|---|---|
+| Le code, les tables d'arbitrage (`data/portees.json`) | Les raccourcis lus, app par app |
+| Les descriptions d'app renseignées à la main | La page HTML et le rapport Markdown |
+| Les identifications établies (`data/raccourcis-connus.json`) | La disposition clavier, le catalogue d'apps installées |
+| | Les sauvegardes de `com.apple.symbolichotkeys` |
+
+⚠️ **La page produite est un document personnel.** Elle contient les chemins de menus
+réels : titres de favoris du navigateur, noms de macros, nom de la session. Elle n'a
+rien à faire dans un dépôt, ni dans un partage de fichiers.
+
+Avant de publier, `./verifier-publication.sh` relit les fichiers versionnés **et
+l'historique git** à la recherche de chemins absolus, de noms d'utilisateur, d'adresses
+et d'identifiants de machine.
 
 ## Licence
 

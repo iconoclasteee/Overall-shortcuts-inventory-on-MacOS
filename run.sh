@@ -38,7 +38,7 @@ case "${1:---test}" in
 esac
 
 echo "→ Disposition clavier"
-"$HARVESTER" --keymap > data/keymap.json
+"$HARVESTER" --keymap > out/keymap.json
 
 echo "→ Recensement des apps installées"
 "$HARVESTER" --catalogue > out/catalogue.json

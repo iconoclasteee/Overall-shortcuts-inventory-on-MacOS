@@ -990,7 +990,7 @@ def build(index_path):
     # Un bouton ne se justifie que pour une touche qui n'écrit aucun caractère.
     # Tout ce que la disposition produit, avec ou sans Maj, se tape dans le champ :
     # en AZERTY cela couvre « $ », « ; », mais aussi « . » et « £ », qui demandent Maj.
-    keymap = json.loads((ROOT / "data" / "keymap.json").read_text(encoding="utf-8"))
+    keymap = json.loads((ROOT / "out" / "keymap.json").read_text(encoding="utf-8"))
     ecrivables = {c.upper() for niveaux in keymap.values() for c in niveaux if c.strip()}
 
     vues = {c["combo"].replace("fn", "").translate(str.maketrans("", "", "⌃⌥⇧⌘"))

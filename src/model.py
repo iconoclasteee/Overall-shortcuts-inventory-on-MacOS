@@ -60,7 +60,7 @@ class Keyboard:
     """Disposition clavier active : code de touche ↔ caractère, dans les deux sens."""
 
     def __init__(self, path=None):
-        raw = json.loads((path or ROOT / "data" / "keymap.json").read_text(encoding="utf-8"))
+        raw = json.loads((path or ROOT / "out" / "keymap.json").read_text(encoding="utf-8"))
         self.by_code = {int(k): v for k, v in raw.items()}
         self.names = keycode_labels()      # libellés des touches sans caractère (F5, ←)
         self.symboles = keycode_symbols()  # symboles officiels (⌤, ⌧, ⏎)
