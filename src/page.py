@@ -1297,7 +1297,7 @@ def build(index_path):
   </button>
   <div class="combo-app">
     <input type="text" id="filtre-app" role="combobox" aria-expanded="false"
-           aria-controls="liste-app" aria-autocomplete="list" autocomplete="off"
+           aria-controls="liste-app" aria-autocomplete="list" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
            data-tp="cherche_app">
     <ul id="liste-app" role="listbox" hidden></ul>
   </div>
@@ -1310,7 +1310,7 @@ def build(index_path):
     <div class="rangee-filtre">
       <span class="etiquette" data-t="l_modificateurs"></span>
       <div id="mods" class="capsules">{mods_html}</div>
-      <input type="text" id="touche-libre" maxlength="4" data-tp="ph_touche">
+      <input type="text" id="touche-libre" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="4" data-tp="ph_touche">
       <button type="button" id="vider-touches" class="lien" data-t="effacer_touches"></button>
     </div>
     <div class="rangee-filtre">
@@ -1324,7 +1324,7 @@ def build(index_path):
   </div>
   <div class="colonne-texte">
     <span class="etiquette" data-t="l_texte"></span>
-    <input type="search" id="recherche" data-tp="ph_texte">
+    <input type="search" id="recherche" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-tp="ph_texte">
     <button type="button" id="vider-filtre" class="lien" data-t="tout_effacer"></button>
   </div>
 </div>
@@ -1360,7 +1360,7 @@ def build(index_path):
     <p data-t="scan_intro"></p>
   </div>
   <div class="scan-outils">
-    <input type="search" id="scan-recherche" data-tp="scan_filtrer">
+    <input type="search" id="scan-recherche" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-tp="scan_filtrer">
     <button type="button" class="bouton" id="scan-tout" data-t="scan_tout"></button>
     <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
     <button type="button" class="bouton" id="scan-defaut" data-t="scan_defaut"></button>
