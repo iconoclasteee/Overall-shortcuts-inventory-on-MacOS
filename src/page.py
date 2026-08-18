@@ -152,6 +152,14 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
 }
 .rangee-filtre { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* Chercher un texte n'est pas filtrer une combinaison : la ligne est séparée pour
+   qu'on ne prenne pas les deux pour un même réglage. */
+.rangee-filtre.separee {
+  border-top: 1px solid var(--creux); padding-top: 14px; margin-top: 2px;
+}
+/* Les touches de fonction occupent leur propre rangée : mêlées aux flèches et aux
+   touches d'édition, elles formeraient un pavé de vingt boutons illisible. */
+.rangees-touches { display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .etiquette {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
   text-transform: uppercase; color: var(--sourdine); width: 108px; flex: none;
@@ -169,7 +177,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   box-shadow: none;
 }
 .capsules button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
-#touche-libre { width: 108px; }
+#touche-libre { width: 150px; flex: none; text-align: center; }
 .combo-app { position: relative; min-width: 340px; }
 .combo-app input { width: 100%; }
 #liste-app {
@@ -196,10 +204,11 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   color: var(--sourdine); text-decoration: underline; cursor: pointer;
 }
 .lien:hover { color: var(--encre); }
-input[type="search"], select {
-  font: inherit; font-size: 14px; padding: 10px 13px; color: var(--encre);
+input[type="search"], input[type="text"] {
+  font: inherit; font-size: 15px; padding: 12px 14px; color: var(--encre);
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 7px;
 }
+.filtre input { background: var(--alu); }
 input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
 .groupe-portee { margin: 34px 0 0; }
 .groupe-portee h3 {
@@ -632,23 +641,30 @@ def build(index_path):
     # Un bouton ne se justifie que pour une touche qu'on ne peut pas simplement écrire.
     # Tout ce que la disposition clavier produit sans Maj — lettres, chiffres, mais
     # aussi « $ », « ' », « ; » en AZERTY — se tape sans risque dans le champ libre.
+    # Un bouton ne se justifie que pour une touche qui n'écrit aucun caractère.
+    # Tout ce que la disposition produit, avec ou sans Maj, se tape dans le champ :
+    # en AZERTY cela couvre « $ », « ; », mais aussi « . » et « £ », qui demandent Maj.
     keymap = json.loads((ROOT / "data" / "keymap.json").read_text(encoding="utf-8"))
-    directes = {niveaux[0].upper() for niveaux in keymap.values() if niveaux[0].strip()}
+    ecrivables = {c.upper() for niveaux in keymap.values() for c in niveaux if c.strip()}
 
     vues = {c["combo"].replace("fn", "").translate(str.maketrans("", "", "⌃⌥⇧⌘"))
             for c in data["combinaisons"]}
+    autres = sorted({t for t in vues if t.strip() and t.upper() not in ecrivables
+                     and not (t.startswith("F") and t[1:].isdigit())},
+                    key=_ordre_touche)
     # Les touches de fonction sont proposées au complet, y compris celles qu'aucun
     # raccourci n'utilise : savoir qu'une touche est libre fait partie de la réponse.
-    speciales = sorted(
-        {t for t in vues if t.strip() and t.upper() not in directes}
-        | {f"F{n}" for n in range(1, 21)},
-        key=_ordre_touche)
+    fonctions = [f"F{n}" for n in range(1, 21)]
     # Les touches de ponctuation doivent être échappées : sur AZERTY, le guillemet
     # est une touche, et non échappé il refermerait l'attribut HTML.
-    touches_html = "".join(
-        '<button type="button" aria-pressed="false" data-touche="{0}">{0}</button>'.format(
-            html_std.escape(t, quote=True))
-        for t in speciales)
+    def capsules(touches):
+        return "".join(
+            '<button type="button" aria-pressed="false" data-touche="{0}">{0}</button>'.format(
+                html_std.escape(t, quote=True))
+            for t in touches)
+
+    touches_html = (f'<div class="capsules">{capsules(fonctions)}</div>'
+                    f'<div class="capsules">{capsules(autres)}</div>')
     mods_html = "".join(
         f'<button type="button" aria-pressed="false" data-bit="{bit}">{sym}</button>'
         for sym, bit in (("⌃", 2), ("⌥", 4), ("⇧", 1), ("⌘", 8), ("fn", 16)))
@@ -691,10 +707,10 @@ def build(index_path):
   </div>
   <div class="rangee-filtre">
     <span class="etiquette">Touche</span>
-    <div id="touches" class="capsules">{touches_html}</div>
+    <div id="touches" class="rangees-touches">{touches_html}</div>
     <input type="text" id="touche-libre" maxlength="6" placeholder="ou tape la touche">
   </div>
-  <div class="rangee-filtre">
+  <div class="rangee-filtre separee">
     <span class="etiquette">Texte</span>
     <input type="search" id="recherche" placeholder="Une commande ou une app — copier, Safari, capture">
     <button type="button" id="vider-filtre" class="lien">Tout effacer</button>
