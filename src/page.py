@@ -28,6 +28,7 @@ CSS = """
   --alu: #DAD8D3; --plaque: #F4F3F0; --creux: #C3C0B9; --encre: #16181C;
   --sourdine: #6E7078; --petrol: #0B6E6E; --vermillon: #B8352A;
   --touche-haut: #FBFAF8; --touche-bas: #D8D5CE; --ombre: rgba(22,24,28,.18);
+  --largeur-combo: 168px;
   --display: "Space Grotesk", "Avenir Next Condensed", system-ui, sans-serif;
   --corps: "IBM Plex Sans", -apple-system, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -120,7 +121,7 @@ h1 em { font-style: normal; color: var(--petrol); }
 }
 .croix:hover { color: var(--encre); border-color: var(--sourdine); }
 .croix:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
-#detail-contenu { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 26px; }
+#detail-contenu { display: grid; grid-template-columns: var(--largeur-combo) minmax(0, 1fr); gap: 20px; }
 #detail-contenu .verdict, #detail-contenu .usages { grid-column: 2; margin-top: 0; }
 
 #scan {
@@ -181,7 +182,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .ligne:focus-visible { outline: 2px solid var(--petrol); outline-offset: 3px; }
 
 /* — Touches — */
-.combo { display: inline-flex; gap: 3px; align-items: center; }
+.combo { display: inline-flex; gap: 3px; align-items: center; flex-wrap: wrap; }
 .cap {
   font-family: var(--mono); font-size: 13px; font-weight: 500; line-height: 1;
   min-width: 26px; padding: 7px 6px; text-align: center;
@@ -209,7 +210,8 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 
 /* — Listes — */
 .ligne {
-  display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 28px; align-items: start;
+  display: grid; grid-template-columns: var(--largeur-combo) minmax(0, 1fr);
+  gap: 14px; align-items: start;
   padding: 18px 0; border-bottom: 1px solid var(--creux); width: 100%;
   background: none; border-left: 0; border-right: 0; border-top: 0;
   text-align: left; font: inherit; color: inherit; cursor: pointer;
@@ -220,7 +222,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .titre { font-family: var(--display); font-weight: 600; font-size: 16px; margin: 0 0 4px; }
 .sous { color: var(--sourdine); font-size: 13.5px; margin: 0; }
 .detail {
-  display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 28px;
+  display: grid; grid-template-columns: var(--largeur-combo) minmax(0, 1fr); gap: 14px;
   padding: 4px 0 26px; border-bottom: 1px solid var(--creux);
 }
 .detail .pile { padding-top: 4px; }
@@ -380,7 +382,8 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
   column-gap: 52px;
 }
 .resultat {
-  display: grid; grid-template-columns: 185px 1fr; gap: 20px; align-items: start;
+  display: grid; grid-template-columns: var(--largeur-combo) minmax(0, 1fr);
+  gap: 12px; align-items: start;
   padding: 11px 0; border-bottom: 1px solid var(--creux);
 }
 .resultat .titre { font-size: 15px; }
