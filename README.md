@@ -27,13 +27,20 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
 
 ## Ce que ça produit
 
-**`out/raccourcis.html`** — une page autonome, trois vues :
+**`out/raccourcis.html`** — une page autonome, quatre vues :
 
-1. **Conflits** — les combinaisons réclamées par plusieurs preneurs, avec qui gagne
+1. **Commandes par menu** — les raccourcis de l'app choisie, dans l'ordre de sa barre
+   de menu, puis les raccourcis globaux rangés selon qu'ils agissent *dans* l'app,
+   *sur* elle, ou à côté d'elle.
+2. **Effet d'une frappe** — part de la touche et non de la commande : pour chaque
+   combinaison atteignable dans cette app, qui la reçoit vraiment. Classée par nombre
+   de touches.
+3. **Conflits** — les combinaisons réclamées par plusieurs preneurs, avec qui gagne
    et pourquoi.
-2. **Par combinaison** — cherche une touche ou une commande, vois partout où elle sert.
-3. **Par application** — les raccourcis de l'app, puis les raccourcis globaux rangés
-   selon qu'ils agissent *dans* l'app, *sur* elle, ou à côté d'elle.
+4. **Par combinaison** — cherche une touche ou une commande, vois partout où elle sert.
+
+Un filtre unique (modificateurs, touche, libellé) s'applique aux quatre vues, et le
+choix de l'application vit dans la barre d'onglets.
 
 **`out/raccourcis-macos.md`** — le même inventaire à plat, versionnable et relisible
 hors ligne, groupé par catégorie d'app.

@@ -72,7 +72,11 @@ h1 em { font-style: normal; color: var(--petrol); }
 .chiffre.alerte b { color: var(--vermillon); }
 
 /* — Onglets — */
-nav { display: flex; gap: 4px; margin: 0 0 28px; border-bottom: 1px solid var(--creux); }
+nav {
+  display: flex; justify-content: space-between; align-items: center; gap: 28px;
+  margin: 0 0 22px; border-bottom: 1px solid var(--creux);
+}
+.onglets { display: flex; gap: 4px; }
 nav button {
   font-family: var(--display); font-size: 15px; font-weight: 600; letter-spacing: -.01em;
   background: none; border: 0; border-bottom: 3px solid transparent;
@@ -147,22 +151,29 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 
 /* — Contrôles — */
 .controles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+/* Deux natures de filtre : à gauche la combinaison de touches, à droite la recherche
+   de libellé. Les séparer évite de les prendre pour un même réglage. */
 .filtre {
-  display: grid; gap: 12px; margin: 0 0 28px; padding: 18px 20px;
+  display: grid; grid-template-columns: minmax(0, max-content) minmax(220px, 1fr);
+  gap: 12px 40px; margin: 0 0 28px; padding: 18px 20px; align-items: start;
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
 }
+.colonne-touches { display: grid; gap: 12px; }
+.colonne-texte {
+  display: grid; gap: 8px; justify-items: start; max-width: 400px;
+  padding-left: 40px; border-left: 1px solid var(--creux);
+}
+.colonne-texte input { width: 100%; font-size: 14px; padding: 10px 13px; }
+.colonne-texte .etiquette { width: auto; }
 .rangee-filtre { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 /* Chercher un texte n'est pas filtrer une combinaison : la ligne est séparée pour
    qu'on ne prenne pas les deux pour un même réglage. */
-.rangee-filtre.separee {
-  border-top: 1px solid var(--creux); padding-top: 14px; margin-top: 2px;
-}
 /* Les touches de fonction occupent leur propre rangée : mêlées aux flèches et aux
    touches d'édition, elles formeraient un pavé de vingt boutons illisible. */
-.rangees-touches { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.rangees-touches { display: flex; flex-direction: column; gap: 6px; }
 .etiquette {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--sourdine); width: 108px; flex: none;
+  text-transform: uppercase; color: var(--sourdine); width: 104px; flex: none;
 }
 .capsules { display: flex; flex-wrap: wrap; gap: 5px; }
 .capsules button {
@@ -178,8 +189,13 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 }
 .capsules button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 #touche-libre { width: 150px; flex: none; text-align: center; }
-.combo-app { position: relative; min-width: 340px; }
-.combo-app input { width: 100%; }
+.combo-app { position: relative; width: 300px; flex: none; margin-bottom: 8px; }
+.combo-app input {
+  width: 100%; font-size: 14px; padding: 10px 13px;
+  background: color-mix(in srgb, var(--petrol) 12%, var(--plaque));
+  border: 1.5px solid var(--petrol); color: var(--encre);
+}
+.combo-app input::placeholder { color: color-mix(in srgb, var(--petrol) 75%, var(--sourdine)); }
 #liste-app {
   position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
   max-height: 340px; overflow-y: auto; margin: 0; padding: 5px; list-style: none;
@@ -509,8 +525,10 @@ const LISIBLES = D.apps.filter(a => a.statut === "ok")
 let appChoisie = LISIBLES.length ? LISIBLES[0].bundleID : "";
 let surligne = -1;
 
+let saisieApp = "";
+
 function appsFiltrees() {
-  const q = sansAccent(document.getElementById("filtre-app").value.trim());
+  const q = sansAccent(saisieApp.trim());
   if (!q) return LISIBLES;
   return LISIBLES.filter(a => sansAccent(a.nom).includes(q)
                            || sansAccent(a.bundleID).includes(q));
@@ -540,7 +558,9 @@ function choisirApp(id) {
   if (!app) return;
   appChoisie = id;
   document.getElementById("filtre-app").value = app.nom;
+  saisieApp = "";
   surligne = -1;
+  document.getElementById("filtre-app").blur();
   ouvrirListe(false);
   rendreApp();
 }
@@ -548,10 +568,18 @@ function choisirApp(id) {
 function brancherChoixApp() {
   const champ = document.getElementById("filtre-app");
   const liste = document.getElementById("liste-app");
-  champ.addEventListener("input", () => { surligne = -1; ouvrirListe(true); });
-  champ.addEventListener("focus", () => { champ.select(); ouvrirListe(true); });
+  champ.addEventListener("input", () => { saisieApp = champ.value; surligne = -1; ouvrirListe(true); });
+  // Au clic, le champ se vide : le nom qui s'y trouve est un affichage, pas une
+  // recherche, et le conserver réduirait la liste à cette seule app.
+  champ.addEventListener("focus", () => {
+    saisieApp = ""; champ.value = ""; surligne = -1; ouvrirListe(true);
+  });
   // Le clic sur un élément doit passer avant la fermeture déclenchée par le blur.
-  champ.addEventListener("blur", () => setTimeout(() => ouvrirListe(false), 140));
+  champ.addEventListener("blur", () => setTimeout(() => {
+    ouvrirListe(false);
+    const app = LISIBLES.find(a => a.bundleID === appChoisie);
+    if (app) { champ.value = app.nom; saisieApp = ""; }
+  }, 140));
   champ.addEventListener("keydown", (e) => {
     const trouvees = appsFiltrees();
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -577,26 +605,25 @@ function brancherChoixApp() {
 }
 
 function rendreApp() {
-  const id = appChoisie;
-  const app = D.apps.find(a => a.bundleID === id);
-  const mode = document.querySelector("#sous-vues [aria-selected=true]").dataset.mode;
-  const cible = document.getElementById("vue-app");
-  if (!app) { cible.innerHTML = `<p class="vide">Choisis une application.</p>`; return; }
-  if (app.statut !== "ok") {
-    cible.innerHTML = `<p class="vide">${esc(app.nom)} n'a pas pu être lue : ${esc(app.detail || app.statut)}.</p>`;
+  const app = D.apps.find(a => a.bundleID === appChoisie);
+  const poser = (cible, contenu, secours) => {
+    document.getElementById(cible).innerHTML =
+      contenu.trim() ? contenu : `<p class="vide">${secours}</p>`;
+  };
+  if (!app) {
+    poser("vue-menu", "", "Choisis une application.");
+    poser("vue-effet", "", "Choisis une application.");
     return;
   }
-  const rendu = mode === "passe" ? vueCeQuiSePasse(app) : vueParMenu(app);
-  cible.innerHTML = rendu.trim()
-    ? rendu
-    : `<p class="vide">Rien dans ${esc(app.nom)} ne correspond au filtre.</p>`;
+  if (app.statut !== "ok") {
+    const raison = `${esc(app.nom)} n'a pas pu être lue : ${esc(app.detail || app.statut)}.`;
+    poser("vue-menu", "", raison);
+    poser("vue-effet", "", raison);
+    return;
+  }
+  poser("vue-menu", vueParMenu(app), `Rien dans ${esc(app.nom)} ne correspond au filtre.`);
+  poser("vue-effet", vueCeQuiSePasse(app), `Rien dans ${esc(app.nom)} ne correspond au filtre.`);
 }
-
-document.querySelectorAll("#sous-vues button").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll("#sous-vues button").forEach(x =>
-    x.setAttribute("aria-selected", String(x === b)));
-  rendreApp();
-}));
 
 document.addEventListener("click", (e) => {
   const bouton = e.target.closest(".ligne[data-cible]");
@@ -607,8 +634,8 @@ document.addEventListener("click", (e) => {
   detail.hidden = ouvert;
 });
 
-document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll("nav button").forEach(x =>
+document.querySelectorAll(".onglets button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".onglets button").forEach(x =>
     x.setAttribute("aria-selected", String(x === b)));
   document.querySelectorAll("main > section").forEach(s =>
     s.hidden = s.id !== "onglet-" + b.dataset.vue);
@@ -694,25 +721,36 @@ def build(index_path):
   </div>
 </header>
 <nav>
-  <button data-vue="app" aria-selected="true">Par application</button>
-  <button data-vue="conflits" aria-selected="false">Conflits</button>
-  <button data-vue="combinaisons" aria-selected="false">Par combinaison</button>
+  <div class="onglets">
+    <button data-vue="menu" aria-selected="true">Commandes par menu</button>
+    <button data-vue="effet" aria-selected="false">Effet d'une frappe</button>
+    <button data-vue="conflits" aria-selected="false">Conflits</button>
+    <button data-vue="combinaisons" aria-selected="false">Par combinaison</button>
+  </div>
+  <div class="combo-app">
+    <input type="text" id="filtre-app" role="combobox" aria-expanded="false"
+           aria-controls="liste-app" aria-autocomplete="list" autocomplete="off"
+           placeholder="Cherche une application">
+    <ul id="liste-app" role="listbox" hidden></ul>
+  </div>
 </nav>
 <!-- Un seul filtre pour les trois vues : dupliquer les contrôles ferait diverger
      leurs états, et on perdrait le filtre en changeant d'onglet. -->
 <div class="filtre">
-  <div class="rangee-filtre">
-    <span class="etiquette">Modificateurs</span>
-    <div id="mods" class="capsules">{mods_html}</div>
+  <div class="colonne-touches">
+    <div class="rangee-filtre">
+      <span class="etiquette">Modificateurs</span>
+      <div id="mods" class="capsules">{mods_html}</div>
+      <input type="text" id="touche-libre" maxlength="6" placeholder="ou tape la touche">
+    </div>
+    <div class="rangee-filtre">
+      <span class="etiquette">Touche</span>
+      <div id="touches" class="rangees-touches">{touches_html}</div>
+    </div>
   </div>
-  <div class="rangee-filtre">
-    <span class="etiquette">Touche</span>
-    <div id="touches" class="rangees-touches">{touches_html}</div>
-    <input type="text" id="touche-libre" maxlength="6" placeholder="ou tape la touche">
-  </div>
-  <div class="rangee-filtre separee">
-    <span class="etiquette">Texte</span>
-    <input type="search" id="recherche" placeholder="Une commande ou une app — copier, Safari, capture">
+  <div class="colonne-texte">
+    <span class="etiquette">Libellé de commande</span>
+    <input type="search" id="recherche" placeholder="copier, capture, plein écran…">
     <button type="button" id="vider-filtre" class="lien">Tout effacer</button>
   </div>
 </div>
@@ -722,21 +760,8 @@ def build(index_path):
     <div class="filtre-place">
     <div id="vue-combinaisons"></div>
   </section>
-  <section id="onglet-app">
-    <div class="controles">
-      <div class="combo-app">
-        <input type="text" id="filtre-app" role="combobox" aria-expanded="false"
-               aria-controls="liste-app" aria-autocomplete="list" autocomplete="off"
-               placeholder="Cherche une application — power, app, safari">
-        <ul id="liste-app" role="listbox" hidden></ul>
-      </div>
-      <div id="sous-vues" class="segmente">
-        <button data-mode="menu" aria-selected="true">Par menu</button>
-        <button data-mode="passe" aria-selected="false">Ce qui se passe</button>
-      </div>
-    </div>
-    <div id="vue-app"></div>
-  </section>
+  <section id="onglet-menu"><div id="vue-menu"></div></section>
+  <section id="onglet-effet" hidden><div id="vue-effet"></div></section>
 </main>
 <footer>
   Les raccourcis d'une app ne vivent que dans sa barre de menu : ils sont lus app par app.
