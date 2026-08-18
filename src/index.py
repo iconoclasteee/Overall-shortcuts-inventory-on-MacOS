@@ -175,8 +175,12 @@ def build(apps_dir):
             } for b in sorted(membres, key=lambda b: (rang(b.couche), b.proprietaire))],
         })
     combinaisons.sort(key=lambda c: (not c["conflit"], c["combo"]))
+    catalogue_path = ROOT / "out" / "catalogue.json"
+    catalogue = (json.loads(catalogue_path.read_text(encoding="utf-8"))
+                 if catalogue_path.exists() else [])
     return {
         "apps": apps,
+        "catalogue": catalogue,
         "combinaisons": combinaisons,
         "libelles_portee": libelles_portee,
         "couches": {k: v[1] for k, v in COUCHES.items()},

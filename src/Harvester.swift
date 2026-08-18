@@ -25,6 +25,7 @@ struct Options {
     var includeGames = false       // les jeux sont écartés par défaut
     var dryRun = false             // lister les cibles sans rien lancer
     var keymap = false             // exporter la correspondance code de touche -> caractère
+    var catalogue = false          // exporter la liste des apps installées, sans rien lancer
     var keepRunning = false        // ne pas quitter les apps qu'on a lancées
 }
 
@@ -40,6 +41,7 @@ func parseArgs() -> Options {
         case "--include-games": o.includeGames = true
         case "--dry-run": o.dryRun = true
         case "--keymap": o.keymap = true
+        case "--catalogue": o.catalogue = true
         case "--bundle-ids": o.bundleIDs = (it.next() ?? "").split(separator: ",").map(String.init)
         case "--out": o.outDir = it.next() ?? o.outDir
         case "--timeout": o.timeout = Double(it.next() ?? "") ?? o.timeout
@@ -343,8 +345,19 @@ if options.checkOnly {
     exit(0)
 }
 
-var targets = options.bundleIDs
-if options.scanAll {
+struct Installee: Encodable {
+    let nom: String
+    let bundleID: String
+    let chemin: String
+    let version: String?
+    let categorie: String?
+    let exclu: Bool
+    let raison: String?
+}
+
+/// Recense les apps installées dans les dossiers balayés, en indiquant pour chacune
+/// si la passe l'écarte et pourquoi. Rien n'est lancé ici.
+func recenser(includeGames: Bool) -> [Installee] {
     // Chemins explicites, sans récursion. Deux dossiers du dossier de départ sont
     // volontairement absents :
     //   ~/Applications              bibliothèque Steam (23 jeux sur 25 apps)
@@ -353,9 +366,7 @@ if options.scanAll {
     // vide, voire démarrerait une VM.
     var directories = ["/Applications", "/Applications/Utilities",
                        "/System/Applications", "/System/Applications/Utilities"]
-    if options.includeGames {
-        directories.append(NSHomeDirectory() + "/Applications")
-    }
+    directories.append(NSHomeDirectory() + "/Applications")
 
     // Lanceurs de jeux : pas de catégorie déclarée, mais même coût de lancement.
     let gameLaunchers: Set<String> = ["com.valvesoftware.steam"]
@@ -368,29 +379,58 @@ if options.scanAll {
         "com.westerndigital.WDDriveUtilityInstaller": "désinstalleur",
         "com.westerndigital.WDSecurityInstaller": "désinstalleur",
     ]
-    var skipped: [(String, String)] = []
 
     var seen = Set<String>()
+    var out: [Installee] = []
     for directory in directories {
+        let bibliothequeJeux = directory == NSHomeDirectory() + "/Applications"
         let contents = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
-        for entry in contents where entry.hasSuffix(".app") {
+        for entry in contents.sorted() where entry.hasSuffix(".app") {
             let path = directory + "/" + entry
-            guard let bundle = Bundle(path: path), let id = bundle.bundleIdentifier else { continue }
-            if let reason = neverLaunch[id] {
-                skipped.append((entry, reason))
-                continue
+            guard let bundle = Bundle(path: path), let id = bundle.bundleIdentifier,
+                  seen.insert(id).inserted else { continue }
+            let category = infoValue(bundle, "LSApplicationCategoryType")
+            var raison: String?
+            if let motif = neverLaunch[id] {
+                raison = motif
+            } else if !includeGames {
+                if bibliothequeJeux {
+                    raison = "bibliothèque de jeux (~/Applications)"
+                } else if (category ?? "").contains("games") {
+                    raison = "jeu"
+                } else if gameLaunchers.contains(id) {
+                    raison = "lanceur de jeux"
+                }
             }
-            if !options.includeGames {
-                let category = infoValue(bundle, "LSApplicationCategoryType") ?? ""
-                if category.contains("games") || gameLaunchers.contains(id) { continue }
-            }
-            if seen.insert(id).inserted { targets.append(id) }
+            out.append(Installee(
+                nom: FileManager.default.displayName(atPath: path)
+                    .replacingOccurrences(of: ".app", with: ""),
+                bundleID: id, chemin: path,
+                version: infoValue(bundle, "CFBundleShortVersionString"),
+                categorie: category, exclu: raison != nil, raison: raison))
         }
     }
+    return out.sorted { $0.nom.localizedCaseInsensitiveCompare($1.nom) == .orderedAscending }
+}
+
+let catalogueEncoder = JSONEncoder()
+catalogueEncoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+
+if options.catalogue {
+    let liste = recenser(includeGames: options.includeGames)
+    if let data = try? catalogueEncoder.encode(liste),
+       let texte = String(data: data, encoding: .utf8) { print(texte) }
+    exit(0)
+}
+
+var targets = options.bundleIDs
+if options.scanAll {
+    let installees = recenser(includeGames: options.includeGames)
+    targets += installees.filter { !$0.exclu }.map(\.bundleID)
     print("\(targets.count) apps à parcourir"
         + (options.includeGames ? " (jeux inclus)" : " (jeux exclus — --include-games pour les garder)"))
-    for (name, reason) in skipped.sorted(by: { $0.0 < $1.0 }) {
-        print("  écartée : \(name) — \(reason)")
+    for app in installees where app.exclu {
+        print("  écartée : \(app.nom) — \(app.raison ?? "")")
     }
 }
 

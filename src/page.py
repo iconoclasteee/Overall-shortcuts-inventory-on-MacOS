@@ -57,7 +57,7 @@ h1 {
   font-family: var(--display); font-size: 30px; font-weight: 700;
   letter-spacing: -.02em; line-height: 1.1; margin: 0; white-space: nowrap;
 }
-header { display: grid; grid-template-columns: 1fr auto; gap: 48px; align-items: center; }
+header { display: grid; grid-template-columns: 1fr auto 1fr; gap: 32px; align-items: center; }
 header .chiffres { justify-content: flex-end; margin-top: 0; }
 h1 em { font-style: normal; color: var(--petrol); }
 .chiffres { display: flex; flex-wrap: wrap; gap: 40px; margin-top: 22px; }
@@ -70,6 +70,61 @@ h1 em { font-style: normal; color: var(--petrol); }
   text-transform: uppercase; color: var(--sourdine);
 }
 .chiffre.alerte b { color: var(--vermillon); }
+
+/* — Lancement d'un scan — */
+.bouton-scan {
+  justify-self: center; font-family: var(--display); font-size: 15px; font-weight: 600;
+  padding: 13px 24px; border-radius: 9px; cursor: pointer;
+  background: var(--petrol); color: var(--plaque); border: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.2;
+}
+.bouton-scan #compte-scan {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 400; opacity: .8;
+  letter-spacing: .04em;
+}
+.bouton-scan:hover { background: color-mix(in srgb, var(--petrol) 85%, var(--encre)); }
+.bouton-scan:focus-visible { outline: 2px solid var(--encre); outline-offset: 3px; }
+
+#scan {
+  width: min(1100px, 92vw); max-height: 86vh; padding: 0; border: 0; border-radius: 12px;
+  background: var(--plaque); color: var(--encre); overflow: hidden;
+}
+#scan::backdrop { background: rgba(0,0,0,.45); }
+.scan-corps { display: grid; grid-template-rows: auto auto 1fr auto; max-height: 86vh; }
+.scan-tete { padding: 22px 26px 14px; border-bottom: 1px solid var(--creux); }
+.scan-tete h2 { font-family: var(--display); font-size: 22px; margin: 0 0 6px; }
+.scan-tete p { margin: 0; font-size: 13.5px; color: var(--sourdine); }
+.scan-outils {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 26px; border-bottom: 1px solid var(--creux);
+}
+.scan-outils input[type="search"] { flex: 1; min-width: 200px; max-width: 340px; font-size: 14px; padding: 9px 12px; }
+.scan-liste { overflow-y: auto; padding: 14px 26px; }
+.scan-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2px 32px; }
+.scan-grille label {
+  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline;
+  padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 14px;
+}
+.scan-grille label:hover { background: var(--alu); }
+.scan-grille .motif {
+  display: block; font-family: var(--mono); font-size: 10.5px; color: var(--sourdine);
+}
+.scan-pied {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 16px 26px; border-top: 1px solid var(--creux); flex-wrap: wrap;
+}
+.bouton {
+  font: inherit; font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 7px;
+  cursor: pointer; border: 1px solid var(--creux); background: var(--alu); color: var(--encre);
+}
+.bouton.primaire { background: var(--petrol); border-color: var(--petrol); color: var(--plaque); }
+.bouton:focus-visible, .scan-grille label:focus-within { outline: 2px solid var(--petrol); outline-offset: 2px; }
+.commande {
+  display: block; font-family: var(--mono); font-size: 12.5px; padding: 14px 16px;
+  margin: 0 26px 18px; background: var(--alu); border: 1px solid var(--creux);
+  border-radius: 8px; white-space: pre-wrap; word-break: break-all; max-height: 150px;
+  overflow-y: auto;
+}
 
 /* — Onglets — */
 nav {
@@ -242,6 +297,10 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
   padding: 11px 0; border-bottom: 1px solid var(--creux);
 }
 .resultat .titre { font-size: 15px; }
+/* Une combinaison disputée se repère à la couleur : la ligne dit ce que la commande
+   fait, pas qu'un autre preneur pourrait la lui prendre. */
+.resultat.rang-conflit .titre { color: var(--vermillon); }
+.resultat.rang-conflit .cap { border-color: var(--vermillon); color: var(--vermillon); }
 .perdu {
   display: block; font-family: var(--mono); font-size: 11.5px; color: var(--sourdine);
   margin-top: 3px; padding-left: 11px; border-left: 2px solid var(--creux);
@@ -436,7 +495,8 @@ function atteignables(bundleID) {
     const gagnante = ORDRE.find(couche => candidats.some(u => u.couche === couche));
     const vainqueurs = candidats.filter(u => u.couche === gagnante);
     const perdants = candidats.filter(u => u.couche !== gagnante);
-    out.push({ combo: c.combo, mods: c.mods, vainqueurs, perdants, couche: gagnante });
+    out.push({ combo: c.combo, mods: c.mods, vainqueurs, perdants, couche: gagnante,
+               conflit: perdants.length > 0 });
   }
   return out;
 }
@@ -460,7 +520,7 @@ function vueCeQuiSePasse(app) {
         const multi = it.vainqueurs.length > 1;
         const perdus = it.perdants.map(u =>
           `${esc(u.proprietaire)} — ${esc(u.action)}`).join(" · ");
-        return `<div class="resultat">
+        return `<div class="resultat${it.conflit ? " rang-conflit" : ""}">
           <span class="combo">${caps(it.combo)}</span>
           <span>
             <span class="titre">${esc(v.action)}</span>
@@ -474,24 +534,29 @@ function vueCeQuiSePasse(app) {
 
 function vueParMenu(app) {
   const f = etatFiltre();
+  // Même définition du conflit que dans « Effet d'une frappe » : une combinaison que
+  // plusieurs preneurs se disputent *pendant que cette app est au premier plan*.
+  const disputees = new Set(atteignables(app.bundleID)
+    .filter(it => it.conflit).map(it => it.combo));
   const parMenu = new Map(), parPortee = { app: [], app_externe: [], systeme: [], inconnu: [] };
   for (const c of D.combinaisons) {
     if (!passe(f, c.combo, c.mods, c.usages)) continue;
     for (const u of c.usages) {
       if (!u.actif) continue;
+      const marque = { ...u, conflit: disputees.has(c.combo) };
       if (u.couche === "menu") {
         if (u.bundle_id !== app.bundleID) continue;
         const m = u.menu || "—";
         if (!parMenu.has(m)) parMenu.set(m, []);
-        parMenu.get(m).push(u);
-      } else if (parPortee[u.portee]) parPortee[u.portee].push(u);
+        parMenu.get(m).push(marque);
+      } else if (parPortee[u.portee]) parPortee[u.portee].push(marque);
     }
   }
   // Les menus s'affichent dans l'ordre de la barre de menu, pas par ordre alphabétique.
   const menus = [...parMenu.entries()].sort((a, b) =>
     Math.min(...a[1].map(u => u.ordre)) - Math.min(...b[1].map(u => u.ordre)));
 
-  const rangee = (u, sousTitre) => `<div class="resultat">
+  const rangee = (u, sousTitre) => `<div class="resultat${u.conflit ? " rang-conflit" : ""}">
       <span class="combo">${caps(u.combo)}</span>
       <span><span class="titre">${esc(u.action.split(" > ").slice(1).join(" > ") || u.action)}</span>
       ${sousTitre ? `<span class="sous">${esc(sousTitre)}</span>` : ""}
@@ -641,8 +706,88 @@ document.querySelectorAll(".onglets button").forEach(b => b.addEventListener("cl
     s.hidden = s.id !== "onglet-" + b.dataset.vue);
 }));
 
+/* Sélection des apps à scanner. L'écran ne lance encore rien lui-même : il produit
+   la commande exacte à exécuter, exclusions comprises. Le branchement viendra avec
+   la question des autorisations. */
+const CATALOGUE = D.catalogue || [];
+const aScanner = new Set(CATALOGUE.filter(a => !a.exclu).map(a => a.bundleID));
+
+function scanFiltre() {
+  const q = sansAccent(document.getElementById("scan-recherche").value.trim());
+  return q ? CATALOGUE.filter(a => sansAccent(a.nom).includes(q)
+                                || sansAccent(a.bundleID).includes(q))
+           : CATALOGUE;
+}
+
+function rendreScan() {
+  const liste = scanFiltre();
+  document.getElementById("scan-grille").innerHTML = liste.length ? liste.map(a =>
+    `<label><input type="checkbox" data-id="${esc(a.bundleID)}"
+       ${aScanner.has(a.bundleID) ? "checked" : ""}>
+     <span>${esc(a.nom)}${a.raison ? `<span class="motif">écartée par défaut — ${esc(a.raison)}</span>` : ""}</span>
+     </label>`).join("") : `<p class="vide">Aucune application pour cette recherche.</p>`;
+  document.getElementById("scan-total").textContent =
+    `${liste.length} affichées sur ${CATALOGUE.length}`;
+  document.getElementById("scan-etat").textContent =
+    `${aScanner.size} application${aScanner.size > 1 ? "s" : ""} à scanner`;
+}
+
+function brancherScan() {
+  const boite = document.getElementById("scan");
+  document.getElementById("compte-scan").textContent = `${aScanner.size} apps`;
+  document.getElementById("ouvrir-scan").addEventListener("click", () => {
+    rendreScan(); boite.showModal();
+  });
+  document.getElementById("scan-fermer").addEventListener("click", () => boite.close());
+  document.getElementById("scan-recherche").addEventListener("input", rendreScan);
+
+  // Cocher en masse ne porte que sur ce que le filtre laisse voir : sans cela,
+  // « tout décocher » viderait aussi les apps qu'on ne regarde pas.
+  const masse = (etat) => {
+    scanFiltre().forEach(a => etat ? aScanner.add(a.bundleID) : aScanner.delete(a.bundleID));
+    majCompte();
+  };
+  const majCompte = () => {
+    rendreScan();
+    document.getElementById("compte-scan").textContent = `${aScanner.size} apps`;
+  };
+  document.getElementById("scan-tout").addEventListener("click", () => masse(true));
+  document.getElementById("scan-rien").addEventListener("click", () => masse(false));
+  document.getElementById("scan-defaut").addEventListener("click", () => {
+    aScanner.clear();
+    CATALOGUE.filter(a => !a.exclu).forEach(a => aScanner.add(a.bundleID));
+    majCompte();
+  });
+  document.getElementById("scan-grille").addEventListener("change", (e) => {
+    const c = e.target.closest("input[data-id]");
+    if (!c) return;
+    c.checked ? aScanner.add(c.dataset.id) : aScanner.delete(c.dataset.id);
+    document.getElementById("scan-etat").textContent =
+      `${aScanner.size} application${aScanner.size > 1 ? "s" : ""} à scanner`;
+    document.getElementById("compte-scan").textContent = `${aScanner.size} apps`;
+  });
+  document.getElementById("scan-lancer").addEventListener("click", () => {
+    const bloc = document.getElementById("scan-commande");
+    if (!aScanner.size) {
+      bloc.hidden = false;
+      bloc.textContent = "Aucune application cochée : rien à scanner.";
+      return;
+    }
+    const complet = aScanner.size === CATALOGUE.filter(a => !a.exclu).length
+      && CATALOGUE.filter(a => !a.exclu).every(a => aScanner.has(a.bundleID));
+    bloc.hidden = false;
+    bloc.textContent = complet
+      ? `# Sélection par défaut — la commande complète suffit
+cd ~/dev/MacOS-shortcuts-inventory && ./run.sh --all`
+      : `# Sélection personnalisée — à coller dans le terminal
+cd ~/dev/MacOS-shortcuts-inventory && \\
+  bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester \\
+    --bundle-ids ${[...aScanner].join(",")} --out out/apps && ./run.sh --all`;
+  });
+}
+
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp();
+brancherFiltres(); brancherChoixApp(); brancherScan();
 
 rendreConflits(); rendreCombinaisons(); rendreApp();
 """
@@ -714,6 +859,10 @@ def build(index_path):
 <header>
   <div><h1>MacOS-shortcuts-inventory</h1>
   <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · {date.today().isoformat()}</p></div>
+  <button type="button" id="ouvrir-scan" class="bouton-scan">
+    Scanner tout le Mac
+    <span id="compte-scan"></span>
+  </button>
   <div class="chiffres">
     <div class="chiffre"><b>{len(data["combinaisons"])}</b><span>combinaisons</span></div>
     <div class="chiffre {"alerte" if conflits else ""}"><b>{conflits}</b><span>en conflit</span></div>
@@ -763,6 +912,30 @@ def build(index_path):
   <section id="onglet-menu"><div id="vue-menu"></div></section>
   <section id="onglet-effet" hidden><div id="vue-effet"></div></section>
 </main>
+<dialog id="scan"><div class="scan-corps">
+  <div class="scan-tete">
+    <h2>Scanner tout le Mac</h2>
+    <p>Chaque application cochée sera ouverte le temps de lire sa barre de menu, puis
+       refermée. À lancer quand tu n'utilises pas la machine.</p>
+  </div>
+  <div class="scan-outils">
+    <input type="search" id="scan-recherche" placeholder="Filtrer la liste…">
+    <button type="button" class="bouton" id="scan-tout">Tout cocher</button>
+    <button type="button" class="bouton" id="scan-rien">Tout décocher</button>
+    <button type="button" class="bouton" id="scan-defaut">Rétablir les exclusions</button>
+    <span id="scan-total" class="eyebrow" style="margin:0"></span>
+  </div>
+  <div class="scan-liste"><div class="scan-grille" id="scan-grille"></div></div>
+  <div class="scan-pied">
+    <span class="sous" id="scan-etat"></span>
+    <span style="display:flex;gap:10px">
+      <button type="button" class="bouton" id="scan-fermer">Fermer</button>
+      <button type="button" class="bouton primaire" id="scan-lancer">Lancer le scan</button>
+    </span>
+  </div>
+  <code class="commande" id="scan-commande" hidden></code>
+</div></dialog>
+
 <footer>
   Les raccourcis d'une app ne vivent que dans sa barre de menu : ils sont lus app par app.
   Une app lue sans document ouvert expose moins de commandes qu'en usage réel.

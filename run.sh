@@ -35,6 +35,9 @@ esac
 echo "→ Disposition clavier"
 "$HARVESTER" --keymap > data/keymap.json
 
+echo "→ Recensement des apps installées"
+"$HARVESTER" --catalogue > out/catalogue.json
+
 echo "→ Raccourcis système"
 python3 src/system_shortcuts.py
 
