@@ -432,8 +432,6 @@ func recenser(includeGames: Bool) -> [Installee] {
     let neverLaunch: [String: String] = [
         "com.apple.MigrateAssistant": "ferme toutes les apps et déconnecte la session",
         "com.apple.bootcampassistant": "assistant de partitionnement de disque",
-        "com.westerndigital.WDDriveUtilityInstaller": "désinstalleur",
-        "com.westerndigital.WDSecurityInstaller": "désinstalleur",
         "com.apple.backup.launcher": "ouvre l'interface de restauration en plein écran",
         // Déclencheurs de fonctions système : ils n'ont pas de barre de menu, et deux
         // passes (25 s puis 45 s) l'ont confirmé. Rien n'est perdu — leurs raccourcis
@@ -446,6 +444,14 @@ func recenser(includeGames: Bool) -> [Installee] {
         "com.apple.ScreenContinuity": "déclencheur système, aucune barre de menu",
     ]
 
+    // Les désinstalleurs se reconnaissent à leur nom, quel que soit l'éditeur : une
+    // règle générale vaut mieux qu'une liste d'identifiants relevés sur une machine.
+    func estDesinstalleur(_ nom: String) -> Bool {
+        let minuscule = nom.lowercased()
+        return ["uninstall", "désinstall", "desinstall", "deinstall"]
+            .contains { minuscule.contains($0) }
+    }
+
     var seen = Set<String>()
     var out: [Installee] = []
     for directory in directories {
@@ -457,11 +463,15 @@ func recenser(includeGames: Bool) -> [Installee] {
                   seen.insert(id).inserted else { continue }
             let category = infoValue(bundle, "LSApplicationCategoryType")
             var raison: String?
+            let nom = FileManager.default.displayName(atPath: path)
+                .replacingOccurrences(of: ".app", with: "")
             if let motif = neverLaunch[id] {
                 raison = motif
+            } else if estDesinstalleur(nom) {
+                raison = "désinstalleur"
             } else if !includeGames {
                 if bibliothequeJeux {
-                    raison = "bibliothèque de jeux (~/Applications)"
+                    raison = "dossier d'applications personnel (~/Applications)"
                 } else if (category ?? "").contains("games") {
                     raison = "jeu"
                 } else if gameLaunchers.contains(id) {
@@ -469,9 +479,7 @@ func recenser(includeGames: Bool) -> [Installee] {
                 }
             }
             out.append(Installee(
-                nom: FileManager.default.displayName(atPath: path)
-                    .replacingOccurrences(of: ".app", with: ""),
-                bundleID: id, chemin: path,
+                nom: nom, bundleID: id, chemin: path,
                 version: infoValue(bundle, "CFBundleShortVersionString"),
                 categorie: category, exclu: raison != nil, raison: raison))
         }

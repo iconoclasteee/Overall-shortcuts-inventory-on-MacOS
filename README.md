@@ -103,10 +103,11 @@ autorisation accordée explicitement doit être retirée puis remise.
 | Écarté | Pourquoi |
 |---|---|
 | Jeux et lanceurs de jeux | Plusieurs gigaoctets de chargement pour une barre de menu vide. Détectés par la catégorie déclarée `*games*`, plus Steam qui n'en déclare aucune. `--include-games` les réintègre. |
-| `~/Applications` | Emplacement des jeux installés par Steam. Réintégré par `--include-games`. |
+| `~/Applications` | Dossier d'applications personnel, le plus souvent une bibliothèque de jeux. Réintégré par `--include-games`. |
 | `~/Applications (Parallels)` | Passerelles vers un Windows en machine virtuelle — les ouvrir démarrerait la VM. Jamais réintégré. |
-| Assistant de migration, Assistant Boot Camp | Les ouvrir ferme la session ou lance un partitionnement de disque. |
-| Désinstalleurs | Rien à inventorier, action destructrice. |
+| Assistant de migration, Assistant Boot Camp, Time Machine | Les ouvrir ferme la session, lance un partitionnement de disque ou confisque l'écran. |
+| Déclencheurs système (Mission Control, Siri, Capture d'écran, Apps, Recopie de l'iPhone) | Ce ne sont pas des applications mais des boutons : aucune barre de menu. Leurs raccourcis sont inventoriés côté système, rien n'est perdu. |
+| Désinstalleurs | Reconnus à leur nom (« uninstall », « désinstall »), quel que soit l'éditeur. Rien à inventorier, action destructrice. |
 
 ## Limites connues
 
@@ -171,6 +172,12 @@ Le code est publiable tel quel. Tout ce qui décrit **une machine** est produit 
 ⚠️ **La page produite est un document personnel.** Elle contient les chemins de menus
 réels : titres de favoris du navigateur, noms de macros, nom de la session. Elle n'a
 rien à faire dans un dépôt, ni dans un partage de fichiers.
+
+Les listes d'exclusion, elles, sont versionnées : ce sont des réglages du programme,
+pas des données de machine. Elles ne contiennent que des identifiants de composants
+macOS et d'outils grand public — aucun identifiant relevé sur une installation
+particulière. Les désinstalleurs sont écartés par une règle sur le nom plutôt que par
+une liste d'identifiants.
 
 Avant de publier, `./verifier-publication.sh` relit les fichiers versionnés **et
 l'historique git** à la recherche de chemins absolus, de noms d'utilisateur, d'adresses
