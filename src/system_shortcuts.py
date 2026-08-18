@@ -193,8 +193,17 @@ def _render(char_code, key_code, modifier_mask):
     return {"combo": render_modifiers(mods) + key, "mods": mods, "code": code}
 
 
+def load_connus():
+    """Identifications établies hors des tables d'Apple, avec leur source."""
+    chemin = Path(__file__).parent.parent / "data" / "raccourcis-connus.json"
+    if not chemin.exists():
+        return {}
+    return json.loads(chemin.read_text(encoding="utf-8")).get("connus", {})
+
+
 def build():
     reference = load_reference()
+    connus = load_connus()
     user_state = load_user_state()
     results = []
 
@@ -232,14 +241,16 @@ def build():
     for hotkey_id, state in user_state.items():
         if hotkey_id in reference:
             continue
+        identifie = connus.get(str(hotkey_id))
         results.append({
             "id": hotkey_id,
             "categorie": "Non documenté par Apple",
             "categorie_en": "Undocumented",
+            "source_identification": identifie["source"] if identifie else None,
             "identifiant_categorie": "unknown",
-            "nom": (f"Raccourci système #{hotkey_id}"
-                    + (f" — {(state['combinaison'] or {}).get('libelle')}"
-                       if state.get("double") else "")),
+            "nom": (identifie["nom"] if identifie else f"Raccourci système #{hotkey_id}")
+                   + (f" — {(state['combinaison'] or {}).get('libelle')}"
+                      if state.get("double") else ""),
             "nom_en": f"Symbolic hotkey #{hotkey_id}",
             "defaut": None,
             "combinaison": (state["combinaison"] or {}).get("combo"),
@@ -247,7 +258,7 @@ def build():
             "code": (state["combinaison"] or {}).get("code"),
             "double": state.get("double", False),
             "actif": state["actif"],
-            "etat": "non documenté",
+            "etat": "identifié hors table" if identifie else "non documenté",
         })
 
     results.sort(key=lambda r: (r["categorie"], r["nom"]))

@@ -1,0 +1,9 @@
+{
+  "_lisez_moi": "Identification des raccourcis système absents des tables de référence d'Apple. Chaque entrée porte sa source : ce fichier sert à consigner ce qu'on a établi, pas à deviner. Un identifiant sans entrée reste affiché comme non documenté.",
+  "connus": {
+    "164": {
+      "nom": "Démarrer la dictée",
+      "source": "confirmé à l'usage par l'utilisateur, 2026-08-18"
+    }
+  }
+}
