@@ -160,6 +160,11 @@ func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> Bool {
         let app = AX.app(pid, timeout: Float(min(timeout, 5)))
         if let bar = AX.element(app, kAXMenuBarAttribute as String),
            AX.children(bar).count > 1 { return true }
+        // Les apps d'arrière-plan n'ont pas de barre de menu classique : leurs
+        // raccourcis vivent dans le menu de leur icône de statut. Sans ce second
+        // test, elles expirent alors que leurs données sont là.
+        if let extras = AX.element(app, kAXExtrasMenuBarAttribute as String),
+           !AX.children(extras).isEmpty { return true }
         Thread.sleep(forTimeInterval: 0.3)
     }
     return false
@@ -378,6 +383,14 @@ func recenser(includeGames: Bool) -> [Installee] {
         "com.apple.bootcampassistant": "assistant de partitionnement de disque",
         "com.westerndigital.WDDriveUtilityInstaller": "désinstalleur",
         "com.westerndigital.WDSecurityInstaller": "désinstalleur",
+        "com.apple.backup.launcher": "ouvre l'interface de restauration en plein écran",
+        // Déclencheurs de fonctions système : ils n'ont pas de barre de menu, et deux
+        // passes (25 s puis 45 s) l'ont confirmé. Les relancer ne coûterait que du temps.
+        "com.apple.exposelauncher": "déclencheur système, aucune barre de menu",
+        "com.apple.screenshot.launcher": "déclencheur système, aucune barre de menu",
+        "com.apple.siri.launcher": "déclencheur système, aucune barre de menu",
+        "com.apple.apps.launcher": "déclencheur système, aucune barre de menu",
+        "com.apple.ScreenContinuity": "déclencheur système, aucune barre de menu",
     ]
 
     var seen = Set<String>()
@@ -467,7 +480,8 @@ func runAll() {
         let mark = outcome.statut == "ok" ? "✅" : "⚠️ "
         print("[\(index + 1)/\(targets.count)] \(mark) \(outcome.nom) — "
             + "\(outcome.raccourcis.count) raccourcis, \(outcome.statut), \(outcome.duree_s)s"
-            + (outcome.lance_par_nous ? " (lancée par nous)" : " (déjà lancée)"))
+            + (outcome.lance_par_nous ? " (lancée par nous)"
+           : outcome.deja_lance ? " (déjà lancée)" : " (non lancée)"))
         fflush(stdout)
     }
 }
