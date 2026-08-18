@@ -253,6 +253,9 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 /* Les touches de fonction occupent leur propre rangée : mêlées aux flèches et aux
    touches d'édition, elles formeraient un pavé de vingt boutons illisible. */
 .rangees-touches { display: flex; flex-direction: column; gap: 6px; }
+.bloc-touches { display: grid; gap: 6px; }
+/* Le bouton se pose au-dessus de la grille, du côté où elle se termine. */
+.entete-touches { display: flex; justify-content: flex-end; }
 .etiquette {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
   text-transform: uppercase; color: var(--sourdine); width: 104px; flex: none;
@@ -537,6 +540,13 @@ function brancherFiltres() {
     rendreTout();
   });
   document.getElementById("filtre-nombre").addEventListener("change", rendreTout);
+  // Efface la sélection de touche — capsules et saisie libre — sans toucher aux
+  // modificateurs ni à la recherche de libellé, qui répondent à d'autres questions.
+  document.getElementById("vider-touches").addEventListener("click", () => {
+    document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
+    document.getElementById("touche-libre").value = "";
+    rendreTout();
+  });
   document.getElementById("vider-filtre").addEventListener("click", () => {
     document.querySelectorAll("#mods button, #touches button")
       .forEach(x => x.setAttribute("aria-pressed", "false"));
@@ -1056,7 +1066,12 @@ def build(index_path):
     </div>
     <div class="rangee-filtre">
       <span class="etiquette">Touche</span>
-      <div id="touches" class="rangees-touches">{touches_html}</div>
+      <div class="bloc-touches">
+        <div class="entete-touches">
+          <button type="button" id="vider-touches" class="lien">Effacer les touches</button>
+        </div>
+        <div id="touches" class="rangees-touches">{touches_html}</div>
+      </div>
     </div>
   </div>
   <div class="colonne-nombre">
