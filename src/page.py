@@ -85,15 +85,17 @@ h1 em { font-style: normal; color: var(--petrol); }
 .actions-scan { justify-self: center; display: flex; align-items: stretch; gap: 10px; }
 .bouton-secondaire {
   font-family: var(--display); font-size: 12px; font-weight: 600; line-height: 1.25;
-  padding: 10px 14px; border-radius: 9px; cursor: pointer; text-align: center;
+  padding: 11px 14px; border-radius: 9px; cursor: pointer; text-align: center;
   background: var(--plaque); color: var(--sourdine); border: 1px solid var(--creux);
+  display: flex; align-items: center; justify-content: center;
 }
 .bouton-secondaire:hover { color: var(--encre); border-color: var(--petrol); }
 .bouton-secondaire:focus-visible { outline: 2px solid var(--petrol); outline-offset: 3px; }
 .bouton-scan { font-family: var(--display); font-size: 15px; font-weight: 600;
-  padding: 13px 24px; border-radius: 9px; cursor: pointer;
-  background: var(--petrol); color: var(--plaque); border: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.2;
+  padding: 11px 24px; border-radius: 9px; cursor: pointer;
+  background: var(--petrol); color: var(--plaque); border: 1px solid var(--petrol);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; line-height: 1.2;
 }
 .bouton-scan #compte-scan {
   font-family: var(--mono); font-size: 10.5px; font-weight: 400; opacity: .8;
@@ -302,10 +304,10 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 }
 #touche-libre::placeholder { font-size: 11px; }
 #vider-touches { margin-left: auto; align-self: center; }
-.bloc-app { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.bloc-app { display: flex; align-items: stretch; gap: 12px; margin-bottom: 8px; }
 .bascule {
   display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 13px;
-  padding: 9px 13px; border-radius: 7px; cursor: pointer;
+  padding: 9px 13px; border-radius: 7px; cursor: pointer; flex: none;
   border: 1px solid var(--creux); background: var(--plaque); color: var(--sourdine);
 }
 .bascule .temoin {
@@ -320,11 +322,11 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .bascule[aria-pressed="true"] .temoin { background: var(--petrol); }
 .bascule[aria-pressed="true"] .temoin::after { transform: translateX(13px); }
 .bascule:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
-.combo-app { position: relative; width: 280px; flex: none; }
+.combo-app { position: relative; width: 280px; flex: none; display: flex; }
 .combo-app.inactif { opacity: .5; pointer-events: none; }
 .combo-app.inactif input { border-color: var(--creux); background: var(--plaque); }
 .combo-app input {
-  width: 100%; font-size: 14px; padding: 10px 13px;
+  width: 100%; height: 100%; font-size: 14px; padding: 9px 13px;
   background: color-mix(in srgb, var(--petrol) 12%, var(--plaque));
   border: 1.5px solid var(--petrol); color: var(--encre);
 }
