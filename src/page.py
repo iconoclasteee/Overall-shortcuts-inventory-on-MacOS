@@ -85,6 +85,25 @@ h1 em { font-style: normal; color: var(--petrol); }
 .bouton-scan:hover { background: color-mix(in srgb, var(--petrol) 85%, var(--encre)); }
 .bouton-scan:focus-visible { outline: 2px solid var(--encre); outline-offset: 3px; }
 
+#detail {
+  width: min(720px, 92vw); padding: 0; border: 0; border-radius: 12px;
+  background: var(--plaque); color: var(--encre);
+}
+#detail::backdrop { background: rgba(0,0,0,.45); }
+.detail-corps { padding: 20px 26px 26px; }
+.detail-tete {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid var(--creux);
+}
+.croix {
+  font: inherit; font-size: 17px; line-height: 1; padding: 7px 11px; cursor: pointer;
+  background: none; border: 1px solid var(--creux); border-radius: 7px; color: var(--sourdine);
+}
+.croix:hover { color: var(--encre); border-color: var(--sourdine); }
+.croix:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
+#detail-contenu { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 26px; }
+#detail-contenu .verdict, #detail-contenu .usages { grid-column: 2; margin-top: 0; }
+
 #scan {
   width: min(1100px, 92vw); max-height: 86vh; padding: 0; border: 0; border-radius: 12px;
   background: var(--plaque); color: var(--encre); overflow: hidden;
@@ -329,6 +348,9 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
    fait, pas qu'un autre preneur pourrait la lui prendre. */
 .resultat.rang-conflit .titre { color: var(--vermillon); }
 .resultat.rang-conflit .cap { border-color: var(--vermillon); color: var(--vermillon); }
+.resultat.ouvrable { cursor: pointer; }
+.resultat.ouvrable:hover { background: var(--alu); }
+.resultat.ouvrable:focus-visible { outline: 2px solid var(--vermillon); outline-offset: 2px; }
 /* Une double frappe n'est pas une combinaison : elle se signale, sinon « ⌘⌘ » se lit
    comme deux touches enfoncées ensemble. */
 .marque-double {
@@ -525,6 +547,46 @@ function brancherFiltres() {
   });
 }
 
+/* Le verdict affiché doit valoir dans le contexte où on clique : depuis la vue d'une
+   app, seuls ses menus et les raccourcis globaux sont en lice. Reprendre l'arbitrage
+   global mentionnerait des apps qui ne sont pas là. */
+function verdictLocal(it) {
+  const noms = [...new Set(it.vainqueurs.map(u => u.proprietaire))];
+  const explication = D.couches[it.couche] || "";
+  if (!it.perdants.length) return `Seul ${noms[0]} utilise cette combinaison ici.`;
+  if (noms.length === 1) return `${noms[0]} l'emporte. ${explication}`;
+  return `${noms.join(", ")} s'accrochent au même étage : c'est celui qui s'est `
+       + `enregistré en premier qui gagne, et cet ordre n'est écrit nulle part. ${explication}`;
+}
+
+function ouvrirDetail(cle) {
+  const items = atteignables(appFiltrante());
+  const it = items.find(x => x.cle === cle);
+  if (!it) return;
+  const usages = [...it.vainqueurs, ...it.perdants];
+  document.getElementById("detail-combo").innerHTML =
+    caps(it.combo) + (it.double ? `<span class="marque-double">double frappe</span>` : "");
+  document.getElementById("detail-contenu").innerHTML =
+    pile(usages) + `<p class="verdict">${esc(verdictLocal(it))}</p>` + listeUsages(usages);
+  document.getElementById("detail").showModal();
+}
+
+function brancherDetail() {
+  const boite = document.getElementById("detail");
+  document.getElementById("detail-fermer").addEventListener("click", () => boite.close());
+  const ouvrir = (e) => {
+    const ligne = e.target.closest(".resultat.ouvrable[data-cle]");
+    if (ligne) ouvrirDetail(ligne.dataset.cle);
+  };
+  ["vue-menu", "vue-effet"].forEach(id => {
+    const zone = document.getElementById(id);
+    zone.addEventListener("click", ouvrir);
+    zone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ouvrir(e); }
+    });
+  });
+}
+
 function brancherBasculeApp() {
   const bouton = document.getElementById("bascule-app");
   const zone = document.querySelector(".combo-app");
@@ -572,8 +634,8 @@ function atteignables(bundleID) {
     const gagnante = ORDRE.find(couche => candidats.some(u => u.couche === couche));
     const vainqueurs = candidats.filter(u => u.couche === gagnante);
     const perdants = candidats.filter(u => u.couche !== gagnante);
-    out.push({ combo: c.combo, mods: c.mods, double: c.double, vainqueurs, perdants,
-               couche: gagnante, conflit: perdants.length > 0 });
+    out.push({ cle: c.cle, combo: c.combo, mods: c.mods, double: c.double,
+               vainqueurs, perdants, couche: gagnante, conflit: perdants.length > 0 });
   }
   return out;
 }
@@ -597,7 +659,8 @@ function vueCeQuiSePasse(app) {
         const multi = it.vainqueurs.length > 1;
         const perdus = it.perdants.map(u =>
           `${esc(u.proprietaire)} — ${esc(u.action)}`).join(" · ");
-        return `<div class="resultat${it.conflit ? " rang-conflit" : ""}">
+        return `<div class="resultat${it.conflit ? " rang-conflit ouvrable" : ""}"${
+          it.conflit ? ` role="button" tabindex="0" data-cle="${esc(it.cle)}"` : ""}>
           <span class="combo">${caps(it.combo)}${it.double ? `<span class="marque-double">double frappe</span>` : ""}</span>
           <span>
             <span class="titre">${esc(v.action)}</span>
@@ -620,7 +683,7 @@ function vueParMenu(app) {
     if (!passe(f, c.combo, c.mods, c.usages, c.double)) continue;
     for (const u of c.usages) {
       if (!u.actif) continue;
-      const marque = { ...u, conflit: disputees.has(c.combo), double: c.double };
+      const marque = { ...u, conflit: disputees.has(c.combo), double: c.double, cle: c.cle };
       if (u.couche === "menu") {
         if (cible && u.bundle_id !== cible) continue;
         // Sans app choisie, on regroupe par application avant le menu : « Fichier »
@@ -638,7 +701,8 @@ function vueParMenu(app) {
         || Math.min(...a[1].map(u => u.ordre)) - Math.min(...b[1].map(u => u.ordre));
   });
 
-  const rangee = (u, sousTitre) => `<div class="resultat${u.conflit ? " rang-conflit" : ""}">
+  const rangee = (u, sousTitre) => `<div class="resultat${u.conflit ? " rang-conflit ouvrable" : ""}"${
+      u.conflit ? ` role="button" tabindex="0" data-cle="${esc(u.cle)}"` : ""}>
       <span class="combo">${caps(u.combo)}${u.double ? `<span class="marque-double">double frappe</span>` : ""}</span>
       <span><span class="titre">${esc(u.action.split(" > ").slice(1).join(" > ") || u.action)}</span>
       ${sousTitre ? `<span class="sous">${esc(sousTitre)}</span>` : ""}
@@ -874,7 +938,7 @@ cd ~/dev/MacOS-shortcuts-inventory && \\
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherScan();
+brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan();
 
 rendreConflits(); rendreCombinaisons(); rendreApp();
 """
@@ -1014,6 +1078,14 @@ def build(index_path):
   <section id="onglet-menu"><div id="vue-menu"></div></section>
   <section id="onglet-effet" hidden><div id="vue-effet"></div></section>
 </main>
+<dialog id="detail"><div class="detail-corps">
+  <div class="detail-tete">
+    <span id="detail-combo" class="combo"></span>
+    <button type="button" id="detail-fermer" class="croix" aria-label="Fermer">✕</button>
+  </div>
+  <div id="detail-contenu"></div>
+</div></dialog>
+
 <dialog id="scan"><div class="scan-corps">
   <div class="scan-tete">
     <h2>Scanner tout le Mac</h2>
