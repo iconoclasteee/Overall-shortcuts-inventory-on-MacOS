@@ -72,8 +72,8 @@ h1 em { font-style: normal; color: var(--petrol); }
 .chiffre.alerte b { color: var(--vermillon); }
 
 /* — Lancement d'un scan — */
-.bouton-scan {
-  justify-self: center; font-family: var(--display); font-size: 15px; font-weight: 600;
+.actions-scan { justify-self: center; display: grid; justify-items: center; gap: 8px; }
+.bouton-scan { font-family: var(--display); font-size: 15px; font-weight: 600;
   padding: 13px 24px; border-radius: 9px; cursor: pointer;
   background: var(--petrol); color: var(--plaque); border: 0;
   display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.2;
@@ -893,6 +893,12 @@ function rendreScan() {
     `${aScanner.size} application${aScanner.size > 1 ? "s" : ""} à scanner`;
 }
 
+function brancherRelire() {
+  const boite = document.getElementById("relire");
+  document.getElementById("ouvrir-relire").addEventListener("click", () => boite.showModal());
+  document.getElementById("relire-fermer").addEventListener("click", () => boite.close());
+}
+
 function brancherScan() {
   const boite = document.getElementById("scan");
   document.getElementById("compte-scan").textContent = `${aScanner.size} apps`;
@@ -948,7 +954,7 @@ cd ~/dev/MacOS-shortcuts-inventory && \\
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan();
+brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherRelire();
 
 rendreTout();
 """
@@ -1026,10 +1032,13 @@ def build(index_path):
 <header>
   <div><h1>MacOS-shortcuts-inventory</h1>
   <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · {date.today().isoformat()}</p></div>
-  <button type="button" id="ouvrir-scan" class="bouton-scan">
-    Scanner tout le Mac
-    <span id="compte-scan"></span>
-  </button>
+  <div class="actions-scan">
+    <button type="button" id="ouvrir-scan" class="bouton-scan">
+      Scanner tout le Mac
+      <span id="compte-scan"></span>
+    </button>
+    <button type="button" id="ouvrir-relire" class="lien">Relire seulement les raccourcis système et les outils</button>
+  </div>
   <div class="chiffres">
     <div class="chiffre"><b>{len(data["combinaisons"])}</b><span>combinaisons</span></div>
     <div class="chiffre {"alerte" if conflits else ""}"><b>{conflits}</b><span>en conflit</span></div>
@@ -1093,6 +1102,21 @@ def build(index_path):
   <section id="onglet-menu"><div id="vue-menu"></div></section>
   <section id="onglet-effet" hidden><div id="vue-effet"></div></section>
 </main>
+<dialog id="relire"><div class="detail-corps">
+  <div class="detail-tete">
+    <h2 style="font-family:var(--display);font-size:20px;margin:0">Relire les raccourcis système et les outils</h2>
+    <button type="button" id="relire-fermer" class="croix" aria-label="Fermer">✕</button>
+  </div>
+  <p style="margin:0 0 14px;font-size:14px">Relit les raccourcis de macOS, d'Alfred, de
+     Keyboard Maestro et de CleanShot X, puis reconstruit cette page. <strong>Aucune
+     application n'est ouverte</strong> — les raccourcis de menu déjà lus sont conservés
+     tels quels. Environ dix secondes.</p>
+  <code class="commande" style="margin:0">cd ~/dev/MacOS-shortcuts-inventory && ./run.sh --sources</code>
+  <p style="margin:14px 0 0;font-size:13px;color:var(--sourdine)">À lancer dans le
+     terminal, puis recharge cette page. Le déclenchement depuis le navigateur viendra
+     avec la question des autorisations.</p>
+</div></dialog>
+
 <dialog id="detail"><div class="detail-corps">
   <div class="detail-tete">
     <span id="detail-combo" class="combo"></span>

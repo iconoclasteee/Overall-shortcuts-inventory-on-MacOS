@@ -1,8 +1,10 @@
 #!/bin/bash
 # Génère l'inventaire des raccourcis clavier.
 #
-#   ./run.sh --test   6 apps représentatives, pour valider la mécanique
-#   ./run.sh --all    les 211 apps installées
+#   ./run.sh --test     6 apps représentatives, pour valider la mécanique
+#   ./run.sh --all      toutes les apps installées
+#   ./run.sh --sources  relit les raccourcis système et les outils globaux, sans
+#                       ouvrir la moindre application — quelques secondes
 #
 # La passe est reprenable : chaque app est écrite dans son propre fichier JSON et
 # une relance saute ce qui est déjà là. Interrompre avec Ctrl-C ne perd rien.
@@ -29,7 +31,10 @@ case "${1:---test}" in
   --all)  APPS_DIR=out/apps;      REPORT=out/raccourcis-macos.md
           INDEX=out/index.json;    PAGE=out/raccourcis.html
           TARGET=(--all) ;;
-  *) echo "Usage: $0 [--test|--all]"; exit 2 ;;
+  --sources) APPS_DIR=out/apps; REPORT=out/raccourcis-macos.md
+          INDEX=out/index.json;  PAGE=out/raccourcis.html
+          TARGET=() ;;
+  *) echo "Usage: $0 [--test|--all|--sources]"; exit 2 ;;
 esac
 
 echo "→ Disposition clavier"
@@ -41,8 +46,13 @@ echo "→ Recensement des apps installées"
 echo "→ Raccourcis système"
 python3 src/system_shortcuts.py
 
-echo "→ Raccourcis par application"
-"$HARVESTER" "${TARGET[@]}" --out "$APPS_DIR" "${@:2}"
+if [ ${#TARGET[@]} -eq 0 ]; then
+  # Mode --sources : les raccourcis d'application déjà lus sont conservés tels quels.
+  echo "→ Raccourcis par application : conservés ($(ls "$APPS_DIR"/*.json 2>/dev/null | wc -l | tr -d ' ') fiches)"
+else
+  echo "→ Raccourcis par application"
+  "$HARVESTER" "${TARGET[@]}" --out "$APPS_DIR" "${@:2}"
+fi
 
 echo "→ Index unifié (système + apps + Alfred, Keyboard Maestro, CleanShot X)"
 python3 src/index.py "$APPS_DIR" "$INDEX"
