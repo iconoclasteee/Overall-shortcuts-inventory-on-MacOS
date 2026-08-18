@@ -436,9 +436,11 @@ func recenser(includeGames: Bool) -> [Installee] {
         "com.westerndigital.WDSecurityInstaller": "désinstalleur",
         "com.apple.backup.launcher": "ouvre l'interface de restauration en plein écran",
         // Déclencheurs de fonctions système : ils n'ont pas de barre de menu, et deux
-        // passes (25 s puis 45 s) l'ont confirmé. Les relancer ne coûterait que du temps.
+        // passes (25 s puis 45 s) l'ont confirmé. Rien n'est perdu — leurs raccourcis
+        // sont inventoriés côté système, via les tables du panneau Clavier de macOS.
         "com.apple.exposelauncher": "déclencheur système, aucune barre de menu",
-        "com.apple.screenshot.launcher": "déclencheur système, aucune barre de menu",
+        // Observé : elle déclenche une capture dès l'ouverture et s'empare de l'écran.
+        "com.apple.screenshot.launcher": "déclenche une capture dès le lancement",
         "com.apple.siri.launcher": "déclencheur système, aucune barre de menu",
         "com.apple.apps.launcher": "déclencheur système, aucune barre de menu",
         "com.apple.ScreenContinuity": "déclencheur système, aucune barre de menu",
