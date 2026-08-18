@@ -1154,6 +1154,9 @@ def build(index_path):
   Une app lue sans document ouvert expose moins de commandes qu'en usage réel.
   L'ordre des étages est fiable, mais deux outils accrochés au même étage sont
   départagés par leur ordre d'enregistrement, que rien sur le disque ne consigne.
+  Les combinaisons sont écrites pour le clavier intégré : en AZERTY, un chiffre
+  demande Maj, d'où les ⇧ affichés. Un clavier externe à pavé numérique donne les
+  chiffres directement, sans Maj.
 </footer>
 </div><script>{script}</script></body></html>"""
 

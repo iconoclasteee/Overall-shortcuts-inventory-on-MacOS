@@ -109,6 +109,12 @@ autorisation accordée explicitement doit être retirée puis remise.
   barre de menu est plus pauvre qu'en usage réel. L'inventaire est alors partiel.
   Le rapport le signale app par app.
 - **Apps agents** sans barre de menu : rien à lire, signalé en statut `sans_menu`.
+- **Clavier de référence** : les combinaisons décrivent le clavier intégré, tel que
+  `UCKeyTranslate` le rapporte. En AZERTY un chiffre demande Maj, d'où les ⇧ affichés
+  sur des raccourcis qu'une app note « ⌃2 ». Un clavier externe à pavé numérique donne
+  les chiffres sans Maj : la même commande y répond alors à une frappe plus courte.
+  Le rapprochement des raccourcis n'en dépend pas — le pavé numérique porte ses propres
+  codes de touches, distincts de la rangée du haut.
 - **Apps bloquées au lancement** (licence, connexion) : coupées par le délai et
   signalées en `timeout`.
 - Une passe `--all` **lance et quitte les apps une par une**. À faire quand la machine
