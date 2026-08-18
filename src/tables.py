@@ -157,6 +157,20 @@ def glyph_to_keycode():
     return mapping
 
 
+def keycode_symbols():
+    """{code de touche: symbole} pour les touches sans caractère (⌤, ⌧, ⏎…).
+
+    Construit en croisant les deux énumérations système : glyphe → code d'un côté,
+    glyphe → symbole de l'autre. Aucun symbole n'est écrit à la main ici.
+    """
+    labels = glyph_labels()
+    out = {}
+    for glyph, code in glyph_to_keycode().items():
+        if glyph in labels:
+            out.setdefault(code, labels[glyph])
+    return out
+
+
 # --- Masques de modificateurs --------------------------------------------------
 
 # Constantes NSEvent.ModifierFlags, utilisées par les plists système d'Apple.

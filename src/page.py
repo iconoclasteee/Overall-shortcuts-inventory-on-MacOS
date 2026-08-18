@@ -72,7 +72,14 @@ h1 em { font-style: normal; color: var(--petrol); }
 .chiffre.alerte b { color: var(--vermillon); }
 
 /* — Lancement d'un scan — */
-.actions-scan { justify-self: center; display: grid; justify-items: center; gap: 8px; }
+.actions-scan { justify-self: center; display: flex; align-items: stretch; gap: 10px; }
+.bouton-secondaire {
+  font-family: var(--display); font-size: 12px; font-weight: 600; line-height: 1.25;
+  padding: 10px 14px; border-radius: 9px; cursor: pointer; text-align: center;
+  background: var(--plaque); color: var(--sourdine); border: 1px solid var(--creux);
+}
+.bouton-secondaire:hover { color: var(--encre); border-color: var(--petrol); }
+.bouton-secondaire:focus-visible { outline: 2px solid var(--petrol); outline-offset: 3px; }
 .bouton-scan { font-family: var(--display); font-size: 15px; font-weight: 600;
   padding: 13px 24px; border-radius: 9px; cursor: pointer;
   background: var(--petrol); color: var(--plaque); border: 0;
@@ -1037,7 +1044,9 @@ def build(index_path):
       Scanner tout le Mac
       <span id="compte-scan"></span>
     </button>
-    <button type="button" id="ouvrir-relire" class="lien">Relire seulement les raccourcis système et les outils</button>
+    <button type="button" id="ouvrir-relire" class="bouton-secondaire">
+      Relire les raccourcis<br>système et les outils
+    </button>
   </div>
   <div class="chiffres">
     <div class="chiffre"><b>{len(data["combinaisons"])}</b><span>combinaisons</span></div>

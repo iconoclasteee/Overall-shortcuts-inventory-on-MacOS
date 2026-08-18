@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from tables import keycode_labels, keypad_codes
+from tables import keycode_labels, keycode_symbols, keypad_codes
 
 ROOT = Path(__file__).parent.parent
 
@@ -63,6 +63,7 @@ class Keyboard:
         raw = json.loads((path or ROOT / "data" / "keymap.json").read_text(encoding="utf-8"))
         self.by_code = {int(k): v for k, v in raw.items()}
         self.names = keycode_labels()      # libellés des touches sans caractère (F5, ←)
+        self.symboles = keycode_symbols()  # symboles officiels (⌤, ⌧, ⏎)
         keypad = keypad_codes()
         self.keypad = keypad
         self.by_char = {}
@@ -84,7 +85,8 @@ class Keyboard:
             pair = self.by_code.get(code)
             if pair and pair[0].strip():
                 return f"Pavé {pair[0]}"
-            return self.names.get(code)
+            symbole = self.symboles.get(code) or self.names.get(code)
+            return f"Pavé {symbole}" if symbole else None
         pair = self.by_code.get(code)
         if pair:
             text = pair[1] if mods & SHIFT else pair[0]
