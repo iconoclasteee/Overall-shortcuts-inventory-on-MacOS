@@ -39,8 +39,18 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
    et pourquoi.
 4. **Par combinaison** — cherche une touche ou une commande, vois partout où elle sert.
 
-Un filtre unique (modificateurs, touche, libellé) s'applique aux quatre vues, et le
-choix de l'application vit dans la barre d'onglets.
+Un filtre unique (application, modificateurs, touche, nombre de touches, libellé)
+s'applique aux quatre vues. Le filtre par application se désactive : tout est alors
+montré, toutes apps confondues.
+
+### Doubles frappes
+
+Certains raccourcis système ne sont pas une combinaison mais une **double frappe** sur
+un modificateur seul — la dictée en est l'exemple courant. macOS les stocke avec
+`type: "modifier"` et un masque distinguant la touche gauche de la droite (constantes
+`NX_DEVICE*KEYMASK` d'IOKit). Les libellés viennent du panneau Clavier lui-même
+(`DoubleTapCommandRight` → « Appuyer deux fois sur Commande de droite »). Ces
+raccourcis sont marqués « double frappe » dans la page, et comptés comme **une** touche.
 
 **`out/raccourcis-macos.md`** — le même inventaire à plat, versionnable et relisible
 hors ligne, groupé par catégorie d'app.

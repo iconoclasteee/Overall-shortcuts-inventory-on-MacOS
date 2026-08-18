@@ -28,6 +28,22 @@ APPEX = Path(
 )
 NO_CHAR = 65535  # sentinelle Apple : "pas de caractère, utiliser le code de touche"
 
+# Certains raccourcis système ne sont pas une combinaison mais une **double frappe**
+# sur un modificateur seul — la dictée en est l'exemple courant. Apple les stocke avec
+# `type: "modifier"` et un masque qui distingue la touche gauche de la droite.
+# Les masques de côté viennent d'IOKit, les libellés du panneau Clavier : rien n'est
+# écrit de mémoire ici.
+IOKIT_BRIDGESUPPORT = Path(
+    "/System/Library/Frameworks/IOKit.framework/Versions/A/Resources/IOKit.bridgesupport")
+MODIFIER_DOUBLE = [
+    # (bit de modificateur NSEvent, bit de côté IOKit ou None, clé de libellé, symbole)
+    (0x100000, 8,    "DoubleTapCommandLeft",  "⌘"),
+    (0x100000, 16,   "DoubleTapCommandRight", "⌘"),
+    (0x100000, None, "DoubleTapCommand",      "⌘"),
+    (0x040000, None, "DoubleTapControl",      "⌃"),
+    (0x800000, None, "DoubleTapFn",           "fn"),
+]
+
 
 def _strip_marker(text):
     """Retire le marqueur interne d'Apple sur les chaînes non traduites."""
@@ -87,6 +103,30 @@ def load_reference(lang="fr"):
     return entries
 
 
+def load_double_labels(lang="fr"):
+    """Libellés des doubles frappes, tels que les affiche le panneau Clavier."""
+    path = APPEX / "Localizable.loctable"
+    if not path.exists():
+        return {}
+    table = plistlib.loads(path.read_bytes())
+    return table.get(lang) or table.get("en") or {}
+
+
+def _double_tap(mask, labels):
+    """Décrit une double frappe à partir de son masque, ou None si le masque
+    ne correspond à aucun modificateur connu."""
+    for bit, cote, cle, symbole in MODIFIER_DOUBLE:
+        if not mask & bit:
+            continue
+        if cote is not None and not mask & cote:
+            continue
+        if cote is None and mask & 0x18 and bit == 0x100000:
+            continue  # un côté est précisé : une entrée plus spécifique s'en charge
+        return {"combo": symbole * 2, "mods": 0, "code": None,
+                "libelle": labels.get(cle, cle)}
+    return None
+
+
 def load_user_state():
     """Lit com.apple.symbolichotkeys via `defaults` (format plist XML)."""
     raw = subprocess.run(
@@ -96,13 +136,19 @@ def load_user_state():
     if raw.returncode != 0 or not raw.stdout:
         return {}
     plist = plistlib.loads(raw.stdout)
+    labels = load_double_labels()
     state = {}
     for key, entry in (plist.get("AppleSymbolicHotKeys") or {}).items():
-        params = ((entry.get("value") or {}).get("parameters")) or []
-        combo = None
-        if len(params) >= 3:
+        value = entry.get("value") or {}
+        params = value.get("parameters") or []
+        combo, double = None, None
+        if value.get("type") == "modifier" and params:
+            double = _double_tap(params[0], labels)
+            combo = double
+        elif len(params) >= 3:
             combo = _render(params[0], params[1], params[2])
-        state[int(key)] = {"actif": bool(entry.get("enabled")), "combinaison": combo}
+        state[int(key)] = {"actif": bool(entry.get("enabled")), "combinaison": combo,
+                           "double": bool(double)}
     return state
 
 
@@ -167,6 +213,9 @@ def build():
         record["combinaison"] = touche["combo"] if touche else None
         record["mods"] = touche["mods"] if touche else 0
         record["code"] = touche["code"] if touche else None
+        record["double"] = bool(state and state.get("double"))
+        if record["double"] and touche and touche.get("libelle"):
+            record["nom"] = f"{record['nom']} — {touche['libelle']}"
         record["defaut"] = entry["defaut"]["combo"] if entry["defaut"] else None
         results.append(record)
 
@@ -180,12 +229,15 @@ def build():
             "categorie": "Non documenté par Apple",
             "categorie_en": "Undocumented",
             "identifiant_categorie": "unknown",
-            "nom": f"Raccourci système #{hotkey_id}",
+            "nom": (f"Raccourci système #{hotkey_id}"
+                    + (f" — {(state['combinaison'] or {}).get('libelle')}"
+                       if state.get("double") else "")),
             "nom_en": f"Symbolic hotkey #{hotkey_id}",
             "defaut": None,
             "combinaison": (state["combinaison"] or {}).get("combo"),
             "mods": (state["combinaison"] or {}).get("mods", 0),
             "code": (state["combinaison"] or {}).get("code"),
+            "double": state.get("double", False),
             "actif": state["actif"],
             "etat": "non documenté",
         })

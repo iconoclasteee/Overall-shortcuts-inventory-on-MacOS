@@ -105,6 +105,7 @@ class Binding:
     glyphe: int | None = None     # glyphe de menu, pour les touches sans caractère
     actif: bool = True
     detail: str = ""
+    double: bool = False          # double frappe sur un modificateur, pas une combinaison
     menu: str = ""                # menu de premier niveau, pour les éléments de menu
     ordre: int = 0                # rang d'apparition dans la barre de menu
     cle: str = field(default="", init=False)

@@ -37,11 +37,16 @@ def system_bindings(keyboard, portees):
         if not entry["combinaison"]:
             continue  # raccourci existant mais sans combinaison attribuée
         portee = portees.get(entry["identifiant_categorie"], {}).get("portee", "inconnu")
+        detail = entry["categorie"] + (" · désactivé" if not entry["actif"] else "")
+        if entry.get("double"):
+            # Apple ne documente pas cet identifiant dans sa table de référence : on
+            # décrit le mécanisme sans affirmer la fonction.
+            detail += " · double frappe, fonction non documentée par Apple"
         found.append(Binding(
             mods=entry["mods"], combo=entry["combinaison"], action=entry["nom"],
             source="systeme", couche="systeme", portee=portee, proprietaire="macOS",
-            code=entry["code"], actif=entry["actif"],
-            detail=entry["categorie"] + (" · désactivé" if not entry["actif"] else "")))
+            code=entry["code"], actif=entry["actif"], double=entry.get("double", False),
+            detail=detail))
     return found
 
 
@@ -164,6 +169,7 @@ def build(apps_dir):
             "cle": cle,
             "combo": membres[0].combo,
             "mods": membres[0].mods,
+            "double": any(b.double for b in membres),
             "conflit": conflit,
             "meme_commande": meme_commande,
             "arbitrage": gagnant(membres),
@@ -171,7 +177,7 @@ def build(apps_dir):
                 "action": b.action, "proprietaire": b.proprietaire, "source": b.source,
                 "couche": b.couche, "portee": b.portee, "bundle_id": b.bundle_id,
                 "actif": b.actif, "detail": b.detail, "combo": b.combo,
-                "menu": b.menu, "ordre": b.ordre,
+                "menu": b.menu, "ordre": b.ordre, "double": b.double,
             } for b in sorted(membres, key=lambda b: (rang(b.couche), b.proprietaire))],
         })
     combinaisons.sort(key=lambda c: (not c["conflit"], c["combo"]))

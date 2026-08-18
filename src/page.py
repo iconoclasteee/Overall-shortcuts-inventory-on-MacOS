@@ -209,11 +209,19 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 /* Deux natures de filtre : à gauche la combinaison de touches, à droite la recherche
    de libellé. Les séparer évite de les prendre pour un même réglage. */
 .filtre {
-  display: grid; grid-template-columns: minmax(0, max-content) minmax(220px, 1fr);
-  gap: 12px 40px; margin: 0 0 28px; padding: 18px 20px; align-items: start;
+  display: grid; grid-template-columns: minmax(0, max-content) auto minmax(200px, 1fr);
+  gap: 12px 36px; margin: 0 0 28px; padding: 18px 20px; align-items: start;
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
 }
 .colonne-touches { display: grid; gap: 12px; }
+.colonne-nombre {
+  display: grid; gap: 8px; justify-items: start;
+  padding-left: 36px; border-left: 1px solid var(--creux);
+}
+.colonne-nombre select {
+  font: inherit; font-size: 14px; padding: 10px 13px; color: var(--encre);
+  background: var(--alu); border: 1px solid var(--creux); border-radius: 7px;
+}
 .colonne-texte {
   display: grid; gap: 8px; justify-items: start; max-width: 400px;
   padding-left: 40px; border-left: 1px solid var(--creux);
@@ -244,7 +252,27 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 }
 .capsules button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 #touche-libre { width: 150px; flex: none; text-align: center; }
-.combo-app { position: relative; width: 300px; flex: none; margin-bottom: 8px; }
+.bloc-app { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.bascule {
+  display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 13px;
+  padding: 9px 13px; border-radius: 7px; cursor: pointer;
+  border: 1px solid var(--creux); background: var(--plaque); color: var(--sourdine);
+}
+.bascule .temoin {
+  width: 30px; height: 17px; border-radius: 9px; background: var(--creux);
+  position: relative; flex: none; transition: background .12s;
+}
+.bascule .temoin::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px;
+  border-radius: 50%; background: var(--plaque); transition: transform .12s;
+}
+.bascule[aria-pressed="true"] { color: var(--encre); border-color: var(--petrol); }
+.bascule[aria-pressed="true"] .temoin { background: var(--petrol); }
+.bascule[aria-pressed="true"] .temoin::after { transform: translateX(13px); }
+.bascule:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
+.combo-app { position: relative; width: 280px; flex: none; }
+.combo-app.inactif { opacity: .5; pointer-events: none; }
+.combo-app.inactif input { border-color: var(--creux); background: var(--plaque); }
 .combo-app input {
   width: 100%; font-size: 14px; padding: 10px 13px;
   background: color-mix(in srgb, var(--petrol) 12%, var(--plaque));
@@ -301,6 +329,13 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
    fait, pas qu'un autre preneur pourrait la lui prendre. */
 .resultat.rang-conflit .titre { color: var(--vermillon); }
 .resultat.rang-conflit .cap { border-color: var(--vermillon); color: var(--vermillon); }
+/* Une double frappe n'est pas une combinaison : elle se signale, sinon « ⌘⌘ » se lit
+   comme deux touches enfoncées ensemble. */
+.marque-double {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 4px; margin-left: 7px; white-space: nowrap;
+  background: color-mix(in srgb, var(--petrol) 18%, transparent); color: var(--petrol);
+}
 .perdu {
   display: block; font-family: var(--mono); font-size: 11.5px; color: var(--sourdine);
   margin-top: 3px; padding-left: 11px; border-left: 2px solid var(--creux);
@@ -379,7 +414,13 @@ function ligne(c, i, prefixe) {
 
 function rendreConflits() {
   const f = etatFiltre();
-  const conflits = D.combinaisons.filter(c => c.conflit && passe(f, c.combo, c.mods, c.usages));
+  const id = appFiltrante();
+  const disputees = id
+    ? new Set(atteignables(id).filter(it => it.conflit).map(it => it.combo))
+    : null;
+  const conflits = D.combinaisons.filter(c =>
+    (disputees ? disputees.has(c.combo) : c.conflit)
+    && passe(f, c.combo, c.mods, c.usages, c.double));
   document.getElementById("vue-conflits").innerHTML = conflits.length
     ? conflits.map((c, i) => ligne(c, i, "cf")).join("")
     : `<p class="vide">Aucun conflit${f.actifs || f.touche || f.libre || f.texte
@@ -390,7 +431,22 @@ function rendreConflits() {
 /* Les modificateurs se cochent au lieu de se taper : presser ⌘⇧ dans un champ de
    recherche déclencherait le raccourci qu'on cherche justement à identifier. */
 const MODS = MODS_BITS;
+/* Une double frappe n'engage qu'une touche, pressée deux fois. */
+const nbTouches = (mods, double) => {
+  if (double) return 1;
+  let n = 1;
+  for (let m = mods; m; m >>= 1) n += m & 1;
+  return n;
+};
 const toucheSeule = (combo) => combo.replace("fn", "").replace(/[⌃⌥⇧⌘]/g, "");
+
+/* Le filtre par application vaut pour les quatre vues. Désactivé, plus rien n'est
+   restreint à une app, et le champ de sélection est neutralisé. */
+let filtreApp = true;
+
+function appFiltrante() {
+  return filtreApp ? appChoisie : "";
+}
 
 function etatFiltre() {
   const bits = [...document.querySelectorAll("#mods button[aria-pressed=true]")]
@@ -401,14 +457,19 @@ function etatFiltre() {
     bits, actifs,
     touche: touche ? touche.dataset.touche : "",
     libre: document.getElementById("touche-libre").value.trim().toLowerCase(),
+    nombre: Number(document.getElementById("filtre-nombre").value) || 0,
     texte: document.getElementById("recherche").value.trim().toLowerCase(),
   };
 }
 
 /* Le même filtre sert aux trois vues : une combinaison passe si elle satisfait
    tous les critères renseignés. Un critère vide ne filtre rien. */
-function passe(f, combo, mods, usages) {
+function passe(f, combo, mods, usages, double) {
   if (f.actifs && mods !== f.bits) return false;
+  if (f.nombre && nbTouches(mods, double) !== f.nombre) return false;
+  // Restreint à une app : ses propres commandes, plus tout ce qui est global.
+  const id = appFiltrante();
+  if (id && !usages.some(u => u.couche !== "menu" || u.bundle_id === id)) return false;
   const k = toucheSeule(combo);
   if (f.touche && k !== f.touche) return false;
   if (f.libre && k.toLowerCase() !== f.libre) return false;
@@ -420,7 +481,7 @@ function passe(f, combo, mods, usages) {
 
 function rendreCombinaisons() {
   const f = etatFiltre();
-  const liste = D.combinaisons.filter(c => passe(f, c.combo, c.mods, c.usages));
+  const liste = D.combinaisons.filter(c => passe(f, c.combo, c.mods, c.usages, c.double));
   const cible = document.getElementById("vue-combinaisons");
   if (!liste.length) {
     const quoi = [f.actifs ? "ces modificateurs" : "", f.touche || f.libre, f.texte ? `« ${esc(f.texte)} »` : ""]
@@ -453,13 +514,31 @@ function brancherFiltres() {
     document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
     rendreTout();
   });
+  document.getElementById("filtre-nombre").addEventListener("change", rendreTout);
   document.getElementById("vider-filtre").addEventListener("click", () => {
     document.querySelectorAll("#mods button, #touches button")
       .forEach(x => x.setAttribute("aria-pressed", "false"));
     document.getElementById("touche-libre").value = "";
     document.getElementById("recherche").value = "";
+    document.getElementById("filtre-nombre").value = "";
     rendreTout();
   });
+}
+
+function brancherBasculeApp() {
+  const bouton = document.getElementById("bascule-app");
+  const zone = document.querySelector(".combo-app");
+  const champ = document.getElementById("filtre-app");
+  const appliquer = () => {
+    bouton.setAttribute("aria-pressed", String(filtreApp));
+    zone.classList.toggle("inactif", !filtreApp);
+    champ.disabled = !filtreApp;
+    const app = LISIBLES.find(a => a.bundleID === appChoisie);
+    champ.value = filtreApp ? (app ? app.nom : "") : "Toutes applications";
+    rendreTout();
+  };
+  bouton.addEventListener("click", () => { filtreApp = !filtreApp; appliquer(); });
+  appliquer();
 }
 
 /* Vue par app, deux lectures complémentaires.
@@ -472,11 +551,7 @@ function brancherFiltres() {
    combinaison atteignable dans cette app, qui la reçoit vraiment. Classées par nombre
    de touches, parce qu'on cherche d'abord les combinaisons courtes. */
 
-const nbTouches = (mods) => {
-  let n = 1;
-  for (let m = mods; m; m >>= 1) n += m & 1;
-  return n;
-};
+
 const SOURCE_LABEL = {
   systeme: "raccourci système macOS", capture: "outil global", global: "outil global",
   pilote: "pilote clavier", autre: "outil global", menu: "menu de l'app",
@@ -488,15 +563,17 @@ function atteignables(bundleID) {
   const f = etatFiltre();
   const out = [];
   for (const c of D.combinaisons) {
-    if (!passe(f, c.combo, c.mods, c.usages)) continue;
+    if (!passe(f, c.combo, c.mods, c.usages, c.double)) continue;
+    // Sans application choisie, seuls les raccourcis globaux se résolvent : un menu
+    // ne répond que lorsque son app est au premier plan.
     const candidats = c.usages.filter(u =>
-      u.actif && (u.couche !== "menu" || u.bundle_id === bundleID));
+      u.actif && (u.couche !== "menu" || (bundleID && u.bundle_id === bundleID)));
     if (!candidats.length) continue;
     const gagnante = ORDRE.find(couche => candidats.some(u => u.couche === couche));
     const vainqueurs = candidats.filter(u => u.couche === gagnante);
     const perdants = candidats.filter(u => u.couche !== gagnante);
-    out.push({ combo: c.combo, mods: c.mods, vainqueurs, perdants, couche: gagnante,
-               conflit: perdants.length > 0 });
+    out.push({ combo: c.combo, mods: c.mods, double: c.double, vainqueurs, perdants,
+               couche: gagnante, conflit: perdants.length > 0 });
   }
   return out;
 }
@@ -505,7 +582,7 @@ function vueCeQuiSePasse(app) {
   const items = atteignables(app.bundleID);
   const parTaille = new Map();
   for (const it of items) {
-    const n = nbTouches(it.mods);
+    const n = nbTouches(it.mods, it.double);
     if (!parTaille.has(n)) parTaille.set(n, []);
     parTaille.get(n).push(it);
   }
@@ -521,7 +598,7 @@ function vueCeQuiSePasse(app) {
         const perdus = it.perdants.map(u =>
           `${esc(u.proprietaire)} — ${esc(u.action)}`).join(" · ");
         return `<div class="resultat${it.conflit ? " rang-conflit" : ""}">
-          <span class="combo">${caps(it.combo)}</span>
+          <span class="combo">${caps(it.combo)}${it.double ? `<span class="marque-double">double frappe</span>` : ""}</span>
           <span>
             <span class="titre">${esc(v.action)}</span>
             <span class="sous">${esc(v.proprietaire)} · ${SOURCE_LABEL[it.couche]}${
@@ -534,30 +611,35 @@ function vueCeQuiSePasse(app) {
 
 function vueParMenu(app) {
   const f = etatFiltre();
+  const cible = app ? app.bundleID : "";
   // Même définition du conflit que dans « Effet d'une frappe » : une combinaison que
   // plusieurs preneurs se disputent *pendant que cette app est au premier plan*.
-  const disputees = new Set(atteignables(app.bundleID)
-    .filter(it => it.conflit).map(it => it.combo));
+  const disputees = new Set(atteignables(cible).filter(it => it.conflit).map(it => it.combo));
   const parMenu = new Map(), parPortee = { app: [], app_externe: [], systeme: [], inconnu: [] };
   for (const c of D.combinaisons) {
-    if (!passe(f, c.combo, c.mods, c.usages)) continue;
+    if (!passe(f, c.combo, c.mods, c.usages, c.double)) continue;
     for (const u of c.usages) {
       if (!u.actif) continue;
-      const marque = { ...u, conflit: disputees.has(c.combo) };
+      const marque = { ...u, conflit: disputees.has(c.combo), double: c.double };
       if (u.couche === "menu") {
-        if (u.bundle_id !== app.bundleID) continue;
-        const m = u.menu || "—";
+        if (cible && u.bundle_id !== cible) continue;
+        // Sans app choisie, on regroupe par application avant le menu : « Fichier »
+        // de six apps différentes dans un même bloc ne veut rien dire.
+        const m = cible ? (u.menu || "—") : `${u.proprietaire} · ${u.menu || "—"}`;
         if (!parMenu.has(m)) parMenu.set(m, []);
         parMenu.get(m).push(marque);
       } else if (parPortee[u.portee]) parPortee[u.portee].push(marque);
     }
   }
   // Les menus s'affichent dans l'ordre de la barre de menu, pas par ordre alphabétique.
-  const menus = [...parMenu.entries()].sort((a, b) =>
-    Math.min(...a[1].map(u => u.ordre)) - Math.min(...b[1].map(u => u.ordre)));
+  const menus = [...parMenu.entries()].sort((a, b) => {
+    const app = (x) => x[1][0].proprietaire;
+    return (cible ? 0 : app(a).localeCompare(app(b), "fr"))
+        || Math.min(...a[1].map(u => u.ordre)) - Math.min(...b[1].map(u => u.ordre));
+  });
 
   const rangee = (u, sousTitre) => `<div class="resultat${u.conflit ? " rang-conflit" : ""}">
-      <span class="combo">${caps(u.combo)}</span>
+      <span class="combo">${caps(u.combo)}${u.double ? `<span class="marque-double">double frappe</span>` : ""}</span>
       <span><span class="titre">${esc(u.action.split(" > ").slice(1).join(" > ") || u.action)}</span>
       ${sousTitre ? `<span class="sous">${esc(sousTitre)}</span>` : ""}
       ${u.detail ? `<span class="sous">${esc(u.detail)}</span>` : ""}</span></div>`;
@@ -670,14 +752,19 @@ function brancherChoixApp() {
 }
 
 function rendreApp() {
-  const app = D.apps.find(a => a.bundleID === appChoisie);
+  const app = filtreApp ? D.apps.find(a => a.bundleID === appChoisie) : null;
   const poser = (cible, contenu, secours) => {
     document.getElementById(cible).innerHTML =
       contenu.trim() ? contenu : `<p class="vide">${secours}</p>`;
   };
   if (!app) {
-    poser("vue-menu", "", "Choisis une application.");
-    poser("vue-effet", "", "Choisis une application.");
+    // Filtre désactivé : on montre tout, en précisant ce que « tout » veut dire ici.
+    poser("vue-menu", vueParMenu(null), "Rien ne correspond au filtre.");
+    poser("vue-effet",
+      `<p class="pourquoi" style="margin:0 0 18px">Aucune application choisie : seuls `
+      + `les raccourcis globaux sont résolus ici. Un raccourci de menu ne répond que `
+      + `lorsque son application est au premier plan.</p>` + vueCeQuiSePasse({ bundleID: "" }),
+      "Rien ne correspond au filtre.");
     return;
   }
   if (app.statut !== "ok") {
@@ -787,7 +874,7 @@ cd ~/dev/MacOS-shortcuts-inventory && \\
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp(); brancherScan();
+brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherScan();
 
 rendreConflits(); rendreCombinaisons(); rendreApp();
 """
@@ -841,6 +928,12 @@ def build(index_path):
         f'<button type="button" aria-pressed="false" data-bit="{bit}">{sym}</button>'
         for sym, bit in (("⌃", 2), ("⌥", 4), ("⇧", 1), ("⌘", 8), ("fn", 16)))
 
+    tailles = sorted({
+        1 if c.get("double") else 1 + bin(c["mods"]).count("1")
+        for c in data["combinaisons"]})
+    nombres_html = '<option value="">Toutes</option>' + "".join(
+        f'<option value="{n}">{n} touche{"s" if n > 1 else ""}</option>' for n in tailles)
+
     script = (JS.replace("DONNEES", charge)
                 .replace("ORDRE_COUCHES_JS", json.dumps(ORDRE_COUCHES))
                 .replace("NOMS_COUCHES_JS", json.dumps(NOMS_COUCHES, ensure_ascii=False))
@@ -876,11 +969,16 @@ def build(index_path):
     <button data-vue="conflits" aria-selected="false">Conflits</button>
     <button data-vue="combinaisons" aria-selected="false">Par combinaison</button>
   </div>
+  <div class="bloc-app">
+  <button type="button" id="bascule-app" class="bascule" aria-pressed="true">
+    <span class="temoin"></span>Filtre par application
+  </button>
   <div class="combo-app">
     <input type="text" id="filtre-app" role="combobox" aria-expanded="false"
            aria-controls="liste-app" aria-autocomplete="list" autocomplete="off"
            placeholder="Cherche une application">
     <ul id="liste-app" role="listbox" hidden></ul>
+  </div>
   </div>
 </nav>
 <!-- Un seul filtre pour les trois vues : dupliquer les contrôles ferait diverger
@@ -896,6 +994,10 @@ def build(index_path):
       <span class="etiquette">Touche</span>
       <div id="touches" class="rangees-touches">{touches_html}</div>
     </div>
+  </div>
+  <div class="colonne-nombre">
+    <span class="etiquette">Touches à presser</span>
+    <select id="filtre-nombre">{nombres_html}</select>
   </div>
   <div class="colonne-texte">
     <span class="etiquette">Libellé de commande</span>
