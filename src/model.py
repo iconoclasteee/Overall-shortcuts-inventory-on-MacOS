@@ -80,6 +80,10 @@ class Keyboard:
         # afficher « 1 » pour l'un et pour l'autre rendrait les deux frappes
         # indiscernables. Son nom prime donc sur son caractère.
         if code in self.keypad:
+            # Le caractère vient de la disposition, le préfixe dit d'où il est tapé.
+            pair = self.by_code.get(code)
+            if pair and pair[0].strip():
+                return f"Pavé {pair[0]}"
             return self.names.get(code)
         pair = self.by_code.get(code)
         if pair:
