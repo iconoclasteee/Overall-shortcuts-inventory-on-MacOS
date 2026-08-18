@@ -580,8 +580,8 @@ const TEXTES = {
     scan_defaut_cmd: "# Sélection par défaut — la commande complète suffit",
     scan_perso_cmd: "# Sélection personnalisée — à coller dans le terminal",
     relire_titre: "Relire les raccourcis système et les outils",
-    relire_intro: "Relit les raccourcis de macOS, d'Alfred, de Keyboard Maestro et de "
-                + "CleanShot X, puis reconstruit cette page. <strong>Aucune application "
+    relire_intro: "Relit les raccourcis de macOS et ceux que les outils tiers "
+                + "déclarent, puis reconstruit cette page. <strong>Aucune application "
                 + "n'est ouverte</strong> — les raccourcis de menu déjà lus sont conservés "
                 + "tels quels. Environ dix secondes.",
     relire_apres: "À lancer dans le terminal, puis recharge cette page. Le déclenchement "
@@ -652,7 +652,7 @@ const TEXTES = {
     scan_defaut_cmd: "# Default selection — the plain command is enough",
     scan_perso_cmd: "# Custom selection — paste into the terminal",
     relire_titre: "Re-read system shortcuts and tools",
-    relire_intro: "Re-reads shortcuts from macOS, Alfred, Keyboard Maestro and CleanShot X, "
+    relire_intro: "Re-reads macOS shortcuts and those declared by third-party tools, "
                 + "then rebuilds this page. <strong>No application is opened</strong> — menu "
                 + "shortcuts already read are kept as they are. About ten seconds.",
     relire_apres: "Run it in the terminal, then reload this page. Triggering it from the "

@@ -1,5 +1,6 @@
 {
-  "_lisez_moi": "Rôle de chaque app dans le rapport. `description` null = non renseigné : le rapport l'affiche comme tel plutôt que d'inventer. `categorie` permet de corriger le classement quand celui déclaré par l'éditeur est trop grossier.",
+  "_lisez_moi": "Rôle de chaque app dans le rapport. `description` null = non renseigné : le rapport l'affiche comme tel plutôt que d'inventer. Le champ facultatif `categorie` corrige le classement quand celui déclaré par l'éditeur est trop grossier — par exemple {\"description\": \"…\", \"categorie\": \"Outils de développement\"}.",
+  "_amorce": "Ce fichier n'est qu'une amorce : il ne décrit que des apps livrées avec macOS, pour montrer le format sans rien dire d'une installation particulière. Complète-le pour tes propres apps — mais garde à l'esprit qu'une version complétée énumère les logiciels installés sur ta machine, ce qui n'a pas sa place dans un dépôt public.",
   "com.apple.finder": {
     "description": "Gestionnaire de fichiers de macOS : navigation, copie, rangement, recherche."
   },
@@ -8,15 +9,5 @@
   },
   "com.apple.Safari": {
     "description": "Navigateur web d'Apple."
-  },
-  "com.cmuxterm.app": {
-    "description": "Terminal multiplexé.",
-    "categorie": "Outils de développement"
-  },
-  "com.runningwithcrayons.Alfred": {
-    "description": "Lanceur d'applications et moteur de workflows, en remplacement de Spotlight."
-  },
-  "com.microsoft.Powerpoint": {
-    "description": "Logiciel de présentation de Microsoft Office."
   }
 }

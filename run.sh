@@ -58,7 +58,7 @@ else
   "$HARVESTER" "${TARGET[@]}" --out "$APPS_DIR" "${@:2}"
 fi
 
-echo "→ Index unifié (système + apps + Alfred, Keyboard Maestro, CleanShot X)"
+echo "→ Index unifié (système + apps + outils tiers)"
 python3 src/index.py "$APPS_DIR" "$INDEX"
 
 echo "→ Restitution"
