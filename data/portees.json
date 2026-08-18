@@ -1,23 +1,65 @@
 {
   "_lisez_moi": "Portée de chaque famille de raccourcis système, telle qu'arbitrée. Trois valeurs : 'systeme' = agit sur macOS, sans rapport avec l'interface de l'app ; 'app' = agit à l'intérieur de l'app active ; 'app_externe' = agit sur l'app depuis l'extérieur (déplace sa fenêtre, la capture) sans toucher son interface. Les clés sont les identifiants de catégorie d'Apple. Éditable : c'est un arbitrage, pas un fait.",
   "portees": {
-    "applications":       { "portee": "app",         "note": "⇧⌘/ ouvre le menu d'aide de l'app active" },
-    "keyboardnavigation": { "portee": "app",         "note": "déplace la cible dans l'interface de l'app (barre de menus, barre d'outils, fenêtres)" },
-    "input_sources":      { "portee": "app",         "note": "change la méthode de saisie utilisée pour écrire dans l'app" },
-    "windows":            { "portee": "app_externe", "note": "mosaïque, plein écran : déplace la fenêtre de l'app sans toucher son interface" },
-    "screenshots":        { "portee": "app_externe", "note": "capture par-dessus l'app ; fonctionne partout mais n'appartient pas à l'app" },
-    "dock":               { "portee": "systeme",     "note": "" },
-    "display":            { "portee": "systeme",     "note": "luminosité" },
-    "expose":             { "portee": "systeme",     "note": "Mission Control, Spaces" },
-    "spotlight":          { "portee": "systeme",     "note": "" },
-    "universalaccess":    { "portee": "systeme",     "note": "zoom, contraste, VoiceOver : couche d'accessibilité du système" },
-    "bilby":              { "portee": "systeme",     "note": "incrustation de l'intervenant" },
-    "unknown":            { "portee": "inconnu",     "note": "identifiant absent de la table de référence d'Apple" }
+    "applications": {
+      "portee": "app",
+      "note": "⇧⌘/ ouvre le menu d'aide de l'app active"
+    },
+    "keyboardnavigation": {
+      "portee": "app",
+      "note": "déplace la cible dans l'interface de l'app (barre de menus, barre d'outils, fenêtres)"
+    },
+    "input_sources": {
+      "portee": "app",
+      "note": "change la méthode de saisie utilisée pour écrire dans l'app"
+    },
+    "windows": {
+      "portee": "app_externe",
+      "note": "mosaïque, plein écran : déplace la fenêtre de l'app sans toucher son interface"
+    },
+    "screenshots": {
+      "portee": "app_externe",
+      "note": "capture par-dessus l'app ; fonctionne partout mais n'appartient pas à l'app"
+    },
+    "dock": {
+      "portee": "systeme",
+      "note": ""
+    },
+    "display": {
+      "portee": "systeme",
+      "note": "luminosité"
+    },
+    "expose": {
+      "portee": "systeme",
+      "note": "Mission Control, Spaces"
+    },
+    "spotlight": {
+      "portee": "systeme",
+      "note": ""
+    },
+    "universalaccess": {
+      "portee": "systeme",
+      "note": "zoom, contraste, VoiceOver : couche d'accessibilité du système"
+    },
+    "bilby": {
+      "portee": "systeme",
+      "note": "incrustation de l'intervenant"
+    },
+    "unknown": {
+      "portee": "inconnu",
+      "note": "identifiant absent de la table de référence d'Apple"
+    }
   },
   "libelles": {
-    "systeme":     "Système — sans effet sur l'interface de l'app",
-    "app":         "Dans l'app — agit sur son interface",
+    "systeme": "Système — sans effet sur l'interface de l'app",
+    "app": "Dans l'app — agit sur son interface",
     "app_externe": "Sur l'app, depuis l'extérieur",
-    "inconnu":     "Portée indéterminée"
+    "inconnu": "Portée indéterminée"
+  },
+  "libelles_en": {
+    "systeme": "System — no effect on the app's interface",
+    "app": "Inside the app — acts on its interface",
+    "app_externe": "On the app, from outside",
+    "inconnu": "Scope undetermined"
   }
 }

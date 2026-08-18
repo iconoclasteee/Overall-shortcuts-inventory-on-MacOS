@@ -70,6 +70,16 @@ h1 em { font-style: normal; color: var(--petrol); }
   text-transform: uppercase; color: var(--sourdine);
 }
 .chiffre.alerte b { color: var(--vermillon); }
+.langues { display: flex; gap: 3px; align-self: center; }
+.langues button {
+  font-size: 15px; line-height: 1; padding: 5px 6px; cursor: pointer; border-radius: 5px;
+  background: none; border: 1px solid transparent; filter: grayscale(1); opacity: .45;
+}
+.langues button[aria-pressed="true"] {
+  filter: none; opacity: 1; border-color: var(--creux); background: var(--plaque);
+}
+.langues button:hover { filter: none; opacity: .85; }
+.langues button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 
 /* — Lancement d'un scan — */
 .actions-scan { justify-self: center; display: flex; align-items: stretch; gap: 10px; }
@@ -392,7 +402,7 @@ footer {
 JS = """
 const D = DONNEES;
 const ORDRE = ORDRE_COUCHES_JS;
-const NOMS = NOMS_COUCHES_JS;
+const NOMS = () => Object.fromEntries(ORDRE.map(c => [c, T("couche_" + c)]));
 
 const caps = (combo) => {
   // « fn » s'écrit sur deux caractères : il faut le retirer avant de parcourir le reste,
@@ -418,16 +428,17 @@ function pile(usages) {
   return `<div class="pile">` + ORDRE.map(c => {
     const cls = c === gagnante ? "etage occupe gagne" : occupees.has(c) ? "etage occupe" : "etage";
     const qui = [...new Set(usages.filter(u => u.couche === c && u.actif).map(u => u.proprietaire))];
-    return `<div class="${cls}"><span class="nom">${NOMS[c]}</span>`
+    const noms = NOMS();
+    return `<div class="${cls}"><span class="nom">${noms[c]}</span>`
          + `<span class="puce"></span><span>${esc(qui.join(", "))}</span></div>`;
   }).join("") + `</div>`;
 }
 
 const listeUsages = (usages) => `<ul class="usages">` + usages.map(u =>
-  `<li class="${u.actif ? "" : "inactif"}"><span class="couche">${NOMS[u.couche]}</span>`
+  `<li class="${u.actif ? "" : "inactif"}"><span class="couche">${NOMS()[u.couche]}</span>`
   + `<span class="qui">${esc(u.proprietaire)}</span>`
   + `<span>${esc(u.action)}${u.detail ? ` <em>— ${esc(u.detail)}</em>` : ""}`
-  + `${u.actif ? "" : " — désactivé"}</span></li>`).join("") + `</ul>`;
+  + `${u.actif ? "" : " — " + T("desactive")}</span></li>`).join("") + `</ul>`;
 
 function ligne(c, i, prefixe) {
   const nb = c.usages.filter(u => u.actif).length;
@@ -455,15 +466,155 @@ function rendreConflits() {
     && passe(f, c.combo, c.mods, c.usages, c.double));
   document.getElementById("vue-conflits").innerHTML = conflits.length
     ? conflits.map((c, i) => ligne(c, i, "cf")).join("")
-    : `<p class="vide">Aucun conflit${f.actifs || f.touche || f.libre || f.texte
-        ? " parmi ce que le filtre laisse passer" : ""}. `
-      + `Chaque combinaison n'a qu'un seul preneur.</p>`;
+    : `<p class="vide">${T("aucun_conflit")}${f.actifs || f.touche || f.libre || f.texte
+        ? T("aucun_conflit_filtre") : ""}${T("aucun_conflit_suite")}</p>`;
 }
 
 /* Les modificateurs se cochent au lieu de se taper : presser ⌘⇧ dans un champ de
    recherche déclencherait le raccourci qu'on cherche justement à identifier. */
+/* Les libellés de l'interface existent dans les deux langues. Le contenu, lui, est lu
+   dans macOS : chemins de menus, noms de commandes et catégories restent tels que le
+   système les fournit — les traduire reviendrait à réécrire une donnée. */
+const TEXTES = {
+  fr: {
+    onglet_menu: "Commandes par menu", onglet_effet: "Effet d'une frappe",
+    onglet_conflits: "Conflits", onglet_combinaisons: "Par combinaison",
+    stat_combinaisons: "combinaisons", stat_conflits: "en conflit",
+    stat_apps: "applications lues",
+    scanner: "Scanner tout le Mac", scanner_apps: "apps",
+    relire: "Relire les raccourcis<br>système et les outils",
+    bascule_app: "Filtre par application", toutes_apps: "Toutes applications",
+    cherche_app: "Cherche une application",
+    l_modificateurs: "Modificateurs", l_touche: "Touche",
+    l_nombre: "Filtre par nombre de touches", l_texte: "Libellé de commande",
+    effacer_touches: "Effacer les touches", tout_effacer: "Tout effacer",
+    ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
+    toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
+    double: "double frappe", fermer: "Fermer",
+    aucun_conflit: "Aucun conflit", aucun_conflit_filtre: " parmi ce que le filtre laisse passer",
+    aucun_conflit_suite: ". Chaque combinaison n'a qu'un seul preneur.",
+    rien_filtre: "Aucune combinaison", rien_pour: "pour", rien_libre: "Cette combinaison est donc libre.",
+    autres_affine: (n) => `${n} autres — affine le filtre.`,
+    choisis_app: "Choisis une application.",
+    rien_app: (nom) => `Rien dans ${nom} ne correspond au filtre.`,
+    illisible: (nom, raison) => `${nom} n'a pas pu être lue : ${raison}.`,
+    sans_app: "Aucune application choisie : seuls les raccourcis globaux sont résolus ici. "
+            + "Un raccourci de menu ne répond que lorsque son application est au premier plan.",
+    seul_ici: (qui) => `Seul ${qui} utilise cette combinaison ici.`,
+    emporte: (qui) => `${qui} l'emporte.`,
+    egalite: (qui) => `${qui} s'accrochent au même étage : c'est celui qui s'est enregistré `
+                    + `en premier qui gagne, et cet ordre n'est écrit nulle part.`,
+    egalite_avec: (qui) => `à égalité avec ${qui}`,
+    passe_devant: "passe devant",
+    src_systeme: "raccourci système macOS", src_outil: "outil global",
+    src_pilote: "pilote clavier", src_menu: "menu de l'app",
+    pourquoi_propres: "Ses propres commandes de menu. Actives seulement quand elle est au premier plan.",
+    pourquoi_app: "Raccourcis macOS qui agissent sur l'interface de l'app.",
+    pourquoi_externe: "Agissent sur la fenêtre de l'app ou par-dessus elle, sans toucher son interface.",
+    pourquoi_systeme: "Fonctionnent pendant que l'app est ouverte, mais ne la concernent pas.",
+    pourquoi_inconnu: "Portée non déterminée.",
+    couche_pilote: "Pilote", couche_capture: "Capture", couche_systeme: "Système",
+    couche_global: "Global", couche_autre: "Autre", couche_menu: "Menu",
+    desactive: "désactivé",
+    scan_titre: "Scanner tout le Mac",
+    scan_intro: "Chaque application cochée sera ouverte le temps de lire sa barre de menu, "
+              + "puis refermée. À lancer quand tu n'utilises pas la machine.",
+    scan_filtrer: "Filtrer la liste…", scan_tout: "Tout cocher", scan_rien: "Tout décocher",
+    scan_defaut: "Rétablir les exclusions", scan_lancer: "Lancer le scan",
+    scan_affichees: (n, total) => `${n} affichées sur ${total}`,
+    scan_a_scanner: (n) => `${n} application${n > 1 ? "s" : ""} à scanner`,
+    scan_ecartee: (raison) => `écartée par défaut — ${raison}`,
+    scan_aucune: "Aucune application pour cette recherche.",
+    scan_rien_coche: "Aucune application cochée : rien à scanner.",
+    scan_defaut_cmd: "# Sélection par défaut — la commande complète suffit",
+    scan_perso_cmd: "# Sélection personnalisée — à coller dans le terminal",
+    relire_titre: "Relire les raccourcis système et les outils",
+    relire_intro: "Relit les raccourcis de macOS, d'Alfred, de Keyboard Maestro et de "
+                + "CleanShot X, puis reconstruit cette page. <strong>Aucune application "
+                + "n'est ouverte</strong> — les raccourcis de menu déjà lus sont conservés "
+                + "tels quels. Environ dix secondes.",
+    relire_apres: "À lancer dans le terminal, puis recharge cette page. Le déclenchement "
+                + "depuis le navigateur viendra avec la question des autorisations.",
+    pied: "Les raccourcis d'une app ne vivent que dans sa barre de menu : ils sont lus app "
+        + "par app. Une app lue sans document ouvert expose moins de commandes qu'en usage "
+        + "réel. L'ordre des étages est fiable, mais deux outils accrochés au même étage "
+        + "sont départagés par leur ordre d'enregistrement, que rien sur le disque ne "
+        + "consigne. Les combinaisons sont écrites pour le clavier intégré : en AZERTY, un "
+        + "chiffre demande Maj, d'où les ⇧ affichés. Un clavier externe à pavé numérique "
+        + "donne les chiffres directement, sans Maj.",
+  },
+  en: {
+    onglet_menu: "Commands by menu", onglet_effet: "What a keystroke does",
+    onglet_conflits: "Conflicts", onglet_combinaisons: "By combination",
+    stat_combinaisons: "combinations", stat_conflits: "in conflict",
+    stat_apps: "apps read",
+    scanner: "Scan the whole Mac", scanner_apps: "apps",
+    relire: "Re-read system shortcuts<br>and tools",
+    bascule_app: "Filter by app", toutes_apps: "All applications",
+    cherche_app: "Search an application",
+    l_modificateurs: "Modifiers", l_touche: "Key",
+    l_nombre: "Filter by key count", l_texte: "Command label",
+    effacer_touches: "Clear keys", tout_effacer: "Clear all",
+    ph_touche: "or type the key", ph_texte: "copy, capture, full screen…",
+    toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
+    double: "double press", fermer: "Close",
+    aucun_conflit: "No conflict", aucun_conflit_filtre: " among what the filter lets through",
+    aucun_conflit_suite: ". Every combination has a single taker.",
+    rien_filtre: "No combination", rien_pour: "for", rien_libre: "This combination is free.",
+    autres_affine: (n) => `${n} more — narrow the filter.`,
+    choisis_app: "Choose an application.",
+    rien_app: (nom) => `Nothing in ${nom} matches the filter.`,
+    illisible: (nom, raison) => `${nom} could not be read: ${raison}.`,
+    sans_app: "No application selected: only global shortcuts resolve here. "
+            + "A menu shortcut answers only while its application is frontmost.",
+    seul_ici: (qui) => `Only ${qui} uses this combination here.`,
+    emporte: (qui) => `${qui} most likely wins.`,
+    egalite: (qui) => `${qui} hook the same layer, so whichever registered first wins — `
+                    + `and that order is recorded nowhere.`,
+    egalite_avec: (qui) => `tied with ${qui}`,
+    passe_devant: "beats",
+    src_systeme: "macOS system shortcut", src_outil: "global tool",
+    src_pilote: "keyboard driver", src_menu: "app menu",
+    pourquoi_propres: "Its own menu commands. Live only while it is frontmost.",
+    pourquoi_app: "macOS shortcuts acting on the app's interface.",
+    pourquoi_externe: "Act on the app's window or over it, without touching its interface.",
+    pourquoi_systeme: "Work while the app is open, but do not concern it.",
+    pourquoi_inconnu: "Scope undetermined.",
+    couche_pilote: "Driver", couche_capture: "Event tap", couche_systeme: "System",
+    couche_global: "Global", couche_autre: "Other", couche_menu: "Menu",
+    desactive: "disabled",
+    scan_titre: "Scan the whole Mac",
+    scan_intro: "Each checked application will be opened just long enough to read its menu "
+              + "bar, then closed. Run it when you are not using the machine.",
+    scan_filtrer: "Filter the list…", scan_tout: "Check all", scan_rien: "Uncheck all",
+    scan_defaut: "Restore exclusions", scan_lancer: "Start the scan",
+    scan_affichees: (n, total) => `${n} shown of ${total}`,
+    scan_a_scanner: (n) => `${n} application${n > 1 ? "s" : ""} to scan`,
+    scan_ecartee: (raison) => `excluded by default — ${raison}`,
+    scan_aucune: "No application for this search.",
+    scan_rien_coche: "No application checked: nothing to scan.",
+    scan_defaut_cmd: "# Default selection — the plain command is enough",
+    scan_perso_cmd: "# Custom selection — paste into the terminal",
+    relire_titre: "Re-read system shortcuts and tools",
+    relire_intro: "Re-reads shortcuts from macOS, Alfred, Keyboard Maestro and CleanShot X, "
+                + "then rebuilds this page. <strong>No application is opened</strong> — menu "
+                + "shortcuts already read are kept as they are. About ten seconds.",
+    relire_apres: "Run it in the terminal, then reload this page. Triggering it from the "
+                + "browser comes with the permissions question.",
+    pied: "An app's shortcuts live only in its menu bar, so they are read app by app. An app "
+        + "read with no document open exposes fewer commands than in real use. The layer "
+        + "order is reliable, but two tools hooking the same layer are decided by their "
+        + "registration order, which nothing on disk records. Combinations are written for "
+        + "the built-in keyboard. Menu paths, command names and categories come from macOS "
+        + "in its own language and are shown unchanged.",
+  },
+};
+let LANGUE = (localStorage.getItem("langue") === "en") ? "en" : "fr";
+const T = (cle) => TEXTES[LANGUE][cle];
+
 const MODS = MODS_BITS;
 /* Une double frappe n'engage qu'une touche, pressée deux fois. */
+const PORTEES = () => D.libelles_portee[LANGUE] || D.libelles_portee.fr || D.libelles_portee;
 const nbTouches = (mods, double) => {
   if (double) return 1;
   let n = 1;
@@ -518,13 +669,13 @@ function rendreCombinaisons() {
   if (!liste.length) {
     const quoi = [f.actifs ? "ces modificateurs" : "", f.touche || f.libre, f.texte ? `« ${esc(f.texte)} »` : ""]
       .filter(Boolean).join(" + ");
-    cible.innerHTML = `<p class="vide">Aucune combinaison ${quoi ? "pour " + quoi : "trouvée"}. `
-      + `Cette combinaison est donc libre.</p>`;
+    cible.innerHTML = `<p class="vide">${T("rien_filtre")}${quoi ? " " + T("rien_pour") + " " + quoi : ""}. `
+      + `${T("rien_libre")}</p>`;
     return;
   }
   cible.innerHTML = liste.slice(0, 400).map((c, i) => ligne(c, i, "cb")).join("")
     + (liste.length > 400
-        ? `<p class="vide">${liste.length - 400} autres — affine le filtre.</p>` : "");
+        ? `<p class="vide">${T("autres_affine")(liste.length - 400)}</p>` : "");
 }
 
 /* Un bouton coché se décoche ; côté touches, la sélection reste unique. */
@@ -569,11 +720,10 @@ function brancherFiltres() {
    global mentionnerait des apps qui ne sont pas là. */
 function verdictLocal(it) {
   const noms = [...new Set(it.vainqueurs.map(u => u.proprietaire))];
-  const explication = D.couches[it.couche] || "";
-  if (!it.perdants.length) return `Seul ${noms[0]} utilise cette combinaison ici.`;
-  if (noms.length === 1) return `${noms[0]} l'emporte. ${explication}`;
-  return `${noms.join(", ")} s'accrochent au même étage : c'est celui qui s'est `
-       + `enregistré en premier qui gagne, et cet ordre n'est écrit nulle part. ${explication}`;
+  const explication = (D.couches[LANGUE] || D.couches.fr || {})[it.couche] || "";
+  if (!it.perdants.length) return T("seul_ici")(noms[0]);
+  if (noms.length === 1) return `${T("emporte")(noms[0])} ${explication}`;
+  return `${T("egalite")(noms.join(", "))} ${explication}`;
 }
 
 function ouvrirDetail(cle) {
@@ -582,7 +732,7 @@ function ouvrirDetail(cle) {
   if (!it) return;
   const usages = [...it.vainqueurs, ...it.perdants];
   document.getElementById("detail-combo").innerHTML =
-    caps(it.combo) + (it.double ? `<span class="marque-double">double frappe</span>` : "");
+    caps(it.combo) + (it.double ? `<span class="marque-double">${T("double")}</span>` : "");
   document.getElementById("detail-contenu").innerHTML =
     pile(usages) + `<p class="verdict">${esc(verdictLocal(it))}</p>` + listeUsages(usages);
   document.getElementById("detail").showModal();
@@ -613,7 +763,7 @@ function brancherBasculeApp() {
     zone.classList.toggle("inactif", !filtreApp);
     champ.disabled = !filtreApp;
     const app = LISIBLES.find(a => a.bundleID === appChoisie);
-    champ.value = filtreApp ? (app ? app.nom : "") : "Toutes applications";
+    champ.value = filtreApp ? (app ? app.nom : "") : T("toutes_apps");
     rendreTout();
   };
   bouton.addEventListener("click", () => { filtreApp = !filtreApp; appliquer(); });
@@ -631,10 +781,10 @@ function brancherBasculeApp() {
    de touches, parce qu'on cherche d'abord les combinaisons courtes. */
 
 
-const SOURCE_LABEL = {
-  systeme: "raccourci système macOS", capture: "outil global", global: "outil global",
-  pilote: "pilote clavier", autre: "outil global", menu: "menu de l'app",
-};
+const SOURCE_LABEL = () => ({
+  systeme: T("src_systeme"), capture: T("src_outil"), global: T("src_outil"),
+  pilote: T("src_pilote"), autre: T("src_outil"), menu: T("src_menu"),
+});
 
 /* Ce que reçoit une frappe donnée pendant que cette app est au premier plan :
    ses propres menus, plus tout ce qui est global. Le reste ne la concerne pas. */
@@ -669,8 +819,14 @@ function vueCeQuiSePasse(app) {
   if (!tailles.length) return `<p class="vide">Rien d'atteignable dans cette app.</p>`;
 
   return tailles.map(n => {
-    const liste = parTaille.get(n).sort((a, b) => a.combo.localeCompare(b.combo, "fr"));
-    return `<section class="groupe-portee"><h3>${n} touche${n > 1 ? "s" : ""} · ${liste.length}</h3>`
+    // Trier sur la touche principale, pas sur la chaîne entière : classer sur « ⌘ »
+    // rassemblerait tout au même endroit alors qu'on cherche une lettre.
+    const touchePrincipale = (c) => c.replace("fn", "").replace(/[⌃⌥⇧⌘]/g, "");
+    const liste = parTaille.get(n).sort((a, b) =>
+      touchePrincipale(a.combo).localeCompare(touchePrincipale(b.combo), "fr")
+      || a.mods - b.mods);
+    return `<section class="groupe-portee"><h3>${T("touche_s")(n)} · ${liste.length}</h3>`
+      + `<div class="grille">`
       + liste.map(it => {
         const v = it.vainqueurs[0];
         const multi = it.vainqueurs.length > 1;
@@ -678,12 +834,12 @@ function vueCeQuiSePasse(app) {
           `${esc(u.proprietaire)} — ${esc(u.action)}`).join(" · ");
         return `<div class="resultat${it.conflit ? " rang-conflit ouvrable" : ""}"${
           it.conflit ? ` role="button" tabindex="0" data-cle="${esc(it.cle)}"` : ""}>
-          <span class="combo">${caps(it.combo)}${it.double ? `<span class="marque-double">double frappe</span>` : ""}</span>
+          <span class="combo">${caps(it.combo)}${it.double ? `<span class="marque-double">${T("double")}</span>` : ""}</span>
           <span>
             <span class="titre">${esc(v.action)}</span>
-            <span class="sous">${esc(v.proprietaire)} · ${SOURCE_LABEL[it.couche]}${
-              multi ? ` · à égalité avec ${esc(it.vainqueurs.slice(1).map(u => u.proprietaire).join(", "))}` : ""}</span>
-            ${perdus ? `<span class="perdu">passe devant ${perdus}</span>` : ""}
+            <span class="sous">${esc(v.proprietaire)} · ${SOURCE_LABEL()[it.couche]}${
+              multi ? ` · ${T("egalite_avec")(esc(it.vainqueurs.slice(1).map(u => u.proprietaire).join(", ")))}` : ""}</span>
+            ${perdus ? `<span class="perdu">${T("passe_devant")} ${perdus}</span>` : ""}
           </span></div>`;
       }).join("") + `</div></section>`;
   }).join("");
@@ -712,15 +868,19 @@ function vueParMenu(app) {
     }
   }
   // Les menus s'affichent dans l'ordre de la barre de menu, pas par ordre alphabétique.
+  // Le menu Apple n'appartient pas à l'app : il est identique partout. Il passe donc
+  // après ses menus propres, juste avant les raccourcis venus d'ailleurs.
+  const estApple = (x) => /(^|· )Apple$/.test(x[0]);
   const menus = [...parMenu.entries()].sort((a, b) => {
     const app = (x) => x[1][0].proprietaire;
     return (cible ? 0 : app(a).localeCompare(app(b), "fr"))
+        || (estApple(a) - estApple(b))
         || Math.min(...a[1].map(u => u.ordre)) - Math.min(...b[1].map(u => u.ordre));
   });
 
   const rangee = (u, sousTitre) => `<div class="resultat${u.conflit ? " rang-conflit ouvrable" : ""}"${
       u.conflit ? ` role="button" tabindex="0" data-cle="${esc(u.cle)}"` : ""}>
-      <span class="combo">${caps(u.combo)}${u.double ? `<span class="marque-double">double frappe</span>` : ""}</span>
+      <span class="combo">${caps(u.combo)}${u.double ? `<span class="marque-double">${T("double")}</span>` : ""}</span>
       <span><span class="titre">${esc(u.action.split(" > ").slice(1).join(" > ") || u.action)}</span>
       ${sousTitre ? `<span class="sous">${esc(sousTitre)}</span>` : ""}
       ${u.detail ? `<span class="sous">${esc(u.detail)}</span>` : ""}</span></div>`;
@@ -732,16 +892,13 @@ function vueParMenu(app) {
 
   return menus.map(([nom, us]) => bloc(nom, "",
       us.sort((a, b) => a.ordre - b.ordre).map(u => rangee(u, "")))).join("")
-    + bloc(D.libelles_portee.app,
-        "Raccourcis macOS qui agissent sur l'interface de l'app.",
+    + bloc(PORTEES().app, T("pourquoi_app"),
         parPortee.app.map(u => rangee(u, u.proprietaire)))
-    + bloc(D.libelles_portee.app_externe,
-        "Agissent sur la fenêtre de l'app ou par-dessus elle, sans toucher son interface.",
+    + bloc(PORTEES().app_externe, T("pourquoi_externe"),
         parPortee.app_externe.map(u => rangee(u, u.proprietaire)))
-    + bloc(D.libelles_portee.systeme,
-        "Fonctionnent pendant que l'app est ouverte, mais ne la concernent pas.",
+    + bloc(PORTEES().systeme, T("pourquoi_systeme"),
         parPortee.systeme.map(u => rangee(u, u.proprietaire)))
-    + bloc(D.libelles_portee.inconnu, "Portée non déterminée.",
+    + bloc(PORTEES().inconnu, T("pourquoi_inconnu"),
         parPortee.inconnu.map(u => rangee(u, u.proprietaire)));
 }
 
@@ -770,7 +927,7 @@ function rendreListeApps() {
         `<li role="option" data-id="${esc(a.bundleID)}" aria-selected="${i === surligne}">`
         + `<span>${esc(a.nom)}</span>`
         + `<span class="compte">${a.version ? "v" + esc(a.version) : ""}</span></li>`).join("")
-    : `<li class="aucun">Aucune application pour cette recherche.</li>`;
+    : `<li class="aucun">${T("scan_aucune")}</li>`;
   return trouvees;
 }
 
@@ -840,22 +997,20 @@ function rendreApp() {
   };
   if (!app) {
     // Filtre désactivé : on montre tout, en précisant ce que « tout » veut dire ici.
-    poser("vue-menu", vueParMenu(null), "Rien ne correspond au filtre.");
+    poser("vue-menu", vueParMenu(null), T("rien_app")(""));
     poser("vue-effet",
-      `<p class="pourquoi" style="margin:0 0 18px">Aucune application choisie : seuls `
-      + `les raccourcis globaux sont résolus ici. Un raccourci de menu ne répond que `
-      + `lorsque son application est au premier plan.</p>` + vueCeQuiSePasse({ bundleID: "" }),
-      "Rien ne correspond au filtre.");
+      `<p class="pourquoi" style="margin:0 0 18px">${T("sans_app")}</p>`
+      + vueCeQuiSePasse({ bundleID: "" }), T("rien_app")(""));
     return;
   }
   if (app.statut !== "ok") {
-    const raison = `${esc(app.nom)} n'a pas pu être lue : ${esc(app.detail || app.statut)}.`;
+    const raison = T("illisible")(esc(app.nom), esc(app.detail || app.statut));
     poser("vue-menu", "", raison);
     poser("vue-effet", "", raison);
     return;
   }
-  poser("vue-menu", vueParMenu(app), `Rien dans ${esc(app.nom)} ne correspond au filtre.`);
-  poser("vue-effet", vueCeQuiSePasse(app), `Rien dans ${esc(app.nom)} ne correspond au filtre.`);
+  poser("vue-menu", vueParMenu(app), T("rien_app")(esc(app.nom)));
+  poser("vue-effet", vueCeQuiSePasse(app), T("rien_app")(esc(app.nom)));
 }
 
 document.addEventListener("click", (e) => {
@@ -892,12 +1047,39 @@ function rendreScan() {
   document.getElementById("scan-grille").innerHTML = liste.length ? liste.map(a =>
     `<label><input type="checkbox" data-id="${esc(a.bundleID)}"
        ${aScanner.has(a.bundleID) ? "checked" : ""}>
-     <span>${esc(a.nom)}${a.raison ? `<span class="motif">écartée par défaut — ${esc(a.raison)}</span>` : ""}</span>
+     <span>${esc(a.nom)}${a.raison ? `<span class="motif">${T("scan_ecartee")(esc(a.raison))}</span>` : ""}</span>
      </label>`).join("") : `<p class="vide">Aucune application pour cette recherche.</p>`;
   document.getElementById("scan-total").textContent =
-    `${liste.length} affichées sur ${CATALOGUE.length}`;
-  document.getElementById("scan-etat").textContent =
-    `${aScanner.size} application${aScanner.size > 1 ? "s" : ""} à scanner`;
+    T("scan_affichees")(liste.length, CATALOGUE.length);
+  document.getElementById("scan-etat").textContent = T("scan_a_scanner")(aScanner.size);
+}
+
+/* Applique la langue à tout ce qui est écrit en dur dans la page, puis redessine
+   les vues, dont les libellés sont produits à la volée. */
+function appliquerLangue() {
+  document.documentElement.lang = LANGUE;
+  document.querySelectorAll("[data-t]").forEach(n => { n.textContent = T(n.dataset.t); });
+  document.querySelectorAll("[data-t-html]").forEach(n => { n.innerHTML = T(n.dataset.tHtml); });
+  document.querySelectorAll("[data-tp]").forEach(n => { n.placeholder = T(n.dataset.tp); });
+  document.querySelectorAll("[data-tn]").forEach(n => {
+    n.textContent = T("touche_s")(Number(n.dataset.tn));
+  });
+  document.querySelectorAll(".langues button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.langue === LANGUE)));
+  document.getElementById("detail-fermer").setAttribute("aria-label", T("fermer"));
+  document.getElementById("relire-fermer").setAttribute("aria-label", T("fermer"));
+  const champ = document.getElementById("filtre-app");
+  if (!filtreApp) champ.value = T("toutes_apps");
+  document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
+  rendreTout();
+}
+
+function brancherLangues() {
+  document.querySelectorAll(".langues button").forEach(b => b.addEventListener("click", () => {
+    LANGUE = b.dataset.langue;
+    localStorage.setItem("langue", LANGUE);
+    appliquerLangue();
+  }));
 }
 
 function brancherRelire() {
@@ -908,7 +1090,7 @@ function brancherRelire() {
 
 function brancherScan() {
   const boite = document.getElementById("scan");
-  document.getElementById("compte-scan").textContent = `${aScanner.size} apps`;
+  document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
   document.getElementById("ouvrir-scan").addEventListener("click", () => {
     rendreScan(); boite.showModal();
   });
@@ -923,7 +1105,7 @@ function brancherScan() {
   };
   const majCompte = () => {
     rendreScan();
-    document.getElementById("compte-scan").textContent = `${aScanner.size} apps`;
+    document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
   };
   document.getElementById("scan-tout").addEventListener("click", () => masse(true));
   document.getElementById("scan-rien").addEventListener("click", () => masse(false));
@@ -936,24 +1118,23 @@ function brancherScan() {
     const c = e.target.closest("input[data-id]");
     if (!c) return;
     c.checked ? aScanner.add(c.dataset.id) : aScanner.delete(c.dataset.id);
-    document.getElementById("scan-etat").textContent =
-      `${aScanner.size} application${aScanner.size > 1 ? "s" : ""} à scanner`;
-    document.getElementById("compte-scan").textContent = `${aScanner.size} apps`;
+    document.getElementById("scan-etat").textContent = T("scan_a_scanner")(aScanner.size);
+    document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
   });
   document.getElementById("scan-lancer").addEventListener("click", () => {
     const bloc = document.getElementById("scan-commande");
     if (!aScanner.size) {
       bloc.hidden = false;
-      bloc.textContent = "Aucune application cochée : rien à scanner.";
+      bloc.textContent = T("scan_rien_coche");
       return;
     }
     const complet = aScanner.size === CATALOGUE.filter(a => !a.exclu).length
       && CATALOGUE.filter(a => !a.exclu).every(a => aScanner.has(a.bundleID));
     bloc.hidden = false;
     bloc.textContent = complet
-      ? `# Sélection par défaut — la commande complète suffit
+      ? `${T("scan_defaut_cmd")}
 cd ~/dev/MacOS-shortcuts-inventory && ./run.sh --all`
-      : `# Sélection personnalisée — à coller dans le terminal
+      : `${T("scan_perso_cmd")}
 cd ~/dev/MacOS-shortcuts-inventory && \\
   bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester \\
     --bundle-ids ${[...aScanner].join(",")} --out out/apps && ./run.sh --all`;
@@ -961,7 +1142,8 @@ cd ~/dev/MacOS-shortcuts-inventory && \\
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherRelire();
+brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherRelire(); brancherLangues();
+appliquerLangue();
 
 rendreTout();
 """
@@ -1020,8 +1202,8 @@ def build(index_path):
     tailles = sorted({
         1 if c.get("double") else 1 + bin(c["mods"]).count("1")
         for c in data["combinaisons"]})
-    nombres_html = '<option value="">Toutes</option>' + "".join(
-        f'<option value="{n}">{n} touche{"s" if n > 1 else ""}</option>' for n in tailles)
+    nombres_html = '<option value="" data-t="toutes"></option>' + "".join(
+        f'<option value="{n}" data-tn="{n}"></option>' for n in tailles)
 
     script = (JS.replace("DONNEES", charge)
                 .replace("ORDRE_COUCHES_JS", json.dumps(ORDRE_COUCHES))
@@ -1043,34 +1225,38 @@ def build(index_path):
   <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · clavier {disposition or "inconnu"} · {date.today().isoformat()}</p></div>
   <div class="actions-scan">
     <button type="button" id="ouvrir-scan" class="bouton-scan">
-      Scanner tout le Mac
+      <span data-t="scanner"></span>
       <span id="compte-scan"></span>
     </button>
     <button type="button" id="ouvrir-relire" class="bouton-secondaire">
-      Relire les raccourcis<br>système et les outils
+      <span data-t-html="relire"></span>
     </button>
   </div>
   <div class="chiffres">
-    <div class="chiffre"><b>{len(data["combinaisons"])}</b><span>combinaisons</span></div>
-    <div class="chiffre {"alerte" if conflits else ""}"><b>{conflits}</b><span>en conflit</span></div>
-    <div class="chiffre"><b>{len(lisibles)}</b><span>applications lues</span></div>
+    <div class="chiffre"><b>{len(data["combinaisons"])}</b><span data-t="stat_combinaisons"></span></div>
+    <div class="chiffre {"alerte" if conflits else ""}"><b>{conflits}</b><span data-t="stat_conflits"></span></div>
+    <div class="chiffre"><b>{len(lisibles)}</b><span data-t="stat_apps"></span></div>
+    <div class="langues" role="group" aria-label="Langue / Language">
+      <button type="button" data-langue="fr" aria-pressed="true" title="Français">🇫🇷</button>
+      <button type="button" data-langue="en" aria-pressed="false" title="English">🇬🇧</button>
+    </div>
   </div>
 </header>
 <nav>
   <div class="onglets">
-    <button data-vue="menu" aria-selected="true">Commandes par menu</button>
-    <button data-vue="effet" aria-selected="false">Effet d'une frappe</button>
-    <button data-vue="conflits" aria-selected="false">Conflits</button>
-    <button data-vue="combinaisons" aria-selected="false">Par combinaison</button>
+    <button data-vue="menu" aria-selected="true" data-t="onglet_menu"></button>
+    <button data-vue="effet" aria-selected="false" data-t="onglet_effet"></button>
+    <button data-vue="conflits" aria-selected="false" data-t="onglet_conflits"></button>
+    <button data-vue="combinaisons" aria-selected="false" data-t="onglet_combinaisons"></button>
   </div>
   <div class="bloc-app">
   <button type="button" id="bascule-app" class="bascule" aria-pressed="true">
-    <span class="temoin"></span>Filtre par application
+    <span class="temoin"></span><span data-t="bascule_app"></span>
   </button>
   <div class="combo-app">
     <input type="text" id="filtre-app" role="combobox" aria-expanded="false"
            aria-controls="liste-app" aria-autocomplete="list" autocomplete="off"
-           placeholder="Cherche une application">
+           data-tp="cherche_app">
     <ul id="liste-app" role="listbox" hidden></ul>
   </div>
   </div>
@@ -1080,28 +1266,28 @@ def build(index_path):
 <div class="filtre">
   <div class="colonne-touches">
     <div class="rangee-filtre">
-      <span class="etiquette">Modificateurs</span>
+      <span class="etiquette" data-t="l_modificateurs"></span>
       <div id="mods" class="capsules">{mods_html}</div>
-      <input type="text" id="touche-libre" maxlength="6" placeholder="ou tape la touche">
+      <input type="text" id="touche-libre" maxlength="6" data-tp="ph_touche">
     </div>
     <div class="rangee-filtre">
-      <span class="etiquette">Touche</span>
+      <span class="etiquette" data-t="l_touche"></span>
       <div class="bloc-touches">
         <div class="entete-touches">
-          <button type="button" id="vider-touches" class="lien">Effacer les touches</button>
+          <button type="button" id="vider-touches" class="lien" data-t="effacer_touches"></button>
         </div>
         <div id="touches" class="rangees-touches">{touches_html}</div>
       </div>
     </div>
   </div>
   <div class="colonne-nombre">
-    <span class="etiquette">Filtre par nombre de touches</span>
+    <span class="etiquette" data-t="l_nombre"></span>
     <select id="filtre-nombre">{nombres_html}</select>
   </div>
   <div class="colonne-texte">
-    <span class="etiquette">Libellé de commande</span>
-    <input type="search" id="recherche" placeholder="copier, capture, plein écran…">
-    <button type="button" id="vider-filtre" class="lien">Tout effacer</button>
+    <span class="etiquette" data-t="l_texte"></span>
+    <input type="search" id="recherche" data-tp="ph_texte">
+    <button type="button" id="vider-filtre" class="lien" data-t="tout_effacer"></button>
   </div>
 </div>
 <main>
@@ -1115,17 +1301,12 @@ def build(index_path):
 </main>
 <dialog id="relire"><div class="detail-corps">
   <div class="detail-tete">
-    <h2 style="font-family:var(--display);font-size:20px;margin:0">Relire les raccourcis système et les outils</h2>
+    <h2 style="font-family:var(--display);font-size:20px;margin:0" data-t="relire_titre"></h2>
     <button type="button" id="relire-fermer" class="croix" aria-label="Fermer">✕</button>
   </div>
-  <p style="margin:0 0 14px;font-size:14px">Relit les raccourcis de macOS, d'Alfred, de
-     Keyboard Maestro et de CleanShot X, puis reconstruit cette page. <strong>Aucune
-     application n'est ouverte</strong> — les raccourcis de menu déjà lus sont conservés
-     tels quels. Environ dix secondes.</p>
+  <p style="margin:0 0 14px;font-size:14px" data-t-html="relire_intro"></p>
   <code class="commande" style="margin:0">cd ~/dev/MacOS-shortcuts-inventory && ./run.sh --sources</code>
-  <p style="margin:14px 0 0;font-size:13px;color:var(--sourdine)">À lancer dans le
-     terminal, puis recharge cette page. Le déclenchement depuis le navigateur viendra
-     avec la question des autorisations.</p>
+  <p style="margin:14px 0 0;font-size:13px;color:var(--sourdine)" data-t="relire_apres"></p>
 </div></dialog>
 
 <dialog id="detail"><div class="detail-corps">
@@ -1138,37 +1319,28 @@ def build(index_path):
 
 <dialog id="scan"><div class="scan-corps">
   <div class="scan-tete">
-    <h2>Scanner tout le Mac</h2>
-    <p>Chaque application cochée sera ouverte le temps de lire sa barre de menu, puis
-       refermée. À lancer quand tu n'utilises pas la machine.</p>
+    <h2 data-t="scan_titre"></h2>
+    <p data-t="scan_intro"></p>
   </div>
   <div class="scan-outils">
-    <input type="search" id="scan-recherche" placeholder="Filtrer la liste…">
-    <button type="button" class="bouton" id="scan-tout">Tout cocher</button>
-    <button type="button" class="bouton" id="scan-rien">Tout décocher</button>
-    <button type="button" class="bouton" id="scan-defaut">Rétablir les exclusions</button>
+    <input type="search" id="scan-recherche" data-tp="scan_filtrer">
+    <button type="button" class="bouton" id="scan-tout" data-t="scan_tout"></button>
+    <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
+    <button type="button" class="bouton" id="scan-defaut" data-t="scan_defaut"></button>
     <span id="scan-total" class="eyebrow" style="margin:0"></span>
   </div>
   <div class="scan-liste"><div class="scan-grille" id="scan-grille"></div></div>
   <div class="scan-pied">
     <span class="sous" id="scan-etat"></span>
     <span style="display:flex;gap:10px">
-      <button type="button" class="bouton" id="scan-fermer">Fermer</button>
-      <button type="button" class="bouton primaire" id="scan-lancer">Lancer le scan</button>
+      <button type="button" class="bouton" id="scan-fermer" data-t="fermer"></button>
+      <button type="button" class="bouton primaire" id="scan-lancer" data-t="scan_lancer"></button>
     </span>
   </div>
   <code class="commande" id="scan-commande" hidden></code>
 </div></dialog>
 
-<footer>
-  Les raccourcis d'une app ne vivent que dans sa barre de menu : ils sont lus app par app.
-  Une app lue sans document ouvert expose moins de commandes qu'en usage réel.
-  L'ordre des étages est fiable, mais deux outils accrochés au même étage sont
-  départagés par leur ordre d'enregistrement, que rien sur le disque ne consigne.
-  Les combinaisons sont écrites pour le clavier intégré : en AZERTY, un chiffre
-  demande Maj, d'où les ⇧ affichés. Un clavier externe à pavé numérique donne les
-  chiffres directement, sans Maj.
-</footer>
+<footer data-t="pied"></footer>
 </div><script>{script}</script></body></html>"""
 
 

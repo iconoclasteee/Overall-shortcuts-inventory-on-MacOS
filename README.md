@@ -39,6 +39,11 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
    et pourquoi.
 4. **Par combinaison** — cherche une touche ou une commande, vois partout où elle sert.
 
+L'interface est disponible en **français et en anglais** (drapeaux en haut à droite,
+choix mémorisé). Le contenu lu dans macOS — chemins de menus, noms de commandes,
+catégories — reste dans la langue du système et n'est pas traduit : le réécrire
+reviendrait à altérer une donnée.
+
 Un filtre unique (application, modificateurs, touche, nombre de touches, libellé)
 s'applique aux quatre vues. Le filtre par application se désactive : tout est alors
 montré, toutes apps confondues.

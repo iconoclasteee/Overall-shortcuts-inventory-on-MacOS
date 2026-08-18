@@ -25,7 +25,7 @@ ROOT = Path(__file__).parent.parent
 
 def load_portees():
     data = json.loads((ROOT / "data" / "portees.json").read_text(encoding="utf-8"))
-    return data["portees"], data["libelles"]
+    return data["portees"], {"fr": data["libelles"], "en": data.get("libelles_en", data["libelles"])}
 
 
 def system_bindings(keyboard, portees):
@@ -193,7 +193,8 @@ def build(apps_dir):
         "catalogue": catalogue,
         "combinaisons": combinaisons,
         "libelles_portee": libelles_portee,
-        "couches": {k: v[1] for k, v in COUCHES.items()},
+        "couches": {"fr": {k: v[1] for k, v in COUCHES.items()},
+                    "en": {k: v[2] for k, v in COUCHES.items()}},
     }
 
 
