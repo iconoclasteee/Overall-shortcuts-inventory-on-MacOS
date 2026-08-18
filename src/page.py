@@ -667,8 +667,10 @@ const nbTouches = (mods, double) => {
 const toucheSeule = (combo) => combo.replace("fn", "").replace(/[⌃⌥⇧⌘]/g, "");
 
 /* Le filtre par application vaut pour les quatre vues. Désactivé, plus rien n'est
-   restreint à une app, et le champ de sélection est neutralisé. */
-let filtreApp = true;
+   restreint à une app, et le champ de sélection est neutralisé.
+   Éteint au chargement : on arrive sur la vue d'ensemble, et on se restreint à une
+   app quand on a une question sur elle. */
+let filtreApp = false;
 
 function appFiltrante() {
   return filtreApp ? appChoisie : "";
@@ -1326,7 +1328,7 @@ def build(index_path):
     <button data-vue="combinaisons" aria-selected="false" data-t="onglet_combinaisons"></button>
   </div>
   <div class="bloc-app">
-  <button type="button" id="bascule-app" class="bascule" aria-pressed="true">
+  <button type="button" id="bascule-app" class="bascule" aria-pressed="false">
     <span class="temoin"></span><span data-t="bascule_app"></span>
   </button>
   <div class="combo-app">
