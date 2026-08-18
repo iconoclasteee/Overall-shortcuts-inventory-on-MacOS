@@ -1,4 +1,4 @@
-# MacOS-shortcuts-inventory
+# Overall-shortcuts-inventory-on-MacOS
 
 Inventaire complet des raccourcis clavier d'un Mac : le système, puis application par
 application, dans un seul document Markdown classé par catégorie.

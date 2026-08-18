@@ -1231,7 +1231,7 @@ def build(index_path):
 <style>{CSS}</style></head>
 <body><div class="enveloppe">
 <header>
-  <div><h1>MacOS-shortcuts-inventory</h1>
+  <div><h1>Overall-shortcuts-inventory-on-MacOS</h1>
   <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · clavier {disposition or "inconnu"} · {date.today().isoformat()}</p></div>
   <div class="actions-scan">
     <button type="button" id="ouvrir-scan" class="bouton-scan">
