@@ -376,6 +376,10 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
   text-transform: uppercase; color: var(--sourdine); margin: 0 0 2px;
   padding-bottom: 8px; border-bottom: 1px solid var(--creux);
 }
+/* Le compte n'est pas le titre : il s'en détache et n'en prend pas la graisse. */
+.compte-section {
+  margin-left: 22px; font-weight: 400; color: var(--sourdine); letter-spacing: .04em;
+}
 .groupe-portee .pourquoi { font-size: 13px; color: var(--sourdine); margin: 8px 0 0; }
 .grille {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
@@ -897,7 +901,8 @@ function vueCeQuiSePasse(app) {
     const liste = parTaille.get(n).sort((a, b) =>
       toucheSeule(a.combo).localeCompare(toucheSeule(b.combo), "fr")
       || a.mods - b.mods);
-    return `<section class="groupe-portee"><h3>${T("touche_s")(n)} · ${liste.length}</h3>`
+    return `<section class="groupe-portee"><h3>${T("touche_s")(n)}`
+      + `<span class="compte-section">${liste.length}</span></h3>`
       + `<div class="grille">`
       + liste.map(it => {
         const v = it.vainqueurs[0];
@@ -962,10 +967,13 @@ function vueParMenu(app) {
 
   // Le menu Apple porte son logo plutôt que son nom : c'est ainsi qu'il s'affiche
   // dans la barre de menu, où le mot « Apple » ne figure nulle part.
-  const nommer = (t) => t.replace(/(^|· )Apple$/, "$1\uF8FF");
+  const nommer = (t) => t.replace(/(^|· )Apple$/, "$1\uF8FF")
+                         // Chaque app a un menu à son nom : en mode toutes apps, le
+                         // préfixe le répétait à l'identique.
+                         .replace(/^(.+) · \1$/, "$1");
   const bloc = (titre, pourquoi, lignes, vert) => !lignes.length ? "" :
     `<section class="groupe-portee"><h3${vert ? ' class="titre-app"' : ""}>${
-       esc(nommer(titre))} · ${lignes.length}</h3>
+       esc(nommer(titre))}<span class="compte-section">${lignes.length}</span></h3>
      ${pourquoi ? `<p class="pourquoi">${esc(pourquoi)}</p>` : ""}
      <div class="grille">${lignes.join("")}</div></section>`;
 
