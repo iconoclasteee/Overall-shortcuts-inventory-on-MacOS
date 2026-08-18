@@ -246,14 +246,14 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 /* Deux natures de filtre : à gauche la combinaison de touches, à droite la recherche
    de libellé. Les séparer évite de les prendre pour un même réglage. */
 .filtre {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(190px, 250px);
+  display: grid; grid-template-columns: minmax(0, max-content) auto minmax(170px, 1fr);
   gap: 10px 28px; margin: 0 0 28px; padding: 16px 20px; align-items: stretch;
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
 }
 .colonne-touches { display: grid; gap: 8px; min-width: 0; }
 /* Étiquette puis contrôle, collés : un grand vide entre les deux les dissocie. */
 .colonne-nombre {
-  display: grid; gap: 6px; justify-items: start; align-content: start;
+  display: grid; gap: 6px; justify-items: start; align-content: start; min-width: 0;
   padding-left: 28px; border-left: 1px solid var(--creux);
 }
 .colonne-nombre select {
@@ -265,7 +265,10 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   min-width: 0; padding-left: 28px; border-left: 1px solid var(--creux);
 }
 /* Sans min-width nul sur la colonne, le champ déborde du panneau. */
-.colonne-texte input { width: 100%; min-width: 0; font-size: 14px; padding: 9px 12px; }
+.colonne-texte input {
+  width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  font-size: 14px; padding: 9px 12px;
+}
 .colonne-texte .lien { justify-self: start; }
 .colonne-texte .etiquette { width: auto; }
 .rangee-filtre { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
