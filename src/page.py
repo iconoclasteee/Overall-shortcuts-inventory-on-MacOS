@@ -7,6 +7,7 @@ qui la réclame l'avale. C'est le mécanisme réel, et c'est ce qui rend « qui 
 lisible d'un coup d'œil au lieu d'être une phrase à décrypter.
 """
 
+import html as html_std
 import json
 import platform
 import subprocess
@@ -514,7 +515,8 @@ def build(index_path):
     machine = subprocess.run(["hostname", "-s"], capture_output=True, text=True).stdout.strip()
 
     options = "\n".join(
-        f'<option value="{a["bundleID"]}">{a["nom"]}</option>'
+        f'<option value="{html_std.escape(a["bundleID"])}">'
+        f'{html_std.escape(a["nom"])}</option>'
         for a in sorted(lisibles, key=lambda a: a["nom"].lower()))
 
     # "</" doit être neutralisé : la séquence fermerait la balise script depuis
@@ -527,8 +529,11 @@ def build(index_path):
     # Les lettres et chiffres passent par le champ libre ; ne restent en boutons que
     # les touches qu'on ne peut pas taper sans risquer de déclencher le raccourci.
     speciales = [t for t in speciales if t.strip() and (len(t) > 1 or not t.isalnum())]
+    # Les touches de ponctuation doivent être échappées : sur AZERTY, le guillemet
+    # est une touche, et non échappé il refermerait l'attribut HTML.
     touches_html = "".join(
-        f'<button type="button" aria-pressed="false" data-touche="{t}">{t}</button>'
+        '<button type="button" aria-pressed="false" data-touche="{0}">{0}</button>'.format(
+            html_std.escape(t, quote=True))
         for t in speciales)
     mods_html = "".join(
         f'<button type="button" aria-pressed="false" data-bit="{bit}">{sym}</button>'

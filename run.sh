@@ -46,7 +46,7 @@ python3 src/index.py "$APPS_DIR" "$INDEX"
 
 echo "→ Restitution"
 python3 src/report.py "$APPS_DIR" "$REPORT"
-python3 src/html.py "$INDEX" "$PAGE"
+python3 src/page.py "$INDEX" "$PAGE"
 echo
 echo "🌐 file://$(pwd)/$PAGE"
 echo "📄 $(pwd)/$REPORT"
