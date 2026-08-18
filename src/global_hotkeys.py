@@ -137,10 +137,11 @@ def scan_keyboard_maestro(keyboard):
 
 # --- Balayage générique des préférences ------------------------------------------
 
-# Deux conventions couvrent la plupart des apps qui enregistrent un raccourci global :
+# Trois conventions couvrent la plupart des apps qui enregistrent un raccourci global :
 #   · un dictionnaire {keyCode, modifierFlags} — masque NSEvent (Rectangle Pro)
 #   · une chaîne JSON sous une clé préfixée, avec carbonKeyCode/carbonModifiers —
 #     c'est la bibliothèque KeyboardShortcuts, très répandue (ChatGPT, CleanShot X)
+#   · une archive NSKeyedArchiver, que produit ShortcutRecorder (PopClip)
 # Les lire génériquement plutôt qu'app par app fait apparaître les nouvelles sources
 # sans qu'il faille les prévoir.
 PREFIXES_JSON = ("KeyboardShortcuts_", "LAVA")
@@ -155,6 +156,39 @@ def _catalogue():
     if not chemin.exists():
         return {}
     return {a["bundleID"]: a["nom"] for a in json.loads(chemin.read_text(encoding="utf-8"))}
+
+
+def _depuis_archive(donnees):
+    """Convention 3 : raccourci sérialisé dans une archive NSKeyedArchiver.
+
+    C'est ce que produit ShortcutRecorder, la bibliothèque de saisie de raccourcis
+    la plus répandue (PopClip et d'autres). L'objet porte `keyCode` et
+    `modifierFlags` comme la convention 1, mais chaque valeur est remplacée par un
+    UID renvoyant vers la table `$objects` : sans déréférencement, on ne lit que des
+    numéros d'emplacement. Le masque reste celui de NSEvent.
+    """
+    try:
+        archive = plistlib.loads(donnees)
+    except Exception:
+        return None
+    if not isinstance(archive, dict) or archive.get("$archiver") != "NSKeyedArchiver":
+        return None
+    objets = archive.get("$objects") or []
+
+    def resoudre(reference):
+        if isinstance(reference, plistlib.UID):
+            indice = reference.data
+            return objets[indice] if 0 <= indice < len(objets) else None
+        return reference
+
+    for objet in objets:
+        if not isinstance(objet, dict) or "keyCode" not in objet:
+            continue
+        code = resoudre(objet["keyCode"])
+        masque = resoudre(objet.get("modifierFlags"))
+        if isinstance(code, int) and isinstance(masque, int):
+            return code, masque
+    return None
 
 
 def scan_preferences(keyboard, ignorer=()):
@@ -198,6 +232,15 @@ def scan_preferences(keyboard, ignorer=()):
                 if valeur.get("keyCode") is not None and masque is not None:
                     ajouter(bundle_id, cle, valeur["keyCode"], from_nsevent(masque))
                 continue
+            # Convention 3 : archive NSKeyedArchiver. Testée avant la convention 2,
+            # qui accepte elle aussi des octets : on ne retient la clé ici que si
+            # l'archive livre vraiment un raccourci, sinon elle poursuit sa route.
+            if isinstance(valeur, bytes):
+                archive = _depuis_archive(valeur)
+                if archive:
+                    code, masque = archive
+                    ajouter(bundle_id, cle, code, from_nsevent(masque))
+                    continue
             # Convention 2 : JSON sous clé préfixée, masques Carbon.
             if not any(cle.startswith(prefixe) for prefixe in PREFIXES_JSON):
                 continue
