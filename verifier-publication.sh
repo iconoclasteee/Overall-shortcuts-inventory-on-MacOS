@@ -15,17 +15,22 @@ motifs=(
   '(ssh-rsa|BEGIN [A-Z ]*PRIVATE KEY)'         # clé privée
 )
 
+# Ce fichier contient les motifs eux-mêmes : les chercher en lui reviendrait à
+# se signaler soi-même à chaque exécution.
+MOI=$(basename "$0")
+
 alerte=0
 echo "→ Fichiers versionnés"
 for motif in "${motifs[@]}"; do
-  if resultat=$(git ls-files -z | xargs -0 grep -nIE "$motif" 2>/dev/null); then
+  if resultat=$(git ls-files -z | grep -zv "^$MOI$" | xargs -0 grep -nIE "$motif" 2>/dev/null); then
     echo "  ⚠️  $motif"; echo "$resultat" | sed 's/^/      /'; alerte=1
   fi
 done
 
 echo "→ Historique git (messages et contenus)"
 for motif in "${motifs[@]}"; do
-  if resultat=$(git log -p --format="%H %s" 2>/dev/null | grep -nIE "$motif" | head -5); then
+  if resultat=$(git log -p --format="%H %s" -- . ":(exclude)$MOI" 2>/dev/null \
+                | grep -nIE "$motif" | head -5); then
     echo "  ⚠️  $motif"; echo "$resultat" | sed 's/^/      /'; alerte=1
   fi
 done

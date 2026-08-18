@@ -2,3 +2,4 @@
 bin/
 out/
 __pycache__/
+data/keymap.json
