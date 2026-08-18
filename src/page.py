@@ -773,7 +773,7 @@ function choisirApp(id) {
   surligne = -1;
   document.getElementById("filtre-app").blur();
   ouvrirListe(false);
-  rendreApp();
+  rendreTout();
 }
 
 function brancherChoixApp() {
@@ -940,7 +940,7 @@ cd ~/dev/MacOS-shortcuts-inventory && \\
 document.getElementById("recherche").addEventListener("input", rendreTout);
 brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan();
 
-rendreConflits(); rendreCombinaisons(); rendreApp();
+rendreTout();
 """
 
 
@@ -1060,7 +1060,7 @@ def build(index_path):
     </div>
   </div>
   <div class="colonne-nombre">
-    <span class="etiquette">Touches à presser</span>
+    <span class="etiquette">Filtre par nombre de touches</span>
     <select id="filtre-nombre">{nombres_html}</select>
   </div>
   <div class="colonne-texte">
