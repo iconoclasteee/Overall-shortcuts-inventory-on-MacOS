@@ -390,6 +390,12 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
 /* Vert : la commande appartient à l'application elle-même. Le reste — raccourcis
    système et outils globaux — garde la couleur du texte courant. */
 .resultat.propre-app .titre { color: var(--petrol); }
+/* Le titre de section suit ses lignes : vert pour les menus de l'application,
+   neutre pour les raccourcis venus d'ailleurs. */
+.groupe-portee h3.titre-app { color: var(--petrol); }
+/* Le titre de section suit ses lignes : vert pour les menus de l'app, neutre pour
+   le menu Apple et pour les raccourcis venus d'ailleurs. */
+.groupe-portee h3.titre-app { color: var(--petrol); }
 /* Une combinaison disputée se repère à la couleur : la ligne dit ce que la commande
    fait, pas qu'un autre preneur pourrait la lui prendre. */
 .resultat.rang-conflit .titre { color: var(--vermillon); }
@@ -899,7 +905,8 @@ function vueCeQuiSePasse(app) {
         const perdus = it.perdants.map(u =>
           `${esc(u.proprietaire)} — ${esc(u.action)}`).join(" · ");
         return `<div class="resultat${
-          it.couche === "menu" ? " propre-app" : ""}${it.conflit ? " rang-conflit ouvrable" : ""}"${
+          it.couche === "menu" ? " propre-app" : ""}${
+          it.conflit ? " rang-conflit ouvrable" : ""}"${
           it.conflit ? ` role="button" tabindex="0" data-cle="${esc(it.cle)}"` : ""}>
           <span class="combo">${caps(it.combo)}${it.double ? `<span class="marque-double">${T("double")}</span>` : ""}</span>
           <span>
@@ -953,13 +960,18 @@ function vueParMenu(app) {
       ${sousTitre ? `<span class="sous">${esc(sousTitre)}</span>` : ""}
       ${u.detail ? `<span class="sous">${esc(u.detail)}</span>` : ""}</span></div>`;
 
-  const bloc = (titre, pourquoi, lignes) => !lignes.length ? "" :
-    `<section class="groupe-portee"><h3>${esc(titre)} · ${lignes.length}</h3>
+  // Le menu Apple porte son logo plutôt que son nom : c'est ainsi qu'il s'affiche
+  // dans la barre de menu, où le mot « Apple » ne figure nulle part.
+  const nommer = (t) => t.replace(/(^|· )Apple$/, "$1\uF8FF");
+  const bloc = (titre, pourquoi, lignes, vert) => !lignes.length ? "" :
+    `<section class="groupe-portee"><h3${vert ? ' class="titre-app"' : ""}>${
+       esc(nommer(titre))} · ${lignes.length}</h3>
      ${pourquoi ? `<p class="pourquoi">${esc(pourquoi)}</p>` : ""}
      <div class="grille">${lignes.join("")}</div></section>`;
 
   return menus.map(([nom, us]) => bloc(nom, "",
-      us.sort((a, b) => a.ordre - b.ordre).map(u => rangee(u, "")))).join("")
+      us.sort((a, b) => a.ordre - b.ordre).map(u => rangee(u, "")),
+      true)).join("")
     + bloc(PORTEES().app, T("pourquoi_app"),
         parPortee.app.map(u => rangee(u, u.proprietaire)))
     + bloc(PORTEES().app_externe, T("pourquoi_externe"),
