@@ -21,6 +21,8 @@ struct Options {
     var checkOnly = false
     var scanAll = false
     var force = false              // refaire les apps déjà moissonnées
+    var includeGames = false       // les jeux sont écartés par défaut
+    var dryRun = false             // lister les cibles sans rien lancer
     var keepRunning = false        // ne pas quitter les apps qu'on a lancées
 }
 
@@ -33,6 +35,8 @@ func parseArgs() -> Options {
         case "--all": o.scanAll = true
         case "--force": o.force = true
         case "--keep-running": o.keepRunning = true
+        case "--include-games": o.includeGames = true
+        case "--dry-run": o.dryRun = true
         case "--bundle-ids": o.bundleIDs = (it.next() ?? "").split(separator: ",").map(String.init)
         case "--out": o.outDir = it.next() ?? o.outDir
         case "--timeout": o.timeout = Double(it.next() ?? "") ?? o.timeout
@@ -282,25 +286,66 @@ if options.checkOnly {
 
 var targets = options.bundleIDs
 if options.scanAll {
-    // Chemins explicites, sans récursion : "~/Applications (Parallels)" n'y figure pas
-    // et ne peut donc pas être atteint par balayage.
-    let directories = ["/Applications", "/Applications/Utilities", "/System/Applications",
-                       NSHomeDirectory() + "/Applications"]
+    // Chemins explicites, sans récursion. Deux dossiers du dossier de départ sont
+    // volontairement absents :
+    //   ~/Applications              bibliothèque Steam (23 jeux sur 25 apps)
+    //   ~/Applications (Parallels)  passerelles vers un Windows en machine virtuelle
+    // Les ouvrir coûterait plusieurs gigaoctets de chargement pour une barre de menu
+    // vide, voire démarrerait une VM.
+    var directories = ["/Applications", "/Applications/Utilities",
+                       "/System/Applications", "/System/Applications/Utilities"]
+    if options.includeGames {
+        directories.append(NSHomeDirectory() + "/Applications")
+    }
+
+    // Lanceurs de jeux : pas de catégorie déclarée, mais même coût de lancement.
+    let gameLaunchers: Set<String> = ["com.valvesoftware.steam"]
+
+    // Apps qu'on ne lance jamais automatiquement : les ouvrir déclenche une action
+    // lourde ou destructrice, sans rapport avec la lecture d'une barre de menu.
+    let neverLaunch: [String: String] = [
+        "com.apple.MigrateAssistant": "ferme toutes les apps et déconnecte la session",
+        "com.apple.bootcampassistant": "assistant de partitionnement de disque",
+        "com.westerndigital.WDDriveUtilityInstaller": "désinstalleur",
+        "com.westerndigital.WDSecurityInstaller": "désinstalleur",
+    ]
+    var skipped: [(String, String)] = []
+
     var seen = Set<String>()
     for directory in directories {
         let contents = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
         for entry in contents where entry.hasSuffix(".app") {
             let path = directory + "/" + entry
-            if let id = Bundle(path: path)?.bundleIdentifier, seen.insert(id).inserted {
-                targets.append(id)
+            guard let bundle = Bundle(path: path), let id = bundle.bundleIdentifier else { continue }
+            if let reason = neverLaunch[id] {
+                skipped.append((entry, reason))
+                continue
             }
+            if !options.includeGames {
+                let category = infoValue(bundle, "LSApplicationCategoryType") ?? ""
+                if category.contains("games") || gameLaunchers.contains(id) { continue }
+            }
+            if seen.insert(id).inserted { targets.append(id) }
         }
+    }
+    print("\(targets.count) apps à parcourir"
+        + (options.includeGames ? " (jeux inclus)" : " (jeux exclus — --include-games pour les garder)"))
+    for (name, reason) in skipped.sorted(by: { $0.0 < $1.0 }) {
+        print("  écartée : \(name) — \(reason)")
     }
 }
 
 guard !targets.isEmpty else {
     FileHandle.standardError.write("Rien à faire : passe --bundle-ids ou --all.\n".data(using: .utf8)!)
     exit(2)
+}
+
+// Sortie avant toute écriture et tout lancement : --dry-run doit rester inoffensif.
+if options.dryRun {
+    for (index, bundleID) in targets.enumerated() {
+        print("[\(index + 1)/\(targets.count)] \(bundleID)")
+    }
+    exit(0)
 }
 
 try? FileManager.default.createDirectory(atPath: options.outDir,

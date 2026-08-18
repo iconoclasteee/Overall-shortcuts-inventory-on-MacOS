@@ -41,6 +41,9 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
 ./build.sh          # compile le moissonneur (une fois)
 ./run.sh --test     # 6 apps représentatives, pour valider la mécanique
 ./run.sh --all      # les apps installées
+
+# Lister les cibles sans rien lancer :
+bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester --all --dry-run
 ```
 
 La passe est **reprenable** : chaque app est écrite dans son propre JSON, une relance
@@ -57,6 +60,16 @@ Confidentialité et sécurité → Accessibilité.
 
 ⚠️ **Recompiler change l'identité de code du bundle.** Après un `./build.sh`, une
 autorisation accordée explicitement doit être retirée puis remise.
+
+## Ce qui n'est jamais lancé
+
+| Écarté | Pourquoi |
+|---|---|
+| Jeux et lanceurs de jeux | Plusieurs gigaoctets de chargement pour une barre de menu vide. Détectés par la catégorie déclarée `*games*`, plus Steam qui n'en déclare aucune. `--include-games` les réintègre. |
+| `~/Applications` | Bibliothèque Steam : 23 jeux sur 25 apps. Réintégré par `--include-games`. |
+| `~/Applications (Parallels)` | Passerelles vers un Windows en machine virtuelle — les ouvrir démarrerait la VM. Jamais réintégré. |
+| Assistant de migration, Assistant Boot Camp | Les ouvrir ferme la session ou lance un partitionnement de disque. |
+| Désinstalleurs | Rien à inventorier, action destructrice. |
 
 ## Limites connues
 
