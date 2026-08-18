@@ -30,6 +30,13 @@ def lire_domaine():
     return plistlib.loads(export.stdout)
 
 
+def defauts():
+    """Valeurs d'usine brutes, pour pouvoir écrire une entrée qui n'existe pas encore."""
+    sys.path.insert(0, str(Path(__file__).parent))
+    from system_shortcuts import raw_reference
+    return raw_reference()
+
+
 def inventaire():
     """{id: (libellé, combinaison)} d'après ce que le projet a déjà extrait."""
     chemin = ROOT / "out" / "system-shortcuts.json"
@@ -68,7 +75,20 @@ def basculer(identifiant, activer, confirme):
     table = plist.get("AppleSymbolicHotKeys", {})
     cle = str(identifiant)
     if cle not in table:
-        raise SystemExit(f"L'identifiant {identifiant} n'existe pas dans {DOMAINE}.")
+        # Absent des préférences = encore au réglage d'usine. macOS n'écrit l'entrée
+        # qu'au premier changement : on la crée avec la combinaison publiée par Apple.
+        brut = defauts().get(identifiant)
+        if brut is None:
+            raise SystemExit(
+                f"L'identifiant {identifiant} n'est ni dans {DOMAINE} ni dans les "
+                "tables de référence d'Apple : impossible de connaître sa combinaison "
+                "d'usine sans l'inventer.")
+        char, code, modificateur = brut
+        table[cle] = {"enabled": True,
+                      "value": {"parameters": [char, code, modificateur],
+                                "type": "standard"}}
+        print(f"(entrée absente des préférences — créée depuis les valeurs d'usine "
+              f"d'Apple : {brut})")
 
     noms = inventaire()
     libelle, combo = noms.get(identifiant, (f"Raccourci système #{identifiant}", None))

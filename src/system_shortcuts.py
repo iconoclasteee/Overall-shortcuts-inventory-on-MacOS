@@ -137,6 +137,34 @@ def _double_tap(mask, labels):
     return None
 
 
+def raw_reference(lang="fr"):
+    """{id: (charKey, key, modifier)} — les valeurs brutes des tables d'Apple.
+
+    Nécessaire pour réécrire une entrée dans `com.apple.symbolichotkeys` au format
+    qu'attend macOS, sans inventer la combinaison d'usine.
+    """
+    out = {}
+
+    def walk(node):
+        for element in node.get("elements", []):
+            for id_key in ("sybmolichotkey", "prefs_sybmolichotkey", "slow_sybmolichotkey"):
+                hotkey_id = element.get(id_key)
+                if hotkey_id is not None and hotkey_id not in out and "key" in element:
+                    out[hotkey_id] = (element.get("charKey", NO_CHAR),
+                                      element.get("key", NO_CHAR),
+                                      element.get("modifier", 0))
+            walk(element)
+
+    table = APPEX / f"{lang}.lproj" / "DefaultShortcutsTable.xml"
+    if table.exists():
+        for category in plistlib.loads(table.read_bytes()):
+            walk(category)
+    spaces = APPEX / "DefaultSpacesShortcuts.xml"
+    if spaces.exists():
+        walk({"elements": plistlib.loads(spaces.read_bytes())})
+    return out
+
+
 def load_user_state():
     """Lit com.apple.symbolichotkeys via `defaults` (format plist XML)."""
     raw = subprocess.run(
