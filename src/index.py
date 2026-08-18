@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import global_hotkeys
 import overrides as user_overrides
 from model import Binding, Keyboard, from_ax, rang, render_modifiers, COUCHES
+from tables import glyph_labels, glyph_to_keycode
 
 ROOT = Path(__file__).parent.parent
 
@@ -47,6 +48,8 @@ def system_bindings(keyboard, portees):
 def app_bindings(keyboard, apps_dir):
     """Raccourcis de menu, une app à la fois, redéfinitions utilisateur appliquées."""
     found, apps = [], []
+    glyphes = glyph_labels()
+    glyphe_vers_code = glyph_to_keycode()
     for path in sorted(Path(apps_dir).glob("*.json")):
         try:
             app = json.loads(path.read_text(encoding="utf-8"))
@@ -59,15 +62,26 @@ def app_bindings(keyboard, apps_dir):
             continue
         redefinis = user_overrides.load(app["bundleID"])
         seen = set()
-        for item in app["raccourcis"]:
+        for ordre, item in enumerate(app["raccourcis"]):
             mods = from_ax(item["modificateurs"])
             char = item.get("caractere") or ""
             code = keyboard.code_for(char) if char.strip() and char.isprintable() else None
             glyphe = item.get("glyphe")
+            if code is None and glyphe is not None:
+                # Ramener le glyphe à sa touche physique : c'est ce qui permet de
+                # comparer un ⌃⇥ de menu avec un ⌃⇥ d'outil tiers.
+                code = glyphe_vers_code.get(glyphe)
             if code is None and glyphe is None:
                 continue
             label = keyboard.label(code, mods) if code is not None else None
-            combo = render_modifiers(mods) + (label or char.upper() or f"glyphe-{glyphe}")
+            if label is None and glyphe is not None:
+                label = glyphes.get(glyphe)
+            if label is None and char.strip() and char.isprintable():
+                # macOS a des glyphes récents que la table Carbon ne connaît pas
+                # (🌐 pour la touche Globe, 🎤 pour la dictée). L'app fournit alors
+                # le symbole : mieux vaut le montrer qu'afficher un numéro.
+                label = char
+            combo = render_modifiers(mods) + (label or f"glyphe-{glyphe}")
 
             leaf = user_overrides.normalise_title(item["chemin"].split(" > ")[-1])
             detail = ""
@@ -82,7 +96,8 @@ def app_bindings(keyboard, apps_dir):
             found.append(Binding(
                 mods=mods, combo=combo, action=item["chemin"], source="menu",
                 couche="menu", portee="app", proprietaire=app["nom"],
-                bundle_id=app["bundleID"], code=code, glyphe=glyphe, detail=detail))
+                bundle_id=app["bundleID"], code=code, glyphe=glyphe, detail=detail,
+                menu=item.get("menu") or item["chemin"].split(" > ")[0], ordre=ordre))
     return found, apps
 
 
@@ -156,6 +171,7 @@ def build(apps_dir):
                 "action": b.action, "proprietaire": b.proprietaire, "source": b.source,
                 "couche": b.couche, "portee": b.portee, "bundle_id": b.bundle_id,
                 "actif": b.actif, "detail": b.detail, "combo": b.combo,
+                "menu": b.menu, "ordre": b.ordre,
             } for b in sorted(membres, key=lambda b: (rang(b.couche), b.proprietaire))],
         })
     combinaisons.sort(key=lambda c: (not c["conflit"], c["combo"]))

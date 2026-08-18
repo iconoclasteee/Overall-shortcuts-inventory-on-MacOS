@@ -125,6 +125,38 @@ def glyph_labels():
     return labels
 
 
+# --- Correspondance glyphe de menu → code de touche ---
+
+# Les menus décrivent les touches sans caractère par un glyphe, les outils tiers par un
+# code de touche. Sans passerelle, ⌃⇥ vu dans un menu et ⌃⇥ vu chez Keyboard Maestro
+# restent deux choses différentes — et le conflit passe inaperçu.
+#
+# La passerelle se fait par **nom de constante**, pas par valeur : les deux
+# énumérations viennent du même fichier système. Seuls les noms qui divergent sont
+# listés ici, et ils le sont sous forme de noms, pas de nombres.
+_GLYPH_ALIAS = {
+    "TabRight": "Tab", "TabLeft": "Tab",
+    "Return": "Return", "NonmarkingReturn": "Return", "ReturnR2L": "Return",
+    "Enter": "ANSI_KeypadEnter", "Clear": "ANSI_KeypadClear",
+    "DeleteLeft": "Delete", "DeleteRight": "ForwardDelete",
+    "NorthwestArrow": "Home", "SoutheastArrow": "End",
+    "LeftArrowDashed": "LeftArrow", "RightArrowDashed": "RightArrow",
+    "UpArrowDashed": "UpArrow", "DownwardArrowDashed": "DownArrow",
+}
+
+
+def glyph_to_keycode():
+    """{numéro de glyphe: code de touche} pour les touches sans caractère."""
+    keycodes = {name[len("kVK_"):]: code for name, code in _load_enums("kVK_").items()}
+    mapping = {}
+    for name, glyph in _load_enums("kMenu", "Glyph").items():
+        body = name[len("kMenu"):-len("Glyph")]
+        cible = _GLYPH_ALIAS.get(body, body)
+        if cible in keycodes:
+            mapping[glyph] = keycodes[cible]
+    return mapping
+
+
 # --- Masques de modificateurs --------------------------------------------------
 
 # Constantes NSEvent.ModifierFlags, utilisées par les plists système d'Apple.

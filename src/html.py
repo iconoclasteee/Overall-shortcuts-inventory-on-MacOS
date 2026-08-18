@@ -44,7 +44,7 @@ body {
   font-family: var(--corps); font-size: 15px; line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
-.enveloppe { max-width: 1100px; margin: 0 auto; padding: 0 24px 96px; }
+.enveloppe { padding: 0 clamp(24px, 3vw, 56px) 96px; }
 
 /* — En-tête : la thèse, pas un bandeau décoratif — */
 header { padding: 56px 0 28px; border-bottom: 2px solid var(--encre); }
@@ -53,13 +53,15 @@ header { padding: 56px 0 28px; border-bottom: 2px solid var(--encre); }
   text-transform: uppercase; color: var(--sourdine); margin: 0 0 14px;
 }
 h1 {
-  font-family: var(--display); font-size: clamp(38px, 7vw, 68px); font-weight: 700;
-  letter-spacing: -.03em; line-height: .95; margin: 0 0 18px;
+  font-family: var(--display); font-size: clamp(44px, 5.4vw, 86px); font-weight: 700;
+  letter-spacing: -.035em; line-height: .93; margin: 0 0 18px;
 }
+header { display: grid; grid-template-columns: 1fr auto; gap: 48px; align-items: end; }
+header .chiffres { justify-content: flex-end; }
 h1 em { font-style: normal; color: var(--petrol); }
-.chiffres { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 22px; }
+.chiffres { display: flex; flex-wrap: wrap; gap: 40px; margin-top: 22px; }
 .chiffre b {
-  font-family: var(--display); font-size: 30px; font-weight: 700;
+  font-family: var(--display); font-size: 38px; font-weight: 700;
   display: block; line-height: 1;
 }
 .chiffre span {
@@ -109,7 +111,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 
 /* — Listes — */
 .ligne {
-  display: grid; grid-template-columns: 190px 1fr; gap: 24px; align-items: start;
+  display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 28px; align-items: start;
   padding: 18px 0; border-bottom: 1px solid var(--creux); width: 100%;
   background: none; border-left: 0; border-right: 0; border-top: 0;
   text-align: left; font: inherit; color: inherit; cursor: pointer;
@@ -119,10 +121,15 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .conflit .titre { color: var(--vermillon); }
 .titre { font-family: var(--display); font-weight: 600; font-size: 16px; margin: 0 0 4px; }
 .sous { color: var(--sourdine); font-size: 13.5px; margin: 0; }
-.detail { padding: 4px 0 26px; border-bottom: 1px solid var(--creux); }
+.detail {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 28px;
+  padding: 4px 0 26px; border-bottom: 1px solid var(--creux);
+}
+.detail .pile { padding-top: 4px; }
+.detail > .verdict, .detail > .usages { grid-column: 2; }
 .usages { list-style: none; margin: 14px 0 0; padding: 0; }
 .usages li {
-  display: grid; grid-template-columns: 84px 150px 1fr; gap: 14px;
+  display: grid; grid-template-columns: 90px 190px minmax(0, 1fr); gap: 18px;
   padding: 7px 0; font-size: 13.5px; border-top: 1px dotted var(--creux);
 }
 .usages .couche {
@@ -139,11 +146,39 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 
 /* — Contrôles — */
 .controles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.filtre {
+  display: grid; gap: 12px; margin-bottom: 28px; padding: 18px 20px;
+  background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
+}
+.rangee-filtre { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.etiquette {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--sourdine); width: 108px; flex: none;
+}
+.capsules { display: flex; flex-wrap: wrap; gap: 5px; }
+.capsules button {
+  font-family: var(--mono); font-size: 13px; line-height: 1; min-width: 34px;
+  padding: 8px 8px; cursor: pointer; color: var(--encre);
+  background: linear-gradient(var(--touche-haut), var(--touche-bas));
+  border: 1px solid var(--creux); border-radius: 5px;
+  box-shadow: 0 1.5px 0 var(--ombre);
+}
+.capsules button[aria-pressed="true"] {
+  background: var(--petrol); border-color: var(--petrol); color: var(--plaque);
+  box-shadow: none;
+}
+.capsules button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
+#touche-libre { width: 108px; }
+.lien {
+  font: inherit; font-size: 13px; background: none; border: 0; padding: 0;
+  color: var(--sourdine); text-decoration: underline; cursor: pointer;
+}
+.lien:hover { color: var(--encre); }
 input[type="search"], select {
   font: inherit; font-size: 14px; padding: 10px 13px; color: var(--encre);
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 7px;
 }
-input[type="search"] { flex: 1; min-width: 220px; }
+input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
 .groupe-portee { margin: 34px 0 0; }
 .groupe-portee h3 {
   font-family: var(--display); font-size: 13px; letter-spacing: .06em;
@@ -151,16 +186,33 @@ input[type="search"] { flex: 1; min-width: 220px; }
   padding-bottom: 8px; border-bottom: 1px solid var(--creux);
 }
 .groupe-portee .pourquoi { font-size: 13px; color: var(--sourdine); margin: 8px 0 0; }
+.grille {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+  column-gap: 52px;
+}
+.resultat {
+  display: grid; grid-template-columns: 185px 1fr; gap: 20px; align-items: start;
+  padding: 11px 0; border-bottom: 1px solid var(--creux);
+}
+.resultat .titre { font-size: 15px; }
+.perdu {
+  display: block; font-family: var(--mono); font-size: 11.5px; color: var(--sourdine);
+  margin-top: 3px; padding-left: 11px; border-left: 2px solid var(--creux);
+}
+.segmente { display: flex; border: 1px solid var(--creux); border-radius: 7px; overflow: hidden; }
+.segmente button {
+  font: inherit; font-size: 13.5px; padding: 9px 15px; border: 0; cursor: pointer;
+  background: var(--plaque); color: var(--sourdine);
+}
+.segmente button + button { border-left: 1px solid var(--creux); }
+.segmente button[aria-selected="true"] { background: var(--petrol); color: var(--plaque); }
+.segmente button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 .vide { color: var(--sourdine); font-size: 14px; padding: 40px 0; }
 footer {
   margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--creux);
   font-size: 12.5px; color: var(--sourdine);
 }
 [hidden] { display: none !important; }
-@media (max-width: 720px) {
-  .ligne { grid-template-columns: 1fr; gap: 10px; }
-  .usages li { grid-template-columns: 1fr; gap: 2px; }
-}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 """
 
@@ -226,50 +278,203 @@ function rendreConflits() {
     : `<p class="vide">Aucun conflit. Chaque combinaison n'a qu'un seul preneur.</p>`;
 }
 
-function rendreCombinaisons() {
-  const q = document.getElementById("recherche").value.trim().toLowerCase();
-  const liste = D.combinaisons.filter(c =>
-    !q || c.combo.toLowerCase().includes(q)
-       || c.usages.some(u => (u.action + " " + u.proprietaire).toLowerCase().includes(q)));
-  document.getElementById("vue-combinaisons").innerHTML = liste.length
-    ? liste.slice(0, 400).map((c, i) => ligne(c, i, "cb")).join("")
-      + (liste.length > 400 ? `<p class="vide">${liste.length - 400} autres — affine la recherche.</p>` : "")
-    : `<p class="vide">Rien pour « ${esc(q)} ».</p>`;
+/* Les modificateurs se cochent au lieu de se taper : presser ⌘⇧ dans un champ de
+   recherche déclencherait le raccourci qu'on cherche justement à identifier. */
+const MODS = MODS_BITS;
+const toucheSeule = (combo) => combo.replace("fn", "").replace(/[⌃⌥⇧⌘]/g, "");
+
+function etatFiltre() {
+  const bits = [...document.querySelectorAll("#mods button[aria-pressed=true]")]
+    .reduce((acc, b) => acc | Number(b.dataset.bit), 0);
+  const actifs = document.querySelectorAll("#mods button[aria-pressed=true]").length;
+  const touche = document.querySelector("#touches button[aria-pressed=true]");
+  return {
+    bits, actifs,
+    touche: touche ? touche.dataset.touche : "",
+    libre: document.getElementById("touche-libre").value.trim().toLowerCase(),
+    texte: document.getElementById("recherche").value.trim().toLowerCase(),
+  };
 }
 
-/* Vue par app : ses propres raccourcis, puis les raccourcis globaux, rangés
-   selon qu'ils agissent dans l'app, sur elle, ou à côté d'elle. */
-function rendreApp() {
-  const id = document.getElementById("choix-app").value;
-  const app = D.apps.find(a => a.bundleID === id);
-  const propres = [], parPortee = { app: [], app_externe: [], systeme: [], inconnu: [] };
+function rendreCombinaisons() {
+  const f = etatFiltre();
+  const liste = D.combinaisons.filter(c => {
+    if (f.actifs && c.mods !== f.bits) return false;
+    const k = toucheSeule(c.combo);
+    if (f.touche && k !== f.touche) return false;
+    if (f.libre && k.toLowerCase() !== f.libre) return false;
+    if (f.texte && !c.combo.toLowerCase().includes(f.texte)
+        && !c.usages.some(u => (u.action + " " + u.proprietaire).toLowerCase().includes(f.texte)))
+      return false;
+    return true;
+  });
+  const cible = document.getElementById("vue-combinaisons");
+  if (!liste.length) {
+    const quoi = [f.actifs ? "ces modificateurs" : "", f.touche || f.libre, f.texte ? `« ${esc(f.texte)} »` : ""]
+      .filter(Boolean).join(" + ");
+    cible.innerHTML = `<p class="vide">Aucune combinaison ${quoi ? "pour " + quoi : "trouvée"}. `
+      + `Cette combinaison est donc libre.</p>`;
+    return;
+  }
+  cible.innerHTML = liste.slice(0, 400).map((c, i) => ligne(c, i, "cb")).join("")
+    + (liste.length > 400
+        ? `<p class="vide">${liste.length - 400} autres — affine le filtre.</p>` : "");
+}
 
+/* Un bouton coché se décoche ; côté touches, la sélection reste unique. */
+function brancherFiltres() {
+  document.querySelectorAll("#mods button").forEach(b => b.addEventListener("click", () => {
+    b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+    rendreCombinaisons();
+  }));
+  document.querySelectorAll("#touches button").forEach(b => b.addEventListener("click", () => {
+    const etait = b.getAttribute("aria-pressed") === "true";
+    document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
+    b.setAttribute("aria-pressed", String(!etait));
+    if (!etait) document.getElementById("touche-libre").value = "";
+    rendreCombinaisons();
+  }));
+  document.getElementById("touche-libre").addEventListener("input", () => {
+    document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
+    rendreCombinaisons();
+  });
+  document.getElementById("vider-filtre").addEventListener("click", () => {
+    document.querySelectorAll("#mods button, #touches button")
+      .forEach(x => x.setAttribute("aria-pressed", "false"));
+    document.getElementById("touche-libre").value = "";
+    document.getElementById("recherche").value = "";
+    rendreCombinaisons();
+  });
+}
+
+/* Vue par app, deux lectures complémentaires.
+
+   « Par menu » suit la barre de menu de l'app, dans son ordre réel : lire des
+   raccourcis Mise en forme, puis Fenêtre, puis Mise en forme à nouveau ne se retient
+   pas. Les raccourcis globaux suivent, rangés selon ce sur quoi ils agissent.
+
+   « Ce qui se passe » part de la frappe et non de la commande : pour chaque
+   combinaison atteignable dans cette app, qui la reçoit vraiment. Classées par nombre
+   de touches, parce qu'on cherche d'abord les combinaisons courtes. */
+
+const nbTouches = (mods) => {
+  let n = 1;
+  for (let m = mods; m; m >>= 1) n += m & 1;
+  return n;
+};
+const SOURCE_LABEL = {
+  systeme: "raccourci système macOS", capture: "outil global", global: "outil global",
+  pilote: "pilote clavier", autre: "outil global", menu: "menu de l'app",
+};
+
+/* Ce que reçoit une frappe donnée pendant que cette app est au premier plan :
+   ses propres menus, plus tout ce qui est global. Le reste ne la concerne pas. */
+function atteignables(bundleID) {
+  const out = [];
+  for (const c of D.combinaisons) {
+    const candidats = c.usages.filter(u =>
+      u.actif && (u.couche !== "menu" || u.bundle_id === bundleID));
+    if (!candidats.length) continue;
+    const gagnante = ORDRE.find(couche => candidats.some(u => u.couche === couche));
+    const vainqueurs = candidats.filter(u => u.couche === gagnante);
+    const perdants = candidats.filter(u => u.couche !== gagnante);
+    out.push({ combo: c.combo, mods: c.mods, vainqueurs, perdants, couche: gagnante });
+  }
+  return out;
+}
+
+function vueCeQuiSePasse(app) {
+  const items = atteignables(app.bundleID);
+  const parTaille = new Map();
+  for (const it of items) {
+    const n = nbTouches(it.mods);
+    if (!parTaille.has(n)) parTaille.set(n, []);
+    parTaille.get(n).push(it);
+  }
+  const tailles = [...parTaille.keys()].sort((a, b) => a - b);
+  if (!tailles.length) return `<p class="vide">Rien d'atteignable dans cette app.</p>`;
+
+  return tailles.map(n => {
+    const liste = parTaille.get(n).sort((a, b) => a.combo.localeCompare(b.combo, "fr"));
+    return `<section class="groupe-portee"><h3>${n} touche${n > 1 ? "s" : ""} · ${liste.length}</h3>`
+      + liste.map(it => {
+        const v = it.vainqueurs[0];
+        const multi = it.vainqueurs.length > 1;
+        const perdus = it.perdants.map(u =>
+          `${esc(u.proprietaire)} — ${esc(u.action)}`).join(" · ");
+        return `<div class="resultat">
+          <span class="combo">${caps(it.combo)}</span>
+          <span>
+            <span class="titre">${esc(v.action)}</span>
+            <span class="sous">${esc(v.proprietaire)} · ${SOURCE_LABEL[it.couche]}${
+              multi ? ` · à égalité avec ${esc(it.vainqueurs.slice(1).map(u => u.proprietaire).join(", "))}` : ""}</span>
+            ${perdus ? `<span class="perdu">passe devant ${perdus}</span>` : ""}
+          </span></div>`;
+      }).join("") + `</div></section>`;
+  }).join("");
+}
+
+function vueParMenu(app) {
+  const parMenu = new Map(), parPortee = { app: [], app_externe: [], systeme: [], inconnu: [] };
   for (const c of D.combinaisons) {
     for (const u of c.usages) {
       if (!u.actif) continue;
-      if (u.couche === "menu") { if (u.bundle_id === id) propres.push({ c, u }); }
-      else if (parPortee[u.portee]) parPortee[u.portee].push({ c, u });
+      if (u.couche === "menu") {
+        if (u.bundle_id !== app.bundleID) continue;
+        const m = u.menu || "—";
+        if (!parMenu.has(m)) parMenu.set(m, []);
+        parMenu.get(m).push(u);
+      } else if (parPortee[u.portee]) parPortee[u.portee].push(u);
     }
   }
-  const bloc = (titre, pourquoi, items) => !items.length ? "" :
-    `<section class="groupe-portee"><h3>${esc(titre)} · ${items.length}</h3>
-     <p class="pourquoi">${esc(pourquoi)}</p>` + items.map(({ c, u }) =>
-      `<div class="ligne" style="cursor:default"><span class="combo">${caps(u.combo)}</span>
-       <span><span class="titre">${esc(u.action)}</span>
-       <span class="sous">${esc(u.proprietaire)}</span></span></div>`).join("") + `</section>`;
+  // Les menus s'affichent dans l'ordre de la barre de menu, pas par ordre alphabétique.
+  const menus = [...parMenu.entries()].sort((a, b) =>
+    Math.min(...a[1].map(u => u.ordre)) - Math.min(...b[1].map(u => u.ordre)));
 
-  document.getElementById("vue-app").innerHTML =
-    (app && app.statut !== "ok"
-      ? `<p class="vide">${esc(app.nom)} n'a pas pu être lue : ${esc(app.detail || app.statut)}.</p>` : "")
-    + bloc(`Raccourcis de ${app ? app.nom : ""}`,
-           "Ses propres commandes de menu. Actives seulement quand elle est au premier plan.", propres)
-    + bloc(D.libelles_portee.app, "Raccourcis macOS qui agissent sur l'interface de l'app.", parPortee.app)
+  const rangee = (u, sousTitre) => `<div class="resultat">
+      <span class="combo">${caps(u.combo)}</span>
+      <span><span class="titre">${esc(u.action.split(" > ").slice(1).join(" > ") || u.action)}</span>
+      ${sousTitre ? `<span class="sous">${esc(sousTitre)}</span>` : ""}
+      ${u.detail ? `<span class="sous">${esc(u.detail)}</span>` : ""}</span></div>`;
+
+  const bloc = (titre, pourquoi, lignes) => !lignes.length ? "" :
+    `<section class="groupe-portee"><h3>${esc(titre)} · ${lignes.length}</h3>
+     ${pourquoi ? `<p class="pourquoi">${esc(pourquoi)}</p>` : ""}
+     <div class="grille">${lignes.join("")}</div></section>`;
+
+  return menus.map(([nom, us]) => bloc(nom, "",
+      us.sort((a, b) => a.ordre - b.ordre).map(u => rangee(u, "")))).join("")
+    + bloc(D.libelles_portee.app,
+        "Raccourcis macOS qui agissent sur l'interface de l'app.",
+        parPortee.app.map(u => rangee(u, u.proprietaire)))
     + bloc(D.libelles_portee.app_externe,
-           "Agissent sur la fenêtre de l'app ou par-dessus elle, sans toucher son interface.", parPortee.app_externe)
+        "Agissent sur la fenêtre de l'app ou par-dessus elle, sans toucher son interface.",
+        parPortee.app_externe.map(u => rangee(u, u.proprietaire)))
     + bloc(D.libelles_portee.systeme,
-           "Fonctionnent pendant que l'app est ouverte, mais ne la concernent pas.", parPortee.systeme)
-    + bloc(D.libelles_portee.inconnu, "Portée non déterminée.", parPortee.inconnu);
+        "Fonctionnent pendant que l'app est ouverte, mais ne la concernent pas.",
+        parPortee.systeme.map(u => rangee(u, u.proprietaire)))
+    + bloc(D.libelles_portee.inconnu, "Portée non déterminée.",
+        parPortee.inconnu.map(u => rangee(u, u.proprietaire)));
 }
+
+function rendreApp() {
+  const id = document.getElementById("choix-app").value;
+  const app = D.apps.find(a => a.bundleID === id);
+  const mode = document.querySelector("#sous-vues [aria-selected=true]").dataset.mode;
+  const cible = document.getElementById("vue-app");
+  if (!app) { cible.innerHTML = `<p class="vide">Choisis une application.</p>`; return; }
+  if (app.statut !== "ok") {
+    cible.innerHTML = `<p class="vide">${esc(app.nom)} n'a pas pu être lue : ${esc(app.detail || app.statut)}.</p>`;
+    return;
+  }
+  cible.innerHTML = mode === "passe" ? vueCeQuiSePasse(app) : vueParMenu(app);
+}
+
+document.querySelectorAll("#sous-vues button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#sous-vues button").forEach(x =>
+    x.setAttribute("aria-selected", String(x === b)));
+  rendreApp();
+}));
 
 document.addEventListener("click", (e) => {
   const bouton = e.target.closest(".ligne[data-cible]");
@@ -288,9 +493,18 @@ document.querySelectorAll("nav button").forEach(b => b.addEventListener("click",
 }));
 
 document.getElementById("recherche").addEventListener("input", rendreCombinaisons);
+brancherFiltres();
 document.getElementById("choix-app").addEventListener("change", rendreApp);
 rendreConflits(); rendreCombinaisons(); rendreApp();
 """
+
+
+def _ordre_touche(touche):
+    """Les touches de fonction se rangent par leur numéro, pas par ordre alphabétique :
+    sinon F10 se glisse entre F1 et F2."""
+    if touche.startswith("F") and touche[1:].isdigit():
+        return (0, int(touche[1:]), "")
+    return (1, 0, touche)
 
 
 def build(index_path):
@@ -306,9 +520,25 @@ def build(index_path):
     # "</" doit être neutralisé : la séquence fermerait la balise script depuis
     # l'intérieur d'une chaîne JSON si un nom de commande la contenait.
     charge = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    # Les touches proposées sortent des données : chaque bouton mène donc quelque part.
+    speciales = sorted({
+        c["combo"].replace("fn", "").translate(str.maketrans("", "", "⌃⌥⇧⌘"))
+        for c in data["combinaisons"]}, key=_ordre_touche)
+    # Les lettres et chiffres passent par le champ libre ; ne restent en boutons que
+    # les touches qu'on ne peut pas taper sans risquer de déclencher le raccourci.
+    speciales = [t for t in speciales if t.strip() and (len(t) > 1 or not t.isalnum())]
+    touches_html = "".join(
+        f'<button type="button" aria-pressed="false" data-touche="{t}">{t}</button>'
+        for t in speciales)
+    mods_html = "".join(
+        f'<button type="button" aria-pressed="false" data-bit="{bit}">{sym}</button>'
+        for sym, bit in (("⌃", 2), ("⌥", 4), ("⇧", 1), ("⌘", 8), ("fn", 16)))
+
     script = (JS.replace("DONNEES", charge)
                 .replace("ORDRE_COUCHES_JS", json.dumps(ORDRE_COUCHES))
-                .replace("NOMS_COUCHES_JS", json.dumps(NOMS_COUCHES, ensure_ascii=False)))
+                .replace("NOMS_COUCHES_JS", json.dumps(NOMS_COUCHES, ensure_ascii=False))
+                .replace("MODS_BITS", json.dumps({"⇧": 1, "⌃": 2, "⌥": 4, "⌘": 8, "fn": 16},
+                                                 ensure_ascii=False)))
 
     return f"""<!doctype html>
 <html lang="fr"><head>
@@ -329,20 +559,39 @@ def build(index_path):
   </div>
 </header>
 <nav>
-  <button data-vue="conflits" aria-selected="true">Conflits</button>
+  <button data-vue="app" aria-selected="true">Par application</button>
+  <button data-vue="conflits" aria-selected="false">Conflits</button>
   <button data-vue="combinaisons" aria-selected="false">Par combinaison</button>
-  <button data-vue="app" aria-selected="false">Par application</button>
 </nav>
 <main>
-  <section id="onglet-conflits"><div id="vue-conflits"></div></section>
+  <section id="onglet-conflits" hidden><div id="vue-conflits"></div></section>
   <section id="onglet-combinaisons" hidden>
-    <div class="controles">
-      <input type="search" id="recherche" placeholder="Cherche une touche, une commande ou une app — ⌘D, copier, Safari">
+    <div class="filtre">
+      <div class="rangee-filtre">
+        <span class="etiquette">Modificateurs</span>
+        <div id="mods" class="capsules">{mods_html}</div>
+      </div>
+      <div class="rangee-filtre">
+        <span class="etiquette">Touche</span>
+        <div id="touches" class="capsules">{touches_html}</div>
+        <input type="text" id="touche-libre" maxlength="3" placeholder="ou une lettre">
+      </div>
+      <div class="rangee-filtre">
+        <span class="etiquette">Texte</span>
+        <input type="search" id="recherche" placeholder="Une commande ou une app — copier, Safari, capture">
+        <button type="button" id="vider-filtre" class="lien">Tout effacer</button>
+      </div>
     </div>
     <div id="vue-combinaisons"></div>
   </section>
-  <section id="onglet-app" hidden>
-    <div class="controles"><select id="choix-app">{options}</select></div>
+  <section id="onglet-app">
+    <div class="controles">
+      <select id="choix-app">{options}</select>
+      <div id="sous-vues" class="segmente">
+        <button data-mode="menu" aria-selected="true">Par menu</button>
+        <button data-mode="passe" aria-selected="false">Ce qui se passe</button>
+      </div>
+    </div>
     <div id="vue-app"></div>
   </section>
 </main>
