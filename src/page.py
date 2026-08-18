@@ -447,6 +447,7 @@ function ligne(c, i, prefixe) {
     </button>
     <div class="detail ${c.conflit ? "conflit-detail" : ""}" id="${prefixe}-${i}" hidden>
       ${pile(c.usages)}
+      ${c.convention ? `<p class="verdict convention">${T("convention")(c.apps_exposant)}</p>` : ""}
       <p class="verdict">${esc(c.arbitrage.texte)}</p>
       ${listeUsages(c.usages)}
     </div>`;
