@@ -153,21 +153,42 @@ func harvest(pid: pid_t, timeout: Double) -> [Shortcut] {
     return found
 }
 
-/// Attend que la barre de menu soit peuplée. Une app vient d'être lancée : son menu
-/// n'existe pas encore à la milliseconde où le processus démarre.
-func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> Bool {
+enum EtatMenu { case pret, sansMenu, expire }
+
+/// Délai laissé à une app fraîchement lancée pour construire sa barre de menu, avant
+/// de conclure qu'elle n'en a pas.
+let delaiDeGrace: Double = 4
+
+/// Attend que la barre de menu soit lisible.
+///
+/// Trois issues, et la distinction compte : une app d'arrière-plan n'expose aucune
+/// barre de menu et le savoir en quatre secondes évite d'attendre le délai complet
+/// pour chacune. Confondre les deux cas coûtait plusieurs minutes par passe et
+/// donnait un diagnostic faux.
+func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> EtatMenu {
+    let finDeGrace = Date().addingTimeInterval(delaiDeGrace)
+    var barreVue = false
+
     while Date() < deadline {
         let app = AX.app(pid, timeout: Float(min(timeout, 5)))
-        if let bar = AX.element(app, kAXMenuBarAttribute as String),
-           AX.children(bar).count > 1 { return true }
+        if let bar = AX.element(app, kAXMenuBarAttribute as String) {
+            barreVue = true
+            let menus = AX.children(bar).count
+            // Plus d'un menu = barre construite. Un seul menu peut être un état
+            // transitoire au lancement : on ne l'accepte qu'une fois le délai de
+            // grâce passé, faute de quoi une app à menu unique expirerait.
+            if menus > 1 || (menus >= 1 && Date() > finDeGrace) { return .pret }
+        }
         // Les apps d'arrière-plan n'ont pas de barre de menu classique : leurs
-        // raccourcis vivent dans le menu de leur icône de statut. Sans ce second
-        // test, elles expirent alors que leurs données sont là.
-        if let extras = AX.element(app, kAXExtrasMenuBarAttribute as String),
-           !AX.children(extras).isEmpty { return true }
+        // raccourcis vivent dans le menu de leur icône de statut.
+        if let extras = AX.element(app, kAXExtrasMenuBarAttribute as String) {
+            barreVue = true
+            if !AX.children(extras).isEmpty { return .pret }
+        }
+        if !barreVue && Date() > finDeGrace { return .sansMenu }
         Thread.sleep(forTimeInterval: 0.3)
     }
-    return false
+    return .expire
 }
 
 // MARK: - Résultat par app
@@ -256,9 +277,10 @@ func process(bundleID: String, options: Options) -> AppResult {
     }
 
     let deadline = started.addingTimeInterval(options.timeout)
-    let ready = waitForMenuBar(pid: process.processIdentifier, deadline: deadline,
-                               timeout: options.timeout)
-    let shortcuts = ready ? harvest(pid: process.processIdentifier, timeout: options.timeout) : []
+    let etat = waitForMenuBar(pid: process.processIdentifier, deadline: deadline,
+                              timeout: options.timeout)
+    let shortcuts = etat == .pret
+        ? harvest(pid: process.processIdentifier, timeout: options.timeout) : []
 
     // On ne quitte que ce qu'on a lancé, et jamais de force : un forceTerminate peut
     // faire perdre du travail non enregistré.
@@ -266,10 +288,18 @@ func process(bundleID: String, options: Options) -> AppResult {
         process.terminate()
     }
 
-    let statut = ready ? "ok" : (Date() >= deadline ? "timeout" : "sans_menu")
-    let detail = ready ? nil : (statut == "timeout"
-        ? "Barre de menu non peuplée avant expiration du délai"
-        : "Aucune barre de menu exposée (app sans menu, ou agent d'arrière-plan)")
+    let statut: String
+    let detail: String?
+    switch etat {
+    case .pret:
+        statut = "ok"; detail = nil
+    case .sansMenu:
+        statut = "sans_menu"
+        detail = "Aucune barre de menu exposée (app sans menu, ou agent d'arrière-plan)"
+    case .expire:
+        statut = "timeout"
+        detail = "Barre de menu non peuplée avant expiration du délai"
+    }
     return result(statut, detail, shortcuts, running: wasRunning, launched: launchedByUs)
 }
 
@@ -307,6 +337,11 @@ func dumpKeymap() {
         guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self)
         else { return }
 
+        func echapper(_ texte: String) -> String {
+            texte.replacingOccurrences(of: "\\", with: "\\\\")
+                 .replacingOccurrences(of: "\"", with: "\\\"")
+        }
+
         func translate(_ code: UInt16, shifted: Bool) -> String? {
             var deadKeyState: UInt32 = 0
             var length = 0
@@ -323,8 +358,7 @@ func dumpKeymap() {
             // leur libellé vient de la table des glyphes, pas d'ici.
             guard text.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) })
             else { return nil }
-            return text.replacingOccurrences(of: "\\", with: "\\\\")
-                       .replacingOccurrences(of: "\"", with: "\\\"")
+            return echapper(text)
         }
 
         for code in UInt16(0)...127 {
@@ -338,8 +372,8 @@ func dumpKeymap() {
     }
     print("""
     {
-      "disposition": "\(nom)",
-      "identifiant": "\(identifiant)",
+      "disposition": "\(nom.replacingOccurrences(of: "\"", with: "\\\""))",
+      "identifiant": "\(identifiant.replacingOccurrences(of: "\"", with: "\\\""))",
       "touches": {
     \(entries.joined(separator: ",\n"))
       }
@@ -491,10 +525,16 @@ func runAll() {
             continue
         }
         let outcome = process(bundleID: bundleID, options: options)
-        if let data = try? encoder.encode(outcome) {
-            try? data.write(to: URL(fileURLWithPath: file))
+        var ecrit = false
+        do {
+            try encoder.encode(outcome).write(to: URL(fileURLWithPath: file))
+            ecrit = true
+        } catch {
+            FileHandle.standardError.write(
+                "⛔️ Écriture impossible : \(file) — \(error.localizedDescription)\n"
+                    .data(using: .utf8)!)
         }
-        let mark = outcome.statut == "ok" ? "✅" : "⚠️ "
+        let mark = !ecrit ? "⛔️" : (outcome.statut == "ok" ? "✅" : "⚠️ ")
         print("[\(index + 1)/\(targets.count)] \(mark) \(outcome.nom) — "
             + "\(outcome.raccourcis.count) raccourcis, \(outcome.statut), \(outcome.duree_s)s"
             + (outcome.lance_par_nous ? " (lancée par nous)"

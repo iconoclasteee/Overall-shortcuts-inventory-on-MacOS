@@ -60,7 +60,14 @@ class Keyboard:
     """Disposition clavier active : code de touche ↔ caractère, dans les deux sens."""
 
     def __init__(self, path=None):
-        raw = json.loads((path or ROOT / "out" / "keymap.json").read_text(encoding="utf-8"))
+        chemin = path or ROOT / "out" / "keymap.json"
+        if not Path(chemin).exists():
+            raise SystemExit(
+                f"Disposition clavier introuvable : {chemin}\n"
+                "Elle est produite par le moissonneur. Lance ./run.sh --sources,\n"
+                "ou directement : bin/ShortcutHarvester.app/Contents/MacOS/"
+                "ShortcutHarvester --keymap > out/keymap.json")
+        raw = json.loads(Path(chemin).read_text(encoding="utf-8"))
         touches = raw.get("touches", raw)
         self.disposition = raw.get("disposition", "")
         self.identifiant = raw.get("identifiant", "")

@@ -50,7 +50,9 @@ def scan_alfred(keyboard):
 
     def emit(action, spec):
         code, mask = spec.get("key"), spec.get("mod")
-        if code is None or not mask:
+        # Un raccourci sur touche seule (F19 est courant chez Alfred) a un masque nul :
+        # seul le code de touche absent signifie « non attribué ».
+        if code is None:
             return
         mods = from_nsevent(mask)
         combo = _combo(keyboard, code, mods)

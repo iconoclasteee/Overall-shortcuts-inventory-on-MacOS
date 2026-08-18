@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tables import glyph_labels
+from model import from_ax, render_modifiers
 from overrides import load as load_overrides, normalise_title
 
 ROOT = Path(__file__).parent.parent
@@ -47,19 +48,13 @@ CATEGORIES = {
 }
 UNCLASSIFIED = "Non classées (aucune catégorie déclarée)"
 
-# Ordre canonique des modificateurs dans la notation Apple.
-AX_MODIFIERS = [(0x04, "⌃"), (0x02, "⌥"), (0x01, "⇧")]
-NO_COMMAND = 0x08
-
-
 def render_shortcut(entry, glyphs):
-    """Rend un raccourci AX en notation lisible (⇧⌘K)."""
-    mods = "".join(sym for bit, sym in AX_MODIFIERS if entry["modificateurs"] & bit)
-    # Dans les menus AX, Command est implicite sauf si le bit 0x08 l'exclut
-    # explicitement (cas des raccourcis à touche F seule, par exemple).
-    if not entry["modificateurs"] & NO_COMMAND:
-        mods += "⌘"
+    """Rend un raccourci AX en notation lisible (⇧⌘K).
 
+    Le décodage des modificateurs vient du modèle commun : deux implémentations
+    finiraient par diverger sans que rien ne le signale.
+    """
+    mods = render_modifiers(from_ax(entry["modificateurs"]))
     char = entry.get("caractere") or ""
     if char and char.isprintable() and char.strip():
         key = char.upper() if len(char) == 1 else char
@@ -70,6 +65,11 @@ def render_shortcut(entry, glyphs):
     else:
         return None
     return mods + key
+
+
+# Dossier des fiches d'application. Surchargé par le premier argument de ligne de
+# commande ; la valeur par défaut permet d'appeler le script sans argument.
+APPS_DIR = ROOT / "out" / "apps"
 
 
 def load_apps():
@@ -101,8 +101,11 @@ def build_report():
     apps = load_apps()
     descriptions = load_descriptions()
 
+    # Trois états distincts : lue avec des raccourcis, lue sans en avoir, illisible.
+    # Les confondre faisait passer une app d'arrière-plan sans menu pour un échec.
     harvested = [a for a in apps if a["statut"] == "ok" and a["raccourcis"]]
-    failed = [a for a in apps if a not in harvested]
+    sans_raccourci = [a for a in apps if a["statut"] == "ok" and not a["raccourcis"]]
+    failed = [a for a in apps if a["statut"] != "ok"]
     total = sum(len(a["raccourcis"]) for a in harvested)
 
     machine = subprocess.run(["hostname", "-s"], capture_output=True, text=True).stdout.strip()
@@ -114,6 +117,7 @@ def build_report():
         "",
         f"{len(system)} raccourcis système · {total} raccourcis d'application "
         f"répartis sur {len(harvested)} apps"
+        + (f" · {len(sans_raccourci)} apps sans aucun raccourci" if sans_raccourci else "")
         + (f" · {len(failed)} apps non lisibles" if failed else ""),
         "",
         "> **Portée.** Les raccourcis d'une app n'existent que dans sa barre de menu, "
@@ -186,7 +190,8 @@ def build_report():
                 # Une redéfinition sans élément de menu correspondant est signalée plutôt
                 # qu'ignorée : c'est souvent un titre qui ne colle plus (app traduite,
                 # commande renommée), donc un raccourci qui ne fonctionne plus.
-                orphans = [overrides[k] for k in overrides if k not in matched]
+                orphans = [(overrides[k][0], overrides[k][1])
+                           for k in overrides if k not in matched]
                 if orphans:
                     # Sans document ouvert, une partie du menu n'existe pas : l'absence
                     # de correspondance n'y prouve pas que le raccourci est cassé.
@@ -200,8 +205,16 @@ def build_report():
                               + ", ".join(f"`{combo}` → « {title} »"
                                           for title, combo in sorted(orphans)), ""]
 
+    if sans_raccourci:
+        lines += ["---", "", "## 3. Applications sans aucun raccourci", "",
+                  "_Lues sans erreur, mais leur barre de menu n'expose aucun raccourci._",
+                  "", "| Application |", "|---|"]
+        for app in sorted(sans_raccourci, key=lambda a: a["nom"].lower()):
+            lines.append(f"| {escape(app['nom'])} |")
+        lines.append("")
+
     if failed:
-        lines += ["---", "", "## 3. Applications non lisibles", "",
+        lines += ["---", "", "## 4. Applications non lisibles", "",
                   "| Application | Statut | Raison |", "|---|---|---|"]
         for app in sorted(failed, key=lambda a: a["nom"].lower()):
             lines.append(f"| {escape(app['nom'])} | {app['statut']} | "
@@ -213,7 +226,7 @@ def build_report():
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        APPS_DIR = Path(sys.argv[1])
+        globals()["APPS_DIR"] = Path(sys.argv[1])
     out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "out" / "raccourcis-macos.md"
     out.write_text(build_report(), encoding="utf-8")
     print(f"✅ {out}")

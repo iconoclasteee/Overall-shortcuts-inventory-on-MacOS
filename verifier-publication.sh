@@ -29,9 +29,12 @@ done
 
 echo "→ Historique git (messages et contenus)"
 for motif in "${motifs[@]}"; do
+  # Pas de `head` dans le test : sur un historique volumineux, grep meurt en SIGPIPE
+  # dès que head a sa dose, le pipeline devient non nul et l'alerte disparaît —
+  # précisément quand la fuite est la plus grosse. On tronque à l'affichage.
   if resultat=$(git log -p --format="%H %s" -- . ":(exclude)$MOI" 2>/dev/null \
-                | grep -nIE "$motif" | head -5); then
-    echo "  ⚠️  $motif"; echo "$resultat" | sed 's/^/      /'; alerte=1
+                | grep -nIE "$motif"); then
+    echo "  ⚠️  $motif"; echo "$resultat" | head -5 | sed 's/^/      /'; alerte=1
   fi
 done
 

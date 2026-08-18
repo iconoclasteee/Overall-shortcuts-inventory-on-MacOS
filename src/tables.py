@@ -171,23 +171,6 @@ def keycode_symbols():
     return out
 
 
-# --- Masques de modificateurs --------------------------------------------------
-
-# Constantes NSEvent.ModifierFlags, utilisées par les plists système d'Apple.
-NSEVENT_FLAGS = [
-    (0x040000, "⌃"),  # Control
-    (0x080000, "⌥"),  # Option
-    (0x020000, "⇧"),  # Shift
-    (0x100000, "⌘"),  # Command
-    (0x800000, "fn"),
-]
-
-
-def render_modifiers(mask):
-    """Rend un masque NSEvent en symboles, dans l'ordre canonique Apple."""
-    return "".join(sym for bit, sym in NSEVENT_FLAGS if mask & bit)
-
-
 if __name__ == "__main__":
     kc, gl = keycode_labels(), glyph_labels()
     print(f"{len(kc)} codes de touches, {len(gl)} glyphes extraits de BridgeSupport")

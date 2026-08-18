@@ -31,10 +31,12 @@ NO_CHAR = 65535  # sentinelle Apple : "pas de caractère, utiliser le code de to
 # Certains raccourcis système ne sont pas une combinaison mais une **double frappe**
 # sur un modificateur seul — la dictée en est l'exemple courant. Apple les stocke avec
 # `type: "modifier"` et un masque qui distingue la touche gauche de la droite.
-# Les masques de côté viennent d'IOKit, les libellés du panneau Clavier : rien n'est
-# écrit de mémoire ici.
-IOKIT_BRIDGESUPPORT = Path(
-    "/System/Library/Frameworks/IOKit.framework/Versions/A/Resources/IOKit.bridgesupport")
+#
+# Les bits de côté sont ceux d'IOKit (`NX_DEVICELCMDKEYMASK` = 8,
+# `NX_DEVICERCMDKEYMASK` = 16) et les libellés viennent du panneau Clavier de macOS,
+# via `load_double_labels`. Les valeurs numériques sont ici en clair, avec le nom de
+# la constante correspondante, plutôt que relues d'un second BridgeSupport pour cinq
+# entrées.
 MODIFIER_DOUBLE = [
     # (bit de modificateur NSEvent, bit de côté IOKit ou None, clé de libellé, symbole)
     (0x100000, 8,    "DoubleTapCommandLeft",  "⌘"),
@@ -188,7 +190,7 @@ def _render(char_code, key_code, modifier_mask):
         # de clavier ANSI : pour ⌘M elle donne 46, qui sur AZERTY produit « , ».
         # macOS déclenche sur la touche portant réellement le M, donc on remonte au
         # code par le caractère, dans la disposition active.
-        code = resolu or code
+        code = resolu if resolu is not None else code
     elif code is not None:
         # Le libellé doit venir de la disposition active : le nom de constante ANSI
         # dirait « 1 » là où le clavier français produit « & ».

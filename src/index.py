@@ -17,7 +17,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import global_hotkeys
 import overrides as user_overrides
-from model import Binding, Keyboard, SHIFT, from_ax, rang, render_modifiers, COUCHES
+from model import (Binding, Keyboard, ALT, CMD, CTRL, SHIFT, from_ax, rang,
+                   render_modifiers, COUCHES)
 from tables import glyph_labels, glyph_to_keycode
 
 ROOT = Path(__file__).parent.parent
@@ -59,6 +60,12 @@ def app_bindings(keyboard, apps_dir):
         try:
             app = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
+            print(f"⚠️  illisible, ignoré : {path.name}")
+            continue
+        # Une fiche tronquée (interruption en cours d'écriture) est un JSON valide
+        # mais incomplet : mieux vaut l'écarter que faire échouer tout l'index.
+        if not isinstance(app, dict) or "statut" not in app or "bundleID" not in app:
+            print(f"⚠️  incomplet, ignoré : {path.name}")
             continue
         apps.append({k: app.get(k) for k in
                      ("nom", "bundleID", "version", "categorie", "statut", "detail",
@@ -95,7 +102,19 @@ def app_bindings(keyboard, apps_dir):
             leaf = user_overrides.normalise_title(item["chemin"].split(" > ")[-1])
             detail = ""
             if leaf in redefinis:
+                # Une redéfinition change la frappe, pas seulement son libellé : sans
+                # recalculer modificateurs et code de touche, la détection de conflits
+                # continuerait de raisonner sur l'ancienne combinaison.
                 combo = redefinis[leaf][1]
+                prefixe, touche = user_overrides.decomposer(redefinis[leaf][2])
+                mods = ((SHIFT if "$" in prefixe else 0) | (CTRL if "^" in prefixe else 0)
+                        | (ALT if "~" in prefixe else 0) | (CMD if "@" in prefixe else 0))
+                if touche:
+                    nouveau, besoin_maj = keyboard.resoudre(touche)
+                    if nouveau is not None:
+                        code, glyphe = nouveau, None
+                    if besoin_maj:
+                        mods |= SHIFT
                 detail = "redéfini par l'utilisateur"
 
             signature = (combo, item["chemin"])

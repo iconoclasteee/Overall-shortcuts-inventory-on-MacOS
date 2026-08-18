@@ -18,10 +18,6 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 
 ORDRE_COUCHES = ["pilote", "capture", "systeme", "global", "autre", "menu"]
-NOMS_COUCHES = {
-    "pilote": "Pilote", "capture": "Capture", "systeme": "Système",
-    "global": "Global", "autre": "Autre", "menu": "Menu",
-}
 
 CSS = """
 :root {
@@ -399,7 +395,7 @@ footer {
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 """
 
-JS = """
+JS = r"""
 const D = DONNEES;
 const ORDRE = ORDRE_COUCHES_JS;
 const NOMS = () => Object.fromEntries(ORDRE.map(c => [c, T("couche_" + c)]));
@@ -491,6 +487,7 @@ const TEXTES = {
     ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
     double: "double frappe", fermer: "Fermer",
+    rien_atteignable: "Rien d'atteignable dans cette app.",
     aucun_conflit: "Aucun conflit", aucun_conflit_filtre: " parmi ce que le filtre laisse passer",
     aucun_conflit_suite: ". Chaque combinaison n'a qu'un seul preneur.",
     rien_filtre: "Aucune combinaison", rien_pour: "pour", rien_libre: "Cette combinaison est donc libre.",
@@ -558,6 +555,7 @@ const TEXTES = {
     ph_touche: "or type the key", ph_texte: "copy, capture, full screen…",
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
     double: "double press", fermer: "Close",
+    rien_atteignable: "Nothing reachable in this app.",
     aucun_conflit: "No conflict", aucun_conflit_filtre: " among what the filter lets through",
     aucun_conflit_suite: ". Every combination has a single taker.",
     rien_filtre: "No combination", rien_pour: "for", rien_libre: "This combination is free.",
@@ -613,6 +611,7 @@ let LANGUE = (localStorage.getItem("langue") === "en") ? "en" : "fr";
 const T = (cle) => TEXTES[LANGUE][cle];
 
 const MODS = MODS_BITS;
+const RACINE = RACINE_PROJET;
 /* Une double frappe n'engage qu'une touche, pressée deux fois. */
 const PORTEES = () => D.libelles_portee[LANGUE] || D.libelles_portee.fr || D.libelles_portee;
 const nbTouches = (mods, double) => {
@@ -801,8 +800,12 @@ function atteignables(bundleID) {
     const gagnante = ORDRE.find(couche => candidats.some(u => u.couche === couche));
     const vainqueurs = candidats.filter(u => u.couche === gagnante);
     const perdants = candidats.filter(u => u.couche !== gagnante);
+    // `meme_commande` marque les combinaisons que macOS injecte à l'identique dans
+    // le menu de chaque app (⇧⌘Q, ⌃⌘Q…). Les compter comme conflits colorerait en
+    // rouge la moitié des lignes, et contredirait l'arbitrage calculé côté Python.
     out.push({ cle: c.cle, combo: c.combo, mods: c.mods, double: c.double,
-               vainqueurs, perdants, couche: gagnante, conflit: perdants.length > 0 });
+               vainqueurs, perdants, couche: gagnante,
+               conflit: perdants.length > 0 && !c.meme_commande });
   }
   return out;
 }
@@ -816,14 +819,13 @@ function vueCeQuiSePasse(app) {
     parTaille.get(n).push(it);
   }
   const tailles = [...parTaille.keys()].sort((a, b) => a - b);
-  if (!tailles.length) return `<p class="vide">Rien d'atteignable dans cette app.</p>`;
+  if (!tailles.length) return `<p class="vide">${T("rien_atteignable")}</p>`;
 
   return tailles.map(n => {
     // Trier sur la touche principale, pas sur la chaîne entière : classer sur « ⌘ »
     // rassemblerait tout au même endroit alors qu'on cherche une lettre.
-    const touchePrincipale = (c) => c.replace("fn", "").replace(/[⌃⌥⇧⌘]/g, "");
     const liste = parTaille.get(n).sort((a, b) =>
-      touchePrincipale(a.combo).localeCompare(touchePrincipale(b.combo), "fr")
+      toucheSeule(a.combo).localeCompare(toucheSeule(b.combo), "fr")
       || a.mods - b.mods);
     return `<section class="groupe-portee"><h3>${T("touche_s")(n)} · ${liste.length}</h3>`
       + `<div class="grille">`
@@ -1133,9 +1135,9 @@ function brancherScan() {
     bloc.hidden = false;
     bloc.textContent = complet
       ? `${T("scan_defaut_cmd")}
-cd ~/dev/MacOS-shortcuts-inventory && ./run.sh --all`
+cd ${RACINE} && ./run.sh --all`
       : `${T("scan_perso_cmd")}
-cd ~/dev/MacOS-shortcuts-inventory && \\
+cd ${RACINE} && \\
   bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester \\
     --bundle-ids ${[...aScanner].join(",")} --out out/apps && ./run.sh --all`;
   });
@@ -1207,9 +1209,9 @@ def build(index_path):
 
     script = (JS.replace("DONNEES", charge)
                 .replace("ORDRE_COUCHES_JS", json.dumps(ORDRE_COUCHES))
-                .replace("NOMS_COUCHES_JS", json.dumps(NOMS_COUCHES, ensure_ascii=False))
                 .replace("MODS_BITS", json.dumps({"⇧": 1, "⌃": 2, "⌥": 4, "⌘": 8, "fn": 16},
-                                                 ensure_ascii=False)))
+                                                 ensure_ascii=False))
+                .replace("RACINE_PROJET", json.dumps(str(ROOT))))
 
     return f"""<!doctype html>
 <html lang="fr"><head>
@@ -1293,7 +1295,6 @@ def build(index_path):
 <main>
   <section id="onglet-conflits" hidden><div id="vue-conflits"></div></section>
   <section id="onglet-combinaisons" hidden>
-    <div class="filtre-place">
     <div id="vue-combinaisons"></div>
   </section>
   <section id="onglet-menu"><div id="vue-menu"></div></section>
@@ -1305,7 +1306,7 @@ def build(index_path):
     <button type="button" id="relire-fermer" class="croix" aria-label="Fermer">✕</button>
   </div>
   <p style="margin:0 0 14px;font-size:14px" data-t-html="relire_intro"></p>
-  <code class="commande" style="margin:0">cd ~/dev/MacOS-shortcuts-inventory && ./run.sh --sources</code>
+  <code class="commande" style="margin:0">cd {ROOT} && ./run.sh --sources</code>
   <p style="margin:14px 0 0;font-size:13px;color:var(--sourdine)" data-t="relire_apres"></p>
 </div></dialog>
 

@@ -11,6 +11,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# out/ n'est pas versionné : sur un clone frais il n'existe pas, et la première
+# redirection échouerait avant même le premier message.
+mkdir -p out
+
 HARVESTER=bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester
 [ -x "$HARVESTER" ] || { echo "Binaire absent — lance d'abord ./build.sh"; exit 1; }
 "$HARVESTER" --check
