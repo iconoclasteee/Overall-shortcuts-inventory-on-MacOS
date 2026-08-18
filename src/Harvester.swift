@@ -291,6 +291,15 @@ func dumpKeymap() {
         FileHandle.standardError.write("Disposition clavier illisible\n".data(using: .utf8)!)
         exit(1)
     }
+    // La disposition conditionne toutes les combinaisons affichées : son nom fait
+    // partie du résultat, pas d'un commentaire.
+    func propriete(_ cle: CFString) -> String {
+        guard let brut = TISGetInputSourceProperty(source, cle) else { return "" }
+        return (Unmanaged<CFString>.fromOpaque(brut).takeUnretainedValue() as String)
+    }
+    let nom = propriete(kTISPropertyLocalizedName)
+    let identifiant = propriete(kTISPropertyInputSourceID)
+
     let layoutData = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue() as Data
     var entries: [String] = []
 
@@ -327,7 +336,15 @@ func dumpKeymap() {
             entries.append("  \"\(code)\": [\"\(plain)\", \"\(shifted)\"]")
         }
     }
-    print("{\n" + entries.joined(separator: ",\n") + "\n}")
+    print("""
+    {
+      "disposition": "\(nom)",
+      "identifiant": "\(identifiant)",
+      "touches": {
+    \(entries.joined(separator: ",\n"))
+      }
+    }
+    """)
     exit(0)
 }
 

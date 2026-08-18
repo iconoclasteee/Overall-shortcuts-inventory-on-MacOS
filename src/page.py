@@ -991,7 +991,9 @@ def build(index_path):
     # Tout ce que la disposition produit, avec ou sans Maj, se tape dans le champ :
     # en AZERTY cela couvre « $ », « ; », mais aussi « . » et « £ », qui demandent Maj.
     keymap = json.loads((ROOT / "out" / "keymap.json").read_text(encoding="utf-8"))
-    ecrivables = {c.upper() for niveaux in keymap.values() for c in niveaux if c.strip()}
+    touches = keymap.get("touches", keymap)
+    disposition = keymap.get("disposition", "")
+    ecrivables = {c.upper() for niveaux in touches.values() for c in niveaux if c.strip()}
 
     vues = {c["combo"].replace("fn", "").translate(str.maketrans("", "", "⌃⌥⇧⌘"))
             for c in data["combinaisons"]}
@@ -1038,7 +1040,7 @@ def build(index_path):
 <body><div class="enveloppe">
 <header>
   <div><h1>MacOS-shortcuts-inventory</h1>
-  <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · {date.today().isoformat()}</p></div>
+  <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · clavier {disposition or "inconnu"} · {date.today().isoformat()}</p></div>
   <div class="actions-scan">
     <button type="button" id="ouvrir-scan" class="bouton-scan">
       Scanner tout le Mac

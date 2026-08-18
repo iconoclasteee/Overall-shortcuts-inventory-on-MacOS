@@ -61,7 +61,10 @@ class Keyboard:
 
     def __init__(self, path=None):
         raw = json.loads((path or ROOT / "out" / "keymap.json").read_text(encoding="utf-8"))
-        self.by_code = {int(k): v for k, v in raw.items()}
+        touches = raw.get("touches", raw)
+        self.disposition = raw.get("disposition", "")
+        self.identifiant = raw.get("identifiant", "")
+        self.by_code = {int(k): v for k, v in touches.items()}
         self.names = keycode_labels()      # libellés des touches sans caractère (F5, ←)
         self.symboles = keycode_symbols()  # symboles officiels (⌤, ⌧, ⏎)
         keypad = keypad_codes()
