@@ -1,0 +1,9 @@
+{
+  "_lisez_moi": "Rôle de chaque app dans le rapport. `description` null = non renseigné : le rapport l'affiche comme tel plutôt que d'inventer. `categorie` permet de corriger le classement quand celui déclaré par l'éditeur est trop grossier.",
+  "com.apple.finder": { "description": "Gestionnaire de fichiers de macOS : navigation, copie, rangement, recherche." },
+  "com.apple.TextEdit": { "description": "Éditeur de texte simple fourni avec macOS (texte brut et RTF)." },
+  "com.apple.Safari": { "description": "Navigateur web d'Apple." },
+  "com.cmuxterm.app": { "description": "Terminal multiplexé, utilisé ici pour piloter Claude Code.", "categorie": "Outils de développement" },
+  "com.runningwithcrayons.Alfred": { "description": "Lanceur d'applications et moteur de workflows, en remplacement de Spotlight." },
+  "com.microsoft.Powerpoint": { "description": "Logiciel de présentation de Microsoft Office." }
+}

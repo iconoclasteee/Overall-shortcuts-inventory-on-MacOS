@@ -1,0 +1,328 @@
+// Moissonneur de raccourcis de menu macOS.
+//
+// Pourquoi ce binaire existe : les raccourcis d'une app ne sont écrits nulle part sur
+// le disque. Ils ne vivent que dans la barre de menu construite en mémoire au lancement.
+// Le seul moyen de les lire est l'API d'accessibilité (AX), qui exige une autorisation
+// explicite — d'où un binaire dédié plutôt qu'un script : l'autorisation ne concerne
+// que lui, et pas le terminal entier.
+//
+// Il émet du JSON brut (caractère, masque de modificateurs, glyphe). Le rendu lisible
+// (⌘⇧K) est fait côté Python, où vivent les tables extraites de macOS.
+
+import AppKit
+import ApplicationServices
+
+// MARK: - Options
+
+struct Options {
+    var bundleIDs: [String] = []
+    var outDir = "out/apps"
+    var timeout: Double = 25       // plafond par app, en secondes
+    var checkOnly = false
+    var scanAll = false
+    var force = false              // refaire les apps déjà moissonnées
+    var keepRunning = false        // ne pas quitter les apps qu'on a lancées
+}
+
+func parseArgs() -> Options {
+    var o = Options()
+    var it = CommandLine.arguments.dropFirst().makeIterator()
+    while let arg = it.next() {
+        switch arg {
+        case "--check": o.checkOnly = true
+        case "--all": o.scanAll = true
+        case "--force": o.force = true
+        case "--keep-running": o.keepRunning = true
+        case "--bundle-ids": o.bundleIDs = (it.next() ?? "").split(separator: ",").map(String.init)
+        case "--out": o.outDir = it.next() ?? o.outDir
+        case "--timeout": o.timeout = Double(it.next() ?? "") ?? o.timeout
+        default:
+            FileHandle.standardError.write("Option inconnue : \(arg)\n".data(using: .utf8)!)
+            exit(2)
+        }
+    }
+    return o
+}
+
+// MARK: - Accessibilité
+
+enum AX {
+    static func isTrusted() -> Bool {
+        AXIsProcessTrustedWithOptions(
+            [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false] as CFDictionary)
+    }
+
+    static func app(_ pid: pid_t, timeout: Float) -> AXUIElement {
+        let element = AXUIElementCreateApplication(pid)
+        // Sans plafond, une app bloquée sur une boîte de dialogue fige la lecture.
+        AXUIElementSetMessagingTimeout(element, timeout)
+        return element
+    }
+
+    static func element(_ parent: AXUIElement, _ attribute: String) -> AXUIElement? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(parent, attribute as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return (value as! AXUIElement)
+    }
+
+    static func children(_ element: AXUIElement) -> [AXUIElement] {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &value) == .success,
+              let array = value as? [AXUIElement] else { return [] }
+        return array
+    }
+
+    static func string(_ element: AXUIElement, _ attribute: String) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success
+        else { return nil }
+        return value as? String
+    }
+
+    static func int(_ element: AXUIElement, _ attribute: String) -> Int? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success
+        else { return nil }
+        return value as? Int
+    }
+}
+
+// MARK: - Parcours des menus
+
+struct Shortcut: Encodable {
+    let chemin: String        // "Fichier > Enregistrer sous…"
+    let menu: String          // menu de premier niveau
+    let caractere: String?    // AXMenuItemCmdChar
+    let glyphe: Int?          // AXMenuItemCmdGlyph (touches non imprimables)
+    let modificateurs: Int    // AXMenuItemCmdModifiers, format AX
+    let source: String        // "menubar" ou "extras"
+}
+
+let maxDepth = 12  // les menus réels plafonnent vers 5 ; au-delà, l'arbre est suspect
+
+func walk(_ items: [AXUIElement], path: [String], menu: String, source: String,
+          depth: Int, into found: inout [Shortcut]) {
+    guard depth < maxDepth else { return }
+    for item in items {
+        let title = AX.string(item, kAXTitleAttribute as String) ?? ""
+        let subPath = title.isEmpty ? path : path + [title]
+
+        let char = AX.string(item, "AXMenuItemCmdChar")
+        let glyph = AX.int(item, "AXMenuItemCmdGlyph")
+        // Un raccourci existe si un caractère OU un glyphe est présent. HotkeyClash
+        // n'exploite que le caractère ; pour un inventaire il faut aussi les glyphes,
+        // sinon toutes les flèches et touches F disparaissent silencieusement.
+        let hasChar = !(char ?? "").isEmpty
+        let hasGlyph = (glyph ?? 0) != 0
+        if hasChar || hasGlyph {
+            found.append(Shortcut(
+                chemin: subPath.joined(separator: " > "),
+                menu: menu,
+                caractere: hasChar ? char : nil,
+                glyphe: hasGlyph ? glyph : nil,
+                modificateurs: AX.int(item, "AXMenuItemCmdModifiers") ?? 0,
+                source: source))
+        }
+        walk(AX.children(item), path: subPath, menu: menu, source: source,
+             depth: depth + 1, into: &found)
+    }
+}
+
+func harvest(pid: pid_t, timeout: Double) -> [Shortcut] {
+    let app = AX.app(pid, timeout: Float(timeout))
+    var found: [Shortcut] = []
+    for (attribute, source) in [(kAXMenuBarAttribute as String, "menubar"),
+                                (kAXExtrasMenuBarAttribute as String, "extras")] {
+        guard let bar = AX.element(app, attribute) else { continue }
+        for topMenu in AX.children(bar) {
+            let title = AX.string(topMenu, kAXTitleAttribute as String) ?? ""
+            walk(AX.children(topMenu), path: [title], menu: title, source: source,
+                 depth: 0, into: &found)
+        }
+    }
+    return found
+}
+
+/// Attend que la barre de menu soit peuplée. Une app vient d'être lancée : son menu
+/// n'existe pas encore à la milliseconde où le processus démarre.
+func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> Bool {
+    while Date() < deadline {
+        let app = AX.app(pid, timeout: Float(min(timeout, 5)))
+        if let bar = AX.element(app, kAXMenuBarAttribute as String),
+           AX.children(bar).count > 1 { return true }
+        Thread.sleep(forTimeInterval: 0.3)
+    }
+    return false
+}
+
+// MARK: - Résultat par app
+
+struct AppResult: Encodable {
+    let nom: String
+    let bundleID: String
+    let chemin: String
+    let version: String?
+    let categorie: String?
+    let deja_lance: Bool
+    let lance_par_nous: Bool
+    let statut: String          // "ok" | "sans_menu" | "timeout" | "echec_lancement"
+    let detail: String?
+    let duree_s: Double
+    let raccourcis: [Shortcut]
+}
+
+func infoValue(_ bundle: Bundle?, _ key: String) -> String? {
+    bundle?.object(forInfoDictionaryKey: key) as? String
+}
+
+func process(bundleID: String, options: Options) -> AppResult {
+    let started = Date()
+    let workspace = NSWorkspace.shared
+    let url = workspace.urlForApplication(withBundleIdentifier: bundleID)
+    let bundle = url.flatMap { Bundle(url: $0) }
+    let name = url.flatMap {
+        FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "")
+    } ?? bundleID
+
+    func result(_ statut: String, _ detail: String?, _ shortcuts: [Shortcut],
+                running: Bool, launched: Bool) -> AppResult {
+        AppResult(nom: name, bundleID: bundleID, chemin: url?.path ?? "",
+                  version: infoValue(bundle, "CFBundleShortVersionString"),
+                  categorie: infoValue(bundle, "LSApplicationCategoryType"),
+                  deja_lance: running, lance_par_nous: launched,
+                  statut: statut, detail: detail,
+                  duree_s: (Date().timeIntervalSince(started) * 10).rounded() / 10,
+                  raccourcis: shortcuts)
+    }
+
+    guard let url else {
+        return result("echec_lancement", "Aucune app installée avec cet identifiant",
+                      [], running: false, launched: false)
+    }
+
+    var running = workspace.runningApplications.first { $0.bundleIdentifier == bundleID }
+    let wasRunning = running != nil
+    var launchedByUs = false
+
+    if running == nil {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false        // ne pas voler le focus à l'utilisateur
+        configuration.hides = true             // masquer les fenêtres qui s'ouvrent
+        configuration.addsToRecentItems = false
+        let semaphore = DispatchSemaphore(value: 0)
+        var launchError: Error?
+        workspace.openApplication(at: url, configuration: configuration) { app, error in
+            running = app
+            launchError = error
+            semaphore.signal()
+        }
+        if semaphore.wait(timeout: .now() + options.timeout) == .timedOut {
+            return result("timeout", "Lancement non terminé dans le délai imparti",
+                          [], running: false, launched: false)
+        }
+        if let launchError {
+            return result("echec_lancement", launchError.localizedDescription,
+                          [], running: false, launched: false)
+        }
+        launchedByUs = true
+    }
+
+    guard let process = running else {
+        return result("echec_lancement", "Processus introuvable après lancement",
+                      [], running: wasRunning, launched: launchedByUs)
+    }
+
+    let deadline = started.addingTimeInterval(options.timeout)
+    let ready = waitForMenuBar(pid: process.processIdentifier, deadline: deadline,
+                               timeout: options.timeout)
+    let shortcuts = ready ? harvest(pid: process.processIdentifier, timeout: options.timeout) : []
+
+    // On ne quitte que ce qu'on a lancé, et jamais de force : un forceTerminate peut
+    // faire perdre du travail non enregistré.
+    if launchedByUs && !options.keepRunning {
+        process.terminate()
+    }
+
+    let statut = ready ? "ok" : (Date() >= deadline ? "timeout" : "sans_menu")
+    let detail = ready ? nil : (statut == "timeout"
+        ? "Barre de menu non peuplée avant expiration du délai"
+        : "Aucune barre de menu exposée (app sans menu, ou agent d'arrière-plan)")
+    return result(statut, detail, shortcuts, running: wasRunning, launched: launchedByUs)
+}
+
+// MARK: - Entrée
+
+let options = parseArgs()
+
+guard AX.isTrusted() else {
+    FileHandle.standardError.write("""
+    ⛔️ Autorisation d'accessibilité absente.
+
+    Ouvre Réglages Système → Confidentialité et sécurité → Accessibilité,
+    ajoute ce binaire, et relance :
+      \(Bundle.main.bundleURL.path)
+
+    """.data(using: .utf8)!)
+    exit(1)
+}
+
+if options.checkOnly {
+    print("✅ Autorisation d'accessibilité accordée.")
+    exit(0)
+}
+
+var targets = options.bundleIDs
+if options.scanAll {
+    let directories = ["/Applications", "/Applications/Utilities", "/System/Applications",
+                       NSHomeDirectory() + "/Applications"]
+    var seen = Set<String>()
+    for directory in directories {
+        let contents = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
+        for entry in contents where entry.hasSuffix(".app") {
+            let path = directory + "/" + entry
+            if let id = Bundle(path: path)?.bundleIdentifier, seen.insert(id).inserted {
+                targets.append(id)
+            }
+        }
+    }
+}
+
+guard !targets.isEmpty else {
+    FileHandle.standardError.write("Rien à faire : passe --bundle-ids ou --all.\n".data(using: .utf8)!)
+    exit(2)
+}
+
+try? FileManager.default.createDirectory(atPath: options.outDir,
+                                         withIntermediateDirectories: true)
+let encoder = JSONEncoder()
+encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+
+func runAll() {
+    for (index, bundleID) in targets.enumerated() {
+        let file = "\(options.outDir)/\(bundleID).json"
+        // Reprise : une passe interrompue ne recommence pas ce qui est déjà sur le disque.
+        if !options.force && FileManager.default.fileExists(atPath: file) {
+            print("[\(index + 1)/\(targets.count)] \(bundleID) — déjà fait, ignoré")
+            continue
+        }
+        let outcome = process(bundleID: bundleID, options: options)
+        if let data = try? encoder.encode(outcome) {
+            try? data.write(to: URL(fileURLWithPath: file))
+        }
+        let mark = outcome.statut == "ok" ? "✅" : "⚠️ "
+        print("[\(index + 1)/\(targets.count)] \(mark) \(outcome.nom) — "
+            + "\(outcome.raccourcis.count) raccourcis, \(outcome.statut), \(outcome.duree_s)s"
+            + (outcome.lance_par_nous ? " (lancée par nous)" : " (déjà lancée)"))
+        fflush(stdout)
+    }
+}
+
+// Tout le travail tourne hors du thread principal, qui reste libre pour la boucle
+// d'exécution. NSWorkspace.openApplication rappelle son bloc de complétion via
+// cette boucle : bloquer le thread principal en l'attendant provoquerait un interblocage.
+DispatchQueue.global(qos: .userInitiated).async {
+    runAll()
+    exit(0)
+}
+RunLoop.main.run()
