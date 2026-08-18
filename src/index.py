@@ -165,12 +165,21 @@ def gagnant(bindings):
                      f"nulle part. {COUCHES[couche][1]}"}
 
 
+# Part des apps lues au-delà de laquelle une même commande de menu cesse d'être une
+# commande propre à une app pour devenir une convention de macOS. Mesuré sur cette
+# machine : ⌘M « Minimiser » est exposé par 81 % des apps, le suivant par 13 % —
+# l'écart est tel que le seuil exact n'a aucune influence.
+SEUIL_CONVENTION = 0.5
+
+
 def build(apps_dir):
     keyboard = Keyboard()
     portees, libelles_portee = load_portees()
     bindings = system_bindings(keyboard, portees)
     menus, apps = app_bindings(keyboard, apps_dir)
     bindings += menus + global_hotkeys.scan_all(keyboard)
+
+    lues = {a["bundleID"] for a in apps if a["statut"] == "ok"}
 
     groupes = defaultdict(list)
     for b in bindings:
@@ -184,10 +193,25 @@ def build(apps_dir):
         proprietaires = {b.proprietaire for b in membres if b.actif}
         # macOS injecte ses commandes de fenêtre dans le menu de chaque app : le
         # raccourci système et l'élément de menu désignent alors la même commande.
-        feuilles = {b.action.split(" > ")[-1].casefold().rstrip("… .") 
+        feuilles = {b.action.split(" > ")[-1].casefold().rstrip("… .")
                     for b in membres if b.actif}
         meme_commande = len(feuilles) == 1 and len(proprietaires) > 1
-        conflit = len(globaux) >= 1 and len(proprietaires) > 1 and not meme_commande
+        # Une commande que presque toutes les apps exposent n'est pas la leur : c'est
+        # une convention que macOS installe dans chaque barre de menu. Le raccourci
+        # système correspondant fait la même chose — il ne la conteste pas. Le test
+        # porte sur la proportion d'apps, pas sur le libellé : « Minimiser »,
+        # « Minimize » et « Réduire » désignent la même commande.
+        # Garde-fou : la règle ne vaut que si le seul prétendant hors menus est macOS
+        # lui-même. Qu'un outil tiers s'empare de ⌘C reste un vrai conflit — il le
+        # vole justement à toutes les apps, et l'ubiquité en aggrave la portée au
+        # lieu de l'excuser.
+        apps_menu = {b.bundle_id for b in membres if b.actif and b.couche == "menu"}
+        tiers = any(b.couche in ("pilote", "capture", "global", "autre")
+                    for b in membres if b.actif)
+        convention = (bool(lues) and not tiers
+                      and len(apps_menu) / len(lues) >= SEUIL_CONVENTION)
+        conflit = (len(globaux) >= 1 and len(proprietaires) > 1
+                   and not meme_commande and not convention)
         combinaisons.append({
             "cle": cle,
             "combo": membres[0].combo,
@@ -195,6 +219,8 @@ def build(apps_dir):
             "double": any(b.double for b in membres),
             "conflit": conflit,
             "meme_commande": meme_commande,
+            "convention": convention,
+            "apps_exposant": len(apps_menu),
             "arbitrage": gagnant(membres),
             "usages": [{
                 "action": b.action, "proprietaire": b.proprietaire, "source": b.source,

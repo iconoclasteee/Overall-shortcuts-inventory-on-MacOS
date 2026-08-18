@@ -235,6 +235,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   background: var(--plaque); border-left: 3px solid var(--petrol);
 }
 .conflit-detail .verdict { border-left-color: var(--vermillon); }
+.verdict.convention { border-left-color: var(--sourdine); color: var(--sourdine); }
 
 /* — Contrôles — */
 .controles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
@@ -488,6 +489,9 @@ const TEXTES = {
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
     double: "double frappe", fermer: "Fermer",
     rien_atteignable: "Rien d'atteignable dans cette app.",
+    convention: (n) => `Commande standard de macOS : ${n} applications l'exposent dans `
+                     + `leur propre menu. Le raccourci système et ces entrées désignent `
+                     + `la même action — ce n'est pas un conflit.`,
     aucun_conflit: "Aucun conflit", aucun_conflit_filtre: " parmi ce que le filtre laisse passer",
     aucun_conflit_suite: ". Chaque combinaison n'a qu'un seul preneur.",
     rien_filtre: "Aucune combinaison", rien_pour: "pour", rien_libre: "Cette combinaison est donc libre.",
@@ -556,6 +560,9 @@ const TEXTES = {
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
     double: "double press", fermer: "Close",
     rien_atteignable: "Nothing reachable in this app.",
+    convention: (n) => `Standard macOS command: ${n} applications expose it in their own `
+                     + `menu. The system shortcut and those entries mean the same action `
+                     + `— this is not a conflict.`,
     aucun_conflit: "No conflict", aucun_conflit_filtre: " among what the filter lets through",
     aucun_conflit_suite: ". Every combination has a single taker.",
     rien_filtre: "No combination", rien_pour: "for", rien_libre: "This combination is free.",
@@ -805,7 +812,7 @@ function atteignables(bundleID) {
     // rouge la moitié des lignes, et contredirait l'arbitrage calculé côté Python.
     out.push({ cle: c.cle, combo: c.combo, mods: c.mods, double: c.double,
                vainqueurs, perdants, couche: gagnante,
-               conflit: perdants.length > 0 && !c.meme_commande });
+               conflit: perdants.length > 0 && !c.meme_commande && !c.convention });
   }
   return out;
 }
