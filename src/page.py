@@ -170,6 +170,27 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 }
 .capsules button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 #touche-libre { width: 108px; }
+.combo-app { position: relative; min-width: 340px; }
+.combo-app input { width: 100%; }
+#liste-app {
+  position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
+  max-height: 340px; overflow-y: auto; margin: 0; padding: 5px; list-style: none;
+  background: var(--plaque); border: 1px solid var(--creux); border-radius: 8px;
+  box-shadow: 0 12px 32px var(--ombre);
+}
+#liste-app li {
+  padding: 8px 11px; border-radius: 5px; cursor: pointer; font-size: 14px;
+  display: flex; justify-content: space-between; gap: 16px; align-items: baseline;
+}
+#liste-app li .compte {
+  font-family: var(--mono); font-size: 11px; color: var(--sourdine); flex: none;
+}
+#liste-app li[aria-selected="true"], #liste-app li:hover {
+  background: var(--petrol); color: var(--plaque);
+}
+#liste-app li[aria-selected="true"] .compte, #liste-app li:hover .compte { color: var(--plaque); }
+#liste-app .aucun { color: var(--sourdine); cursor: default; }
+#liste-app .aucun:hover { background: none; color: var(--sourdine); }
 .lien {
   font: inherit; font-size: 13px; background: none; border: 0; padding: 0;
   color: var(--sourdine); text-decoration: underline; cursor: pointer;
@@ -471,8 +492,83 @@ function vueParMenu(app) {
         parPortee.inconnu.map(u => rangee(u, u.proprietaire)));
 }
 
+/* Une liste déroulante de 200 apps ne se parcourt pas : on la restreint en tapant.
+   La comparaison ignore accents et casse, pour que « appstore » trouve « AppStore ». */
+const sansAccent = (t) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const LISIBLES = D.apps.filter(a => a.statut === "ok")
+  .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+let appChoisie = LISIBLES.length ? LISIBLES[0].bundleID : "";
+let surligne = -1;
+
+function appsFiltrees() {
+  const q = sansAccent(document.getElementById("filtre-app").value.trim());
+  if (!q) return LISIBLES;
+  return LISIBLES.filter(a => sansAccent(a.nom).includes(q)
+                           || sansAccent(a.bundleID).includes(q));
+}
+
+function rendreListeApps() {
+  const liste = document.getElementById("liste-app");
+  const trouvees = appsFiltrees();
+  liste.innerHTML = trouvees.length
+    ? trouvees.map((a, i) =>
+        `<li role="option" data-id="${esc(a.bundleID)}" aria-selected="${i === surligne}">`
+        + `<span>${esc(a.nom)}</span>`
+        + `<span class="compte">${a.version ? "v" + esc(a.version) : ""}</span></li>`).join("")
+    : `<li class="aucun">Aucune application pour cette recherche.</li>`;
+  return trouvees;
+}
+
+function ouvrirListe(ouvrir) {
+  const champ = document.getElementById("filtre-app");
+  document.getElementById("liste-app").hidden = !ouvrir;
+  champ.setAttribute("aria-expanded", String(ouvrir));
+  if (ouvrir) rendreListeApps();
+}
+
+function choisirApp(id) {
+  const app = LISIBLES.find(a => a.bundleID === id);
+  if (!app) return;
+  appChoisie = id;
+  document.getElementById("filtre-app").value = app.nom;
+  surligne = -1;
+  ouvrirListe(false);
+  rendreApp();
+}
+
+function brancherChoixApp() {
+  const champ = document.getElementById("filtre-app");
+  const liste = document.getElementById("liste-app");
+  champ.addEventListener("input", () => { surligne = -1; ouvrirListe(true); });
+  champ.addEventListener("focus", () => { champ.select(); ouvrirListe(true); });
+  // Le clic sur un élément doit passer avant la fermeture déclenchée par le blur.
+  champ.addEventListener("blur", () => setTimeout(() => ouvrirListe(false), 140));
+  champ.addEventListener("keydown", (e) => {
+    const trouvees = appsFiltrees();
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (liste.hidden) ouvrirListe(true);
+      surligne = Math.max(0, Math.min(trouvees.length - 1,
+        surligne + (e.key === "ArrowDown" ? 1 : -1)));
+      rendreListeApps();
+      liste.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const cible = surligne >= 0 ? trouvees[surligne] : trouvees[0];
+      if (cible) choisirApp(cible.bundleID);
+    } else if (e.key === "Escape") {
+      ouvrirListe(false);
+    }
+  });
+  liste.addEventListener("mousedown", (e) => {
+    const item = e.target.closest("li[data-id]");
+    if (item) choisirApp(item.dataset.id);
+  });
+  if (appChoisie) champ.value = LISIBLES[0].nom;
+}
+
 function rendreApp() {
-  const id = document.getElementById("choix-app").value;
+  const id = appChoisie;
   const app = D.apps.find(a => a.bundleID === id);
   const mode = document.querySelector("#sous-vues [aria-selected=true]").dataset.mode;
   const cible = document.getElementById("vue-app");
@@ -510,8 +606,8 @@ document.querySelectorAll("nav button").forEach(b => b.addEventListener("click",
 }));
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres();
-document.getElementById("choix-app").addEventListener("change", rendreApp);
+brancherFiltres(); brancherChoixApp();
+
 rendreConflits(); rendreCombinaisons(); rendreApp();
 """
 
@@ -529,11 +625,6 @@ def build(index_path):
     lisibles = [a for a in data["apps"] if a["statut"] == "ok"]
     conflits = sum(1 for c in data["combinaisons"] if c["conflit"])
     machine = subprocess.run(["hostname", "-s"], capture_output=True, text=True).stdout.strip()
-
-    options = "\n".join(
-        f'<option value="{html_std.escape(a["bundleID"])}">'
-        f'{html_std.escape(a["nom"])}</option>'
-        for a in sorted(lisibles, key=lambda a: a["nom"].lower()))
 
     # "</" doit être neutralisé : la séquence fermerait la balise script depuis
     # l'intérieur d'une chaîne JSON si un nom de commande la contenait.
@@ -617,7 +708,12 @@ def build(index_path):
   </section>
   <section id="onglet-app">
     <div class="controles">
-      <select id="choix-app">{options}</select>
+      <div class="combo-app">
+        <input type="text" id="filtre-app" role="combobox" aria-expanded="false"
+               aria-controls="liste-app" aria-autocomplete="list" autocomplete="off"
+               placeholder="Cherche une application — power, app, safari">
+        <ul id="liste-app" role="listbox" hidden></ul>
+      </div>
       <div id="sous-vues" class="segmente">
         <button data-mode="menu" aria-selected="true">Par menu</button>
         <button data-mode="passe" aria-selected="false">Ce qui se passe</button>
