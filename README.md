@@ -173,6 +173,14 @@ Le code est publiable tel quel. Tout ce qui décrit **une machine** est produit 
 réels : titres de favoris du navigateur, noms de macros, nom de la session. Elle n'a
 rien à faire dans un dépôt, ni dans un partage de fichiers.
 
+Le dépôt ne dit rien d'une installation particulière : ni le nombre d'apps lues, ni
+les logiciels présents, ni les raccourcis désactivés. Les outils tiers ne sont nommés
+que là où le code les traite explicitement — Alfred et Keyboard Maestro ont un lecteur
+dédié, et chaque convention de stockage est illustrée par l'app qui l'emploie. Partout
+ailleurs, le texte dit « outils tiers ». Même règle pour `data/app-descriptions.json` :
+sa version versionnée ne décrit que des apps livrées avec macOS, parce qu'une version
+complétée reviendrait à publier la liste des logiciels installés.
+
 Les listes d'exclusion, elles, sont versionnées : ce sont des réglages du programme,
 pas des données de machine. Elles ne contiennent que des identifiants de composants
 macOS et d'outils grand public — aucun identifiant relevé sur une installation
