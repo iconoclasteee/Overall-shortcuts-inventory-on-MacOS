@@ -246,32 +246,35 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 /* Deux natures de filtre : à gauche la combinaison de touches, à droite la recherche
    de libellé. Les séparer évite de les prendre pour un même réglage. */
 .filtre {
-  display: grid; grid-template-columns: minmax(0, max-content) auto minmax(200px, 1fr);
-  gap: 12px 36px; margin: 0 0 28px; padding: 18px 20px; align-items: stretch;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(190px, 250px);
+  gap: 10px 28px; margin: 0 0 28px; padding: 16px 20px; align-items: stretch;
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
 }
-.colonne-touches { display: grid; gap: 12px; }
+.colonne-touches { display: grid; gap: 8px; min-width: 0; }
+/* Étiquette puis contrôle, collés : un grand vide entre les deux les dissocie. */
 .colonne-nombre {
-  display: grid; gap: 8px; justify-items: start;
-  padding-left: 36px; border-left: 1px solid var(--creux);
+  display: grid; gap: 6px; justify-items: start; align-content: start;
+  padding-left: 28px; border-left: 1px solid var(--creux);
 }
 .colonne-nombre select {
   font: inherit; font-size: 14px; padding: 10px 13px; color: var(--encre);
   background: var(--alu); border: 1px solid var(--creux); border-radius: 7px;
 }
 .colonne-texte {
-  display: grid; gap: 8px; justify-items: start; max-width: 400px;
-  padding-left: 40px; border-left: 1px solid var(--creux);
+  display: grid; gap: 6px; justify-items: stretch; align-content: start;
+  min-width: 0; padding-left: 28px; border-left: 1px solid var(--creux);
 }
-.colonne-texte input { width: 100%; font-size: 14px; padding: 10px 13px; }
+/* Sans min-width nul sur la colonne, le champ déborde du panneau. */
+.colonne-texte input { width: 100%; min-width: 0; font-size: 14px; padding: 9px 12px; }
+.colonne-texte .lien { justify-self: start; }
 .colonne-texte .etiquette { width: auto; }
 .rangee-filtre { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
-.rangee-filtre .etiquette { padding-top: 10px; }
+.rangee-filtre .etiquette { padding-top: 9px; }
 /* Chercher un texte n'est pas filtrer une combinaison : la ligne est séparée pour
    qu'on ne prenne pas les deux pour un même réglage. */
 /* Les touches de fonction occupent leur propre rangée : mêlées aux flèches et aux
    touches d'édition, elles formeraient un pavé de vingt boutons illisible. */
-.rangees-touches { display: flex; flex-direction: column; gap: 6px; }
+.rangees-touches { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .etiquette {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
   text-transform: uppercase; color: var(--sourdine); width: 104px; flex: none;
@@ -333,6 +336,13 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   padding: 8px 11px; border-radius: 5px; cursor: pointer; font-size: 14px;
   display: flex; justify-content: space-between; gap: 16px; align-items: baseline;
 }
+#pave-select {
+  font-family: var(--mono); font-size: 12.5px; padding: 7px 8px; border-radius: 5px;
+  background: linear-gradient(var(--touche-haut), var(--touche-bas));
+  border: 1px solid var(--creux); color: var(--encre); box-shadow: 0 1.5px 0 var(--ombre);
+  margin-left: 6px;
+}
+#pave-select:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 #liste-app li .compte {
   font-family: var(--mono); font-size: 11px; color: var(--sourdine); flex: none;
 }
@@ -505,7 +515,8 @@ const TEXTES = {
     bascule_app: "Filtre par application", toutes_apps: "Toutes applications",
     cherche_app: "Cherche une application",
     l_modificateurs: "Modificateurs", l_touche: "Touche",
-    l_nombre: "Filtre par nombre de touches", l_texte: "Libellé de commande",
+    l_nombre: "Nombre de touches", l_texte: "Libellé de commande",
+    pave_numerique: "Pavé numérique",
     effacer_touches: "Effacer les touches", tout_effacer: "Tout effacer",
     ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
@@ -576,7 +587,8 @@ const TEXTES = {
     bascule_app: "Filter by app", toutes_apps: "All applications",
     cherche_app: "Search an application",
     l_modificateurs: "Modifiers", l_touche: "Key",
-    l_nombre: "Filter by key count", l_texte: "Command label",
+    l_nombre: "Key count", l_texte: "Command label",
+    pave_numerique: "Numeric keypad",
     effacer_touches: "Clear keys", tout_effacer: "Clear all",
     ph_touche: "or type the key", ph_texte: "copy, capture, full screen…",
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
@@ -666,7 +678,8 @@ function etatFiltre() {
   const touche = document.querySelector("#touches button[aria-pressed=true]");
   return {
     bits, actifs,
-    touche: touche ? touche.dataset.touche : "",
+    touche: touche ? touche.dataset.touche
+                   : (document.getElementById("pave-select").value || ""),
     libre: document.getElementById("touche-libre").value.trim().toLowerCase(),
     nombre: Number(document.getElementById("filtre-nombre").value) || 0,
     texte: document.getElementById("recherche").value.trim().toLowerCase(),
@@ -718,9 +731,17 @@ function brancherFiltres() {
     const etait = b.getAttribute("aria-pressed") === "true";
     document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
     b.setAttribute("aria-pressed", String(!etait));
-    if (!etait) document.getElementById("touche-libre").value = "";
+    if (!etait) {
+      document.getElementById("touche-libre").value = "";
+      document.getElementById("pave-select").value = "";
+    }
     rendreTout();
   }));
+  document.getElementById("pave-select").addEventListener("change", () => {
+    document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
+    document.getElementById("touche-libre").value = "";
+    rendreTout();
+  });
   document.getElementById("touche-libre").addEventListener("input", () => {
     document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
     rendreTout();
@@ -731,6 +752,7 @@ function brancherFiltres() {
   document.getElementById("vider-touches").addEventListener("click", () => {
     document.querySelectorAll("#touches button").forEach(x => x.setAttribute("aria-pressed", "false"));
     document.getElementById("touche-libre").value = "";
+    document.getElementById("pave-select").value = "";
     rendreTout();
   });
   document.getElementById("vider-filtre").addEventListener("click", () => {
@@ -1092,6 +1114,9 @@ function appliquerLangue() {
   document.querySelectorAll("[data-t]").forEach(n => { n.textContent = T(n.dataset.t); });
   document.querySelectorAll("[data-t-html]").forEach(n => { n.innerHTML = T(n.dataset.tHtml); });
   document.querySelectorAll("[data-tp]").forEach(n => { n.placeholder = T(n.dataset.tp); });
+  document.querySelectorAll("#pave-select option[data-t]").forEach(o => {
+    o.textContent = T(o.dataset.t);
+  });
   document.querySelectorAll("[data-tn]").forEach(n => {
     n.textContent = T("touche_s")(Number(n.dataset.tn));
   });
@@ -1234,9 +1259,15 @@ def build(index_path):
                 html_std.escape(t, quote=True))
             for t in touches)
 
-    touches_html = (f'<div class="capsules">{capsules(fonctions)}</div>'
-                    f'<div class="capsules">{capsules(pave)}</div>'
-                    f'<div class="capsules">{capsules(autres)}</div>')
+    pave_html = "".join(
+        f'<option value="{html_std.escape(t, quote=True)}">'
+        f'{html_std.escape(t.removeprefix("Pavé "))}</option>' for t in pave)
+    touches_html = (
+        f'<div class="capsules">{capsules(fonctions)}</div>'
+        f'<div class="capsules">{capsules(autres)}'
+        f'<select id="pave-select" aria-label="Pavé numérique">'
+        f'<option value="" data-t="pave_numerique"></option>{pave_html}</select>'
+        f'</div>')
     mods_html = "".join(
         f'<button type="button" aria-pressed="false" data-bit="{bit}">{sym}</button>'
         for sym, bit in (("⌃", 2), ("⌥", 4), ("⇧", 1), ("⌘", 8), ("fn", 16)))
