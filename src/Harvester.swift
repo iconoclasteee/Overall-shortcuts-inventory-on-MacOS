@@ -117,9 +117,15 @@ struct Shortcut: Encodable {
 let maxDepth = 12  // les menus réels plafonnent vers 5 ; au-delà, l'arbre est suspect
 
 func walk(_ items: [AXUIElement], path: [String], menu: String, source: String,
-          depth: Int, into found: inout [Shortcut]) {
+          depth: Int, limite: Date, into found: inout [Shortcut], tronque: inout Bool) {
     guard depth < maxDepth else { return }
     for item in items {
+        // Le délai borne aussi le parcours de l'arbre, pas seulement l'attente de la
+        // barre de menu. Sans cela, le seul plafond est le délai **par message**
+        // d'accessibilité, appliqué à chacune des centaines de requêtes : un serveur
+        // lent répond à chaque fois dans les temps tout en immobilisant la passe bien
+        // au-delà du délai annoncé.
+        if Date() >= limite { tronque = true; return }
         let title = AX.string(item, kAXTitleAttribute as String) ?? ""
         let subPath = title.isEmpty ? path : path + [title]
 
@@ -140,23 +146,27 @@ func walk(_ items: [AXUIElement], path: [String], menu: String, source: String,
                 source: source))
         }
         walk(AX.children(item), path: subPath, menu: menu, source: source,
-             depth: depth + 1, into: &found)
+             depth: depth + 1, limite: limite, into: &found, tronque: &tronque)
+        if tronque { return }
     }
 }
 
-func harvest(pid: pid_t, timeout: Double) -> [Shortcut] {
+func harvest(pid: pid_t, timeout: Double, limite: Date) -> (raccourcis: [Shortcut],
+                                                            tronque: Bool) {
     let app = AX.app(pid, timeout: Float(timeout))
     var found: [Shortcut] = []
+    var tronque = false
     for (attribute, source) in [(kAXMenuBarAttribute as String, "menubar"),
                                 (kAXExtrasMenuBarAttribute as String, "extras")] {
         guard let bar = AX.element(app, attribute) else { continue }
         for topMenu in AX.children(bar) {
+            if tronque { break }
             let title = AX.string(topMenu, kAXTitleAttribute as String) ?? ""
             walk(AX.children(topMenu), path: [title], menu: title, source: source,
-                 depth: 0, into: &found)
+                 depth: 0, limite: limite, into: &found, tronque: &tronque)
         }
     }
-    return found
+    return (found, tronque)
 }
 
 enum EtatMenu { case pret, sansMenu, expire }
@@ -293,11 +303,19 @@ func process(bundleID: String, options: Options) -> AppResult {
                       [], running: wasRunning, launched: launchedByUs)
     }
 
-    let deadline = started.addingTimeInterval(options.timeout)
+    // Le délai repart d'ici : le lancement a déjà consommé son propre budget, et le
+    // décompter deux fois classerait « expirée » une app lente à ouvrir mais saine.
+    let deadline = Date().addingTimeInterval(options.timeout)
     let etat = waitForMenuBar(pid: process.processIdentifier, deadline: deadline,
                               timeout: options.timeout)
-    let shortcuts = etat == .pret
-        ? harvest(pid: process.processIdentifier, timeout: options.timeout) : []
+    var tronque = false
+    var shortcuts: [Shortcut] = []
+    if etat == .pret {
+        let lecture = harvest(pid: process.processIdentifier, timeout: options.timeout,
+                              limite: Date().addingTimeInterval(options.timeout))
+        shortcuts = lecture.raccourcis
+        tronque = lecture.tronque
+    }
 
     // On ne quitte que ce qu'on a lancé, et jamais de force : un forceTerminate peut
     // faire perdre du travail non enregistré.
@@ -309,7 +327,13 @@ func process(bundleID: String, options: Options) -> AppResult {
     let detail: String?
     switch etat {
     case .pret:
-        statut = "ok"; detail = nil
+        // Une lecture écourtée reste utilisable, mais elle est incomplète : le dire
+        // vaut mieux que laisser croire à un inventaire exhaustif.
+        statut = "ok"
+        detail = tronque
+            ? "Lecture interrompue au délai imparti : la barre de menu n'a pas été "
+              + "parcourue en entier"
+            : nil
     case .sansMenu:
         statut = "sans_menu"
         detail = "Aucune barre de menu exposée (app sans menu, ou agent d'arrière-plan)"
@@ -401,25 +425,34 @@ func dumpKeymap() {
 
 if options.keymap { dumpKeymap() }
 
+/// Refuse de continuer sans l'autorisation d'accessibilité.
+///
+/// N'est appelé que par les modes qui lisent réellement une barre de menu. Recenser
+/// les apps installées ou exporter la disposition clavier ne demande rien : exiger
+/// l'autorisation pour ces modes rendrait la page impossible à régénérer après une
+/// recompilation, alors qu'aucune application n'y est ouverte.
+func exigerAutorisation() {
+    guard AX.isTrusted() else {
+        FileHandle.standardError.write("""
+        ⛔️ Autorisation d'accessibilité absente.
+
+        Ouvre Réglages Système → Confidentialité et sécurité → Accessibilité,
+        ajoute ce binaire, et relance :
+          \(Bundle.main.bundleURL.path)
+
+        """.data(using: .utf8)!)
+        exit(1)
+    }
+}
+
 if let chemin = options.verdict {
     try? (AX.isTrusted() ? "accordee" : "absente")
         .write(toFile: chemin, atomically: true, encoding: .utf8)
     if options.checkOnly { exit(AX.isTrusted() ? 0 : 1) }
 }
 
-guard AX.isTrusted() else {
-    FileHandle.standardError.write("""
-    ⛔️ Autorisation d'accessibilité absente.
-
-    Ouvre Réglages Système → Confidentialité et sécurité → Accessibilité,
-    ajoute ce binaire, et relance :
-      \(Bundle.main.bundleURL.path)
-
-    """.data(using: .utf8)!)
-    exit(1)
-}
-
 if options.checkOnly {
+    exigerAutorisation()
     print("✅ Autorisation d'accessibilité accordée.")
     exit(0)
 }
@@ -609,6 +642,8 @@ if options.dryRun {
     }
     exit(0)
 }
+
+exigerAutorisation()
 
 try? FileManager.default.createDirectory(atPath: options.outDir,
                                          withIntermediateDirectories: true)

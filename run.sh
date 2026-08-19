@@ -22,7 +22,13 @@ chmod go-rwx out 2>/dev/null || true
 
 HARVESTER=bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester
 [ -x "$HARVESTER" ] || { echo "Binaire absent — lance d'abord ./build.sh"; exit 1; }
-"$HARVESTER" --check
+
+# L'autorisation n'est exigée que pour lire une barre de menu. Recenser les apps,
+# exporter la disposition clavier et reconstruire la page n'en ont pas besoin — et
+# refuser de le faire rendrait la page impossible à régénérer après une recompilation,
+# qui invalide justement l'autorisation.
+AUTORISE=oui
+"$HARVESTER" --check >/dev/null 2>&1 || AUTORISE=non
 
 # Jeu de test : chaque app couvre un mode de défaillance différent.
 #   Finder      app toujours lancée, menus riches
@@ -63,11 +69,16 @@ if [ ${#TARGET[@]} -eq 0 ]; then
   # jusqu'à ce qu'elle soit cochée dans la page — ouvrir les apps reste un geste
   # que l'utilisateur demande, jamais un effet de bord.
   PERIMEES=$(python3 src/perimees.py "$APPS_DIR" || true)
-  if [ -n "$PERIMEES" ]; then
+  if [ -n "$PERIMEES" ] && [ "$AUTORISE" = oui ]; then
     echo "→ Fiches périmées relues, sans ouvrir d'application"
-    "$HARVESTER" --bundle-ids "$PERIMEES" --force --only-running --out "$APPS_DIR"
+    "$HARVESTER" --bundle-ids "$PERIMEES" --force --only-running --out "$APPS_DIR" || true
+  elif [ -n "$PERIMEES" ]; then
+    echo "→ Fiches périmées : relecture impossible sans l'autorisation d'accessibilité"
   fi
 else
+  if [ "$AUTORISE" != oui ]; then
+    "$HARVESTER" --check    # affiche le mode d'emploi complet, puis s'arrête
+  fi
   echo "→ Raccourcis par application"
   "$HARVESTER" "${TARGET[@]}" --out "$APPS_DIR" "${@:2}"
 fi
