@@ -179,6 +179,7 @@ h1 em { font-style: normal; color: var(--petrol); }
 .scan-outils { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; flex-wrap: wrap; }
 .scan-outils input { flex: 0 0 260px; }
 .scan-outils .sous { margin-left: auto; }
+.scan-scripts { display: flex; gap: 10px; margin: 0 0 16px; flex-wrap: wrap; }
 #tableau-scan { width: 100%; border-collapse: collapse; font-size: 13px; }
 #tableau-scan th {
   text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: .08em;
@@ -568,7 +569,6 @@ const TEXTES = {
     stat_combinaisons: "combinaisons", stat_conflits: "en conflit",
     stat_apps: "applications lues",
     scanner: "Scanner tout le Mac", scanner_apps: "apps",
-    relire: "Relire les raccourcis<br>système et les outils",
     bascule_app: "Filtre par application", toutes_apps: "Toutes applications",
     cherche_app: "Cherche une application",
     l_modificateurs: "Modificateurs", l_touche: "Touche",
@@ -584,8 +584,13 @@ const TEXTES = {
     verrouille: "exclusion non modifiable : le lancement déclenche une action lourde",
     motif_neuf: "nouvelle", motif_majeur: "version majeure",
     scan_selection: (n) => `${n} à scanner`,
-    scan_actualiser: "Actualiser la liste",
-    scan_actualiser_cmd: "# Recense les apps installées et reconstruit la page. N'ouvre aucune application.",
+    script_liste: "1 · Mettre à jour la liste des apps",
+    script_sources: "2 · Scanner le système et les apps sources",
+    script_global: "3 · Scanner tout ce qui est coché",
+    cmd_liste: "# Recense les apps installées, relit les raccourcis système et les préférences\n# des outils, puis reconstruit la page. N'ouvre aucune application. ~10 s.",
+    cmd_sources: (n) => `# Rouvre les ${n} apps qui déclarent des raccourcis globaux pour relire leurs\n# menus, puis reconstruit tout. Ce sont elles qui l'emportent sur les autres.`,
+    cmd_global: (n) => `# Rouvre les ${n} apps cochées une par une. Compte plusieurs minutes,\n# et une app au premier plan à chaque fois.`,
+    aucune_source: "Aucune app source : rien à scanner ici.",
     ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
     double: "double frappe", fermer: "Fermer",
@@ -630,13 +635,6 @@ const TEXTES = {
     scan_rien_coche: "Aucune application cochée : rien à scanner.",
     scan_defaut_cmd: "# Sélection par défaut — la commande complète suffit",
     scan_perso_cmd: "# Sélection personnalisée — à coller dans le terminal",
-    relire_titre: "Relire les raccourcis système et les outils",
-    relire_intro: "Relit les raccourcis de macOS et ceux que les outils tiers "
-                + "déclarent, puis reconstruit cette page. <strong>Aucune application "
-                + "n'est ouverte</strong> — les raccourcis de menu déjà lus sont conservés "
-                + "tels quels. Environ dix secondes.",
-    relire_apres: "À lancer dans le terminal, puis recharge cette page. Le déclenchement "
-                + "depuis le navigateur viendra avec la question des autorisations.",
     pied: "Les raccourcis d'une app ne vivent que dans sa barre de menu : ils sont lus app "
         + "par app. Une app lue sans document ouvert expose moins de commandes qu'en usage "
         + "réel. L'ordre des étages est fiable, mais deux outils accrochés au même étage "
@@ -651,7 +649,6 @@ const TEXTES = {
     stat_combinaisons: "combinations", stat_conflits: "in conflict",
     stat_apps: "apps read",
     scanner: "Scan the whole Mac", scanner_apps: "apps",
-    relire: "Re-read system shortcuts<br>and tools",
     bascule_app: "Filter by app", toutes_apps: "All applications",
     cherche_app: "Search an application",
     l_modificateurs: "Modifiers", l_touche: "Key",
@@ -667,8 +664,13 @@ const TEXTES = {
     verrouille: "exclusion cannot be lifted: launching triggers a heavy action",
     motif_neuf: "new", motif_majeur: "major version",
     scan_selection: (n) => `${n} to scan`,
-    scan_actualiser: "Refresh the list",
-    scan_actualiser_cmd: "# Lists installed apps and rebuilds the page. Opens no application.",
+    script_liste: "1 · Refresh the app list",
+    script_sources: "2 · Scan system and source apps",
+    script_global: "3 · Scan everything ticked",
+    cmd_liste: "# Lists installed apps, re-reads system shortcuts and tool preferences,\n# then rebuilds the page. Opens no application. ~10 s.",
+    cmd_sources: (n) => `# Reopens the ${n} apps that declare global hotkeys to re-read their menus,\n# then rebuilds everything. These are the ones that win over the rest.`,
+    cmd_global: (n) => `# Reopens the ${n} ticked apps one by one. Expect several minutes,\n# with an app coming to the front each time.`,
+    aucune_source: "No source app: nothing to scan here.",
     ph_touche: "or type the key", ph_texte: "copy, capture, full screen…",
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
     double: "double press", fermer: "Close",
@@ -713,12 +715,6 @@ const TEXTES = {
     scan_rien_coche: "No application checked: nothing to scan.",
     scan_defaut_cmd: "# Default selection — the plain command is enough",
     scan_perso_cmd: "# Custom selection — paste into the terminal",
-    relire_titre: "Re-read system shortcuts and tools",
-    relire_intro: "Re-reads macOS shortcuts and those declared by third-party tools, "
-                + "then rebuilds this page. <strong>No application is opened</strong> — menu "
-                + "shortcuts already read are kept as they are. About ten seconds.",
-    relire_apres: "Run it in the terminal, then reload this page. Triggering it from the "
-                + "browser comes with the permissions question.",
     pied: "An app's shortcuts live only in its menu bar, so they are read app by app. An app "
         + "read with no document open exposes fewer commands than in real use. The layer "
         + "order is reliable, but two tools hooking the same layer are decided by their "
@@ -1292,7 +1288,6 @@ function appliquerLangue() {
   document.querySelectorAll(".langues button").forEach(b =>
     b.setAttribute("aria-pressed", String(b.dataset.langue === LANGUE)));
   document.getElementById("detail-fermer").setAttribute("aria-label", T("fermer"));
-  document.getElementById("relire-fermer").setAttribute("aria-label", T("fermer"));
   const champ = document.getElementById("filtre-app");
   if (!filtreApp) champ.value = T("toutes_apps");
   document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
@@ -1336,11 +1331,6 @@ function brancherLangues() {
   }));
 }
 
-function brancherRelire() {
-  const boite = document.getElementById("relire");
-  document.getElementById("ouvrir-relire").addEventListener("click", () => boite.showModal());
-  document.getElementById("relire-fermer").addEventListener("click", () => boite.close());
-}
 
 function brancherScan() {
   document.getElementById("ouvrir-scan").addEventListener("click", () => choisirOnglet("scan"));
@@ -1379,51 +1369,63 @@ function brancherScan() {
     rendreScan();
   });
 
-  // Recenser et moissonner sont deux gestes distincts : le premier met la liste à
-  // jour en dix secondes sans ouvrir la moindre app, le second ouvre les apps une à
-  // une. Les confondre obligerait à subir le second pour obtenir le premier.
-  document.getElementById("scan-actualiser").addEventListener("click", () => {
-    const bloc = document.getElementById("scan-commande");
-    const cadre = document.getElementById("bloc-scan-commande");
-    cadre.hidden = false;
-    const commande = `cd ${RACINE} && ./run.sh --sources`;
-    bloc.textContent = `${T("scan_actualiser_cmd")}
-${commande}`;
-    bloc.dataset.commande = commande;
-    cadre.querySelector(".copier").hidden = false;
-  });
+  // Trois gestes, trois commandes. Recenser ne coûte rien et n'ouvre aucune app ;
+  // relire les outils en ouvre une poignée ; la passe complète les ouvre toutes.
+  // Les confondre obligerait à subir la plus chère pour obtenir la moins chère.
+  const MOISSONNEUR = "bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester";
 
-  document.getElementById("scan-lancer").addEventListener("click", () => {
+  function afficher(commentaire, commande) {
     const bloc = document.getElementById("scan-commande");
     const cadre = document.getElementById("bloc-scan-commande");
     const bouton = cadre.querySelector(".copier");
     cadre.hidden = false;
-    if (!aScanner.size) {
-      bloc.textContent = T("scan_rien_coche");
+    if (!commande) {
+      bloc.textContent = commentaire;
       delete bloc.dataset.commande;
       bouton.hidden = true;
       return;
     }
+    bloc.textContent = `${commentaire}\n${commande}`;
+    // Le commentaire dit ce qu'on copie, mais ne part pas dans le presse-papiers :
+    // collé dans zsh, un « # » n'y est pas toujours traité comme un commentaire.
+    bloc.dataset.commande = commande;
+    bouton.hidden = false;
+  }
+
+  // --force est indispensable dès qu'on relit : sans lui le moissonneur saute toute
+  // app dont la fiche existe déjà, c'est-à-dire précisément celles qu'on vient
+  // cocher parce que leur version a changé.
+  function moissonner(ids) {
     const reglages = JSON.stringify({
       exclues: [...exclues], incluses: [...incluses], sources: [...sourcesChoisies],
     });
-    // --force est indispensable : sans lui le moissonneur saute toute app dont la
-    // fiche existe déjà, c'est-à-dire précisément celles qu'on relit pour cause de
-    // nouvelle version.
-    const commande = `cd ${RACINE} && \\
-  printf '%s\\n' '${reglages}' > out/reglages-scan.json && \\
-  bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester \\
-    --bundle-ids ${[...aScanner].join(",")} --force --out out/apps && \\
+    return `cd ${RACINE} && \\
+  printf '%s' '${reglages}' > out/reglages-scan.json && \\
+  ${MOISSONNEUR} \\
+    --bundle-ids ${ids.join(",")} --force --out out/apps && \\
   ./run.sh --sources`;
-    bloc.textContent = `${T("scan_perso_cmd")}
-${commande}`;
-    bloc.dataset.commande = commande;
-    bouton.hidden = false;
+  }
+
+  document.getElementById("script-liste").addEventListener("click", () => {
+    afficher(T("cmd_liste"), `cd ${RACINE} && ./run.sh --sources`);
+  });
+
+  document.getElementById("script-sources").addEventListener("click", () => {
+    const ids = LIGNES
+      .filter(l => !estExclue(l) && (SOURCES_AUTO.has(l.id) || sourcesChoisies.has(l.id)))
+      .map(l => l.id);
+    if (!ids.length) return afficher(T("aucune_source"), null);
+    afficher(T("cmd_sources")(ids.length), moissonner(ids));
+  });
+
+  document.getElementById("script-global").addEventListener("click", () => {
+    if (!aScanner.size) return afficher(T("scan_rien_coche"), null);
+    afficher(T("cmd_global")(aScanner.size), moissonner([...aScanner]));
   });
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherRelire(); brancherLangues() brancherCopie();
+brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherLangues() brancherCopie();
 appliquerLangue();
 
 rendreTout();
@@ -1526,9 +1528,6 @@ def build(index_path):
       <span data-t="scanner"></span>
       <span id="compte-scan"></span>
     </button>
-    <button type="button" id="ouvrir-relire" class="bouton-secondaire">
-      <span data-t-html="relire"></span>
-    </button>
   </div>
   <div class="chiffres">
     <div class="chiffre"><b>{len(data["combinaisons"])}</b><span data-t="stat_combinaisons"></span></div>
@@ -1601,8 +1600,11 @@ def build(index_path):
       <button type="button" class="bouton" id="scan-tout" data-t="scan_tout"></button>
       <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
       <span id="scan-total" class="sous"></span>
-      <button type="button" class="bouton" id="scan-actualiser" data-t="scan_actualiser"></button>
-      <button type="button" class="bouton primaire" id="scan-lancer" data-t="scan_lancer"></button>
+    </div>
+    <div class="scan-scripts">
+      <button type="button" class="bouton" id="script-liste" data-t="script_liste"></button>
+      <button type="button" class="bouton" id="script-sources" data-t="script_sources"></button>
+      <button type="button" class="bouton primaire" id="script-global" data-t="script_global"></button>
     </div>
     <div class="bloc-commande" id="bloc-scan-commande" hidden>
       <code class="commande" id="scan-commande"></code>
@@ -1611,19 +1613,6 @@ def build(index_path):
     <div id="vue-scan"></div>
   </section>
 </main>
-<dialog id="relire"><div class="detail-corps">
-  <div class="detail-tete">
-    <h2 style="font-family:var(--display);font-size:20px;margin:0" data-t="relire_titre"></h2>
-    <button type="button" id="relire-fermer" class="croix" aria-label="Fermer">✕</button>
-  </div>
-  <p style="margin:0 0 14px;font-size:14px" data-t-html="relire_intro"></p>
-  <div class="bloc-commande" style="margin:0">
-    <code class="commande">cd {ROOT} && ./run.sh --sources</code>
-    <button type="button" class="copier" data-t="copier"></button>
-  </div>
-  <p style="margin:14px 0 0;font-size:13px;color:var(--sourdine)" data-t="relire_apres"></p>
-</div></dialog>
-
 <dialog id="detail"><div class="detail-corps">
   <div class="detail-tete">
     <span id="detail-combo" class="combo"></span>
