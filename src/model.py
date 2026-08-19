@@ -81,13 +81,25 @@ class Keyboard:
         keypad = keypad_codes()
         self.keypad = keypad
         self.by_char = {}
-        for code, (plain, shifted) in self.by_code.items():
+        # Deux arbitrages, dans cet ordre.
+        # 1. Le niveau non décalé prime : si deux touches produisent le même caractère,
+        #    celle qui l'atteint sans Maj est la bonne réponse.
+        # 2. À niveau égal, le plus petit code de touche gagne. Sans cela, une touche
+        #    absente du clavier l'emporterait : la disposition française donne « @ » et
+        #    « < » à la fois sur les touches ISO et sur des touches propres aux claviers
+        #    japonais. Le caractère nu et le caractère décalé de la MÊME touche
+        #    désigneraient alors deux codes différents, et deux raccourcis identiques
+        #    cesseraient de se comparer égaux.
+        for code in sorted(self.by_code):
             if code in keypad:
                 continue
-            # Le niveau non décalé prime : si deux touches produisent le même caractère,
-            # celle qui l'atteint sans Maj est la bonne réponse.
-            self.by_char.setdefault(shifted.lower(), (code, True))
-            self.by_char[plain.lower()] = (code, False)
+            self.by_char.setdefault(self.by_code[code][1].lower(), (code, True))
+        for code in sorted(self.by_code):
+            if code in keypad:
+                continue
+            plain = self.by_code[code][0].lower()
+            if plain not in self.by_char or self.by_char[plain][1]:
+                self.by_char[plain] = (code, False)
 
     def label(self, code, mods):
         """Libellé d'affichage. Avec Maj, Apple montre le caractère décalé (⇧⌘4)."""

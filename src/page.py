@@ -26,7 +26,7 @@ ORDRE_COUCHES = ["pilote", "capture", "systeme", "global", "autre", "menu"]
 CSS = """
 :root {
   --alu: #DAD8D3; --plaque: #F4F3F0; --creux: #C3C0B9; --encre: #16181C;
-  --sourdine: #6E7078; --petrol: #0B6E6E; --vermillon: #B8352A; --ambre: #9A5B12; --zebre: #EAE8E4; --survol: #E1DED8;
+  --sourdine: #4C4F57; --petrol: #0B6E6E; --vermillon: #B8352A; --ambre: #9A5B12; --zebre: #EAE8E4; --survol: #E1DED8;
   --touche-haut: #FBFAF8; --touche-bas: #D8D5CE; --ombre: rgba(22,24,28,.18);
   --largeur-combo: 168px;
   --rayon: 8px; --rayon-sm: 6px;
@@ -40,7 +40,7 @@ CSS = """
 @media (prefers-color-scheme: dark) {
   :root {
     --alu: #131519; --plaque: #1C1F25; --creux: #2E323A; --encre: #E8E7E3;
-    --sourdine: #94979F; --petrol: #4FD1C5; --vermillon: #F0776A; --ambre: #E0A458; --zebre: #191C22; --survol: #23272F;
+    --sourdine: #A3A6AE; --petrol: #4FD1C5; --vermillon: #F0776A; --ambre: #E0A458; --zebre: #191C22; --survol: #23272F;
     --touche-haut: #333842; --touche-bas: #1E2128; --ombre: rgba(0,0,0,.5);
     --ombre-sm: 0 1px 2px 0 rgba(0,0,0,.35);
     --ombre-md: 0 1px 3px 0 rgba(0,0,0,.45), 0 1px 2px -1px rgba(0,0,0,.45);
@@ -1790,11 +1790,14 @@ def build(index_path):
     nombres_html = '<option value="" data-t="toutes"></option>' + "".join(
         f'<option value="{n}" data-tn="{n}"></option>' for n in tailles)
 
-    script = (JS.replace("DONNEES", charge)
-                .replace("ORDRE_COUCHES_JS", json.dumps(ORDRE_COUCHES))
+    # Les petits jetons sont substitués AVANT la charge de données : dans l'autre
+    # ordre, un nom d'application contenant « MODS_BITS » verrait le jeton remplacé
+    # à l'intérieur du JSON, et la page entière deviendrait du JavaScript invalide.
+    script = (JS.replace("ORDRE_COUCHES_JS", json.dumps(ORDRE_COUCHES))
                 .replace("MODS_BITS", json.dumps({"⇧": 1, "⌃": 2, "⌥": 4, "⌘": 8, "fn": 16},
                                                  ensure_ascii=False))
-                .replace("RACINE_PROJET", json.dumps(str(ROOT))))
+                .replace("RACINE_PROJET", json.dumps(str(ROOT)))
+                .replace("DONNEES", charge))
 
     return f"""<!doctype html>
 <html lang="fr"><head>

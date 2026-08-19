@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tables import glyph_labels
-from model import from_ax, render_modifiers
+from model import SHIFT, Keyboard, from_ax, render_modifiers
 from overrides import load as load_overrides, normalise_title
 
 ROOT = Path(__file__).parent.parent
@@ -54,15 +54,23 @@ CATEGORIES = {
 }
 UNCLASSIFIED = "Non classées (aucune catégorie déclarée)"
 
-def render_shortcut(entry, glyphs):
+def render_shortcut(entry, glyphs, keyboard=None):
     """Rend un raccourci AX en notation lisible (⇧⌘K).
 
     Le décodage des modificateurs vient du modèle commun : deux implémentations
-    finiraient par diverger sans que rien ne le signale.
+    finiraient par diverger sans que rien ne le signale. La disposition clavier
+    intervient pour la même raison : sur un clavier français, « ? » se frappe avec
+    Maj, et l'écrire « ⌘? » décrirait une frappe qui ne déclenche rien.
     """
-    mods = render_modifiers(from_ax(entry["modificateurs"]))
+    bits = from_ax(entry["modificateurs"])
     char = entry.get("caractere") or ""
     if char and char.isprintable() and char.strip():
+        if keyboard is not None:
+            resolu, besoin_maj = keyboard.resoudre(char)
+            if resolu is not None:
+                if besoin_maj:
+                    bits |= SHIFT
+                return render_modifiers(bits) + keyboard.label(resolu, bits)
         key = char.upper() if len(char) == 1 else char
     elif entry.get("glyphe"):
         key = glyphs.get(entry["glyphe"], f"glyphe-{entry['glyphe']}")
@@ -70,7 +78,7 @@ def render_shortcut(entry, glyphs):
         key = repr(char)  # caractère de contrôle sans glyphe : on montre le brut
     else:
         return None
-    return mods + key
+    return render_modifiers(bits) + key
 
 
 # Dossier des fiches d'application. Surchargé par le premier argument de ligne de
@@ -108,6 +116,7 @@ def escape(text):
 
 def build_report():
     glyphs = glyph_labels()
+    keyboard = Keyboard()
     system = json.loads((ROOT / "out" / "system-shortcuts.json").read_text(encoding="utf-8"))
     apps = load_apps()
     descriptions = load_descriptions()
@@ -183,7 +192,7 @@ def build_report():
                 lines += ["| Raccourci | Commande |", "|---|---|"]
                 seen = set()
                 for entry in app["raccourcis"]:
-                    combo = render_shortcut(entry, glyphs)
+                    combo = render_shortcut(entry, glyphs, keyboard)
                     if not combo:
                         continue
                     leaf = normalise_title(entry["chemin"].split(" > ")[-1])

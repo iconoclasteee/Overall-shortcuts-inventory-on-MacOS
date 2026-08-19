@@ -163,7 +163,7 @@ def _catalogue():
 
 
 def _depuis_archive(donnees):
-    """Convention 3 : raccourci sérialisé dans une archive NSKeyedArchiver.
+    """Convention 3 : raccourcis sérialisés dans une archive NSKeyedArchiver.
 
     C'est ce que produit ShortcutRecorder, la bibliothèque de saisie de raccourcis
     la plus répandue (PopClip et d'autres). L'objet porte `keyCode` et
@@ -185,14 +185,17 @@ def _depuis_archive(donnees):
             return objets[indice] if 0 <= indice < len(objets) else None
         return reference
 
+    # Une archive peut sérialiser plusieurs raccourcis : s'arrêter au premier ferait
+    # disparaître les autres sans que rien ne le signale.
+    trouves = []
     for objet in objets:
         if not isinstance(objet, dict) or "keyCode" not in objet:
             continue
         code = resoudre(objet["keyCode"])
         masque = resoudre(objet.get("modifierFlags"))
         if isinstance(code, int) and isinstance(masque, int):
-            return code, masque
-    return None
+            trouves.append((code, masque))
+    return trouves
 
 
 def scan_preferences(keyboard, ignorer=()):
@@ -242,8 +245,8 @@ def scan_preferences(keyboard, ignorer=()):
             if isinstance(valeur, bytes):
                 archive = _depuis_archive(valeur)
                 if archive:
-                    code, masque = archive
-                    ajouter(bundle_id, cle, code, from_nsevent(masque))
+                    for code, masque in archive:
+                        ajouter(bundle_id, cle, code, from_nsevent(masque))
                     continue
             # Convention 2 : JSON à masques Carbon, reconnu à son contenu.
             # Une clé suffixée « @contexte » décrit un raccourci valable seulement dans

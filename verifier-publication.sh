@@ -22,7 +22,12 @@ MOI=$(basename "$0")
 alerte=0
 echo "→ Fichiers versionnés"
 for motif in "${motifs[@]}"; do
-  if resultat=$(git ls-files -z | grep -zv "^$MOI$" | xargs -0 grep -nIE "$motif" 2>/dev/null); then
+  # Le test porte sur ce qui a été trouvé, jamais sur le code de retour : xargs rend
+  # un code non nul dès qu'une de ses invocations de grep ne trouve rien, ce qui sous
+  # pipefail ferait disparaître l'alerte des autres lots. Même famille que le défaut
+  # `grep | head` corrigé plus bas.
+  resultat=$(git ls-files -z | grep -zv "^$MOI$" | xargs -0 grep -nIE "$motif" 2>/dev/null || true)
+  if [ -n "$resultat" ]; then
     echo "  ⚠️  $motif"; echo "$resultat" | sed 's/^/      /'; alerte=1
   fi
 done

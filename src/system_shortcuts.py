@@ -147,7 +147,12 @@ def raw_reference(lang="fr"):
 
     def walk(node):
         for element in node.get("elements", []):
-            for id_key in ("sybmolichotkey", "prefs_sybmolichotkey", "slow_sybmolichotkey"):
+            # Le seul identifiant qui porte vraiment la combinaison décrite est
+            # l'identifiant principal. Ses variantes « prefs_ » et « slow_ » désignent
+            # d'autres raccourcis, dont la table ne dit rien — leur prêter la valeur du
+            # principal reviendrait à inventer une combinaison, puis à l'écrire dans les
+            # préférences système.
+            for id_key in ("sybmolichotkey",):
                 hotkey_id = element.get(id_key)
                 if hotkey_id is not None and hotkey_id not in out and "key" in element:
                     out[hotkey_id] = (element.get("charKey", NO_CHAR),

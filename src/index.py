@@ -118,8 +118,12 @@ def app_bindings(keyboard, apps_dir):
                         | (ALT if "~" in prefixe else 0) | (CMD if "@" in prefixe else 0))
                 if touche:
                     nouveau, besoin_maj = keyboard.resoudre(touche)
-                    if nouveau is not None:
-                        code, glyphe = nouveau, None
+                    # macOS écrit les touches de fonction et les flèches en \UF704…,
+                    # que la disposition ne sait pas résoudre. Garder l'ancien code de
+                    # touche ferait compter le raccourci sur la combinaison d'avant, et
+                    # laisserait la nouvelle annoncée libre. Sans code, la clé de
+                    # comparaison devient unique : plus juste qu'un faux voisinage.
+                    code, glyphe = (nouveau, None) if nouveau is not None else (None, None)
                     if besoin_maj:
                         mods |= SHIFT
                 detail = "redéfini par l'utilisateur"

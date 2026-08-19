@@ -265,8 +265,19 @@ func process(bundleID: String, options: Options) -> AppResult {
             semaphore.signal()
         }
         if semaphore.wait(timeout: .now() + options.timeout) == .timedOut {
+            // L'ouverture a bien été demandée : si l'app finit par s'ouvrir, elle
+            // resterait ouverte alors que nous seuls l'avons lancée. On la referme
+            // quand le système nous répond enfin, et la fiche dit la vérité —
+            // « lancée par nous », et non « jamais lancée ».
+            if !options.keepRunning {
+                DispatchQueue.global(qos: .utility).async {
+                    if semaphore.wait(timeout: .now() + options.timeout) == .success {
+                        running?.terminate()
+                    }
+                }
+            }
             return result("timeout", "Lancement non terminé dans le délai imparti",
-                          [], running: false, launched: false)
+                          [], running: false, launched: true)
         }
         if let launchError {
             return result("echec_lancement", launchError.localizedDescription,
@@ -513,7 +524,7 @@ func recenser(includeGames: Bool,
             // exemple) : le lancement se faisant par identifiant, la seconde est
             // inatteignable. On garde la première et on le dit plutôt que de la
             // laisser disparaître en silence.
-            guard seen.insert(id).inserted else {
+            guard seen.insert(id.lowercased()).inserted else {
                 FileHandle.standardError.write(
                     "  ℹ️  \(entry) partage l'identifiant \(id), déjà recensé — ignorée\n"
                         .data(using: .utf8)!)
