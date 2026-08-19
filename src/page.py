@@ -1304,6 +1304,9 @@ function choisirOnglet(vue) {
     x.setAttribute("aria-selected", String(x.dataset.vue === vue)));
   document.querySelectorAll("main > section").forEach(s =>
     s.hidden = s.id !== "onglet-" + vue);
+  // Le filtre par touche ne s'applique qu'aux vues de raccourcis. Sur l'écran du
+  // prochain scan il ne pilote rien : le laisser laisserait croire le contraire.
+  document.querySelector(".filtre").hidden = vue === "scan";
   if (vue === "scan") rendreScan();
 }
 document.querySelectorAll(".onglets button").forEach(b =>
