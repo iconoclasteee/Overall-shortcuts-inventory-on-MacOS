@@ -149,6 +149,12 @@ qui les emploient, et qu'on demande de les relire avant de les coller.
 Les modes marqués « non » ne lisent aucune barre de menu : ils n'exigent donc pas
 l'autorisation d'accessibilité.
 
+⚠️ **Les chemins passés au moissonneur doivent être absolus.** LaunchServices ne
+transmet pas le répertoire courant : lancé par `open`, le programme démarre à la racine
+du disque, où `out/apps` désigne `/out/apps`. `run.sh` s'en charge ; en ligne de commande,
+c'est à vous. Le programme refuse désormais de démarrer plutôt que d'ouvrir des
+applications pour n'écrire nulle part.
+
 ## Autorisation d'accessibilité
 
 Lire les menus d'une autre app l'exige. `run.sh` la vérifie avant de commencer et
@@ -301,8 +307,12 @@ reconstruire : voir [SECURITE.md](SECURITE.md).
   codes de touches, distincts de la rangée du haut.
 - **Apps bloquées au lancement** (licence, connexion) : coupées par le délai et
   signalées en `timeout`.
-- Une passe `--all` **lance et quitte les apps une par une**. À faire quand la machine
-  n'est pas en cours d'utilisation.
+- Une passe `--all` **lance et quitte les apps une par une** : à tout instant, une seule
+  application est ouverte du fait de l'outil, sans focus volé ni fenêtre visible. À faire
+  quand la machine n'est pas en cours d'utilisation.
+- **Un `Ctrl-C` laisse ouverte l'application en cours de lecture** — une seule, celle que
+  l'outil venait de lancer et n'a pas eu le temps de refermer. Rien n'est perdu côté
+  inventaire, mais l'application reste à fermer à la main.
 
 ## D'où viennent les données
 
