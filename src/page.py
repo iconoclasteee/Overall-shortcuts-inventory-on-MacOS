@@ -206,7 +206,22 @@ input:focus-visible, select:focus-visible {
 .copier:hover { border-color: var(--petrol); color: var(--petrol); }
 
 /* — Tableau du prochain scan — */
-.scan-intro { font-size: 14px; color: var(--sourdine); margin: 0 0 14px; max-width: 90ch; }
+/* L'avertissement porte sur une action qui monopolise l'écran plusieurs minutes :
+   il se lit avant le reste, donc il est plus gros et cadré, pas fondu dans le texte. */
+.avertissement {
+  display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start;
+  margin: 0 0 16px; padding: 16px 18px; border-radius: var(--rayon);
+  border: 1px solid var(--ambre); background: color-mix(in srgb, var(--ambre) 9%, var(--plaque));
+}
+.avertissement span { font-size: 22px; line-height: 1.2; }
+.avertissement p {
+  margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; color: var(--encre);
+}
+.scan-intro { font-size: 14px; color: var(--sourdine); margin: 0 0 18px; max-width: 96ch; }
+.scan-intro p { margin: 0 0 10px; }
+.scan-intro ul { margin: 0 0 10px; padding-left: 20px; }
+.scan-intro li { margin: 0 0 5px; }
+.scan-intro b { color: var(--encre); }
 .scan-outils { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; flex-wrap: wrap; }
 .scan-outils input { flex: 0 0 260px; }
 .scan-outils .sous { margin-left: auto; }
@@ -674,7 +689,7 @@ const TEXTES = {
     stat_apps: "applications lues",
     scanner: "Mettre à jour les raccourcis",
     bascule_app: "Filtre par application", toutes_apps: "Toutes applications",
-    cherche_app: "Cherche une application",
+    cherche_app: "Rechercher une application",
     l_modificateurs: "Modificateurs", l_touche: "Touche",
     l_nombre: "Nombre de touches", l_texte: "Libellé de commande",
     pave_numerique: "Pavé numérique",
@@ -692,7 +707,7 @@ const TEXTES = {
     script_liste: "Mettre à jour la liste des applications",
     script_sources: "Relire le système et les applications sources",
     script_global: "Scanner les applications cochées",
-    commencer_ici: "commence ici",
+    commencer_ici: "commencer ici",
     voir_commande: "Voir la commande",
     note_liste: "Le tableau ci-dessous ne connaît que les applications recensées lors de "
               + "la dernière passe. Sans cette étape, une application installée depuis "
@@ -701,10 +716,10 @@ const TEXTES = {
                 + "globaux. Ce sont elles qui l'emportent sur toutes les autres, et une "
                 + "poignée suffit à changer l'inventaire.",
     note_global: "Rouvre une par une les applications cochées dans le tableau. C'est la "
-               + "passe longue : compte plusieurs minutes.",
-    cmd_entete: "# ⚠️  COPIE CETTE COMMANDE ET COLLE-LA DANS UN TERMINAL.\n"
+               + "passe longue : compter plusieurs minutes.",
+    cmd_entete: "# ⚠️  COMMANDE À COPIER, PUIS À COLLER DANS UN TERMINAL.\n"
               + "#    Le navigateur ne peut pas la lancer lui-même : lire les menus d'une\n"
-              + "#    application exige l'autorisation d'accessibilité de macOS, que ton\n"
+              + "#    application exige l'autorisation d'accessibilité de macOS, que le\n"
               + "#    terminal possède déjà et qu'une page web n'obtiendra jamais.\n#",
     cmd_liste: "# Recense les applications installées, relit les raccourcis système et les\n"
              + "# préférences des outils, puis reconstruit la page.\n"
@@ -713,20 +728,20 @@ const TEXTES = {
                + "# leurs menus, puis reconstruit tout. Ce sont elles qui l'emportent sur les\n"
                + "# autres : leurs raccourcis accrochent la touche avant les menus.",
     cmd_global: "# Rouvre une par une les applications cochées dans le tableau.\n"
-              + "# Compte plusieurs minutes, et une application au premier plan à chaque fois.",
-    aucune_source: "Aucune app source : rien à scanner ici.",
-    ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
+              + "# Compter plusieurs minutes, et une application au premier plan à chaque fois.",
+    aucune_source: "Aucune application source : rien à scanner ici.",
+    ph_touche: "ou saisir la touche", ph_texte: "copier, capture, plein écran…",
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
     double: "double frappe", fermer: "Fermer",
-    rien_atteignable: "Rien d'atteignable dans cette app.",
+    rien_atteignable: "Rien d'atteignable dans cette application.",
     convention: (n) => `Commande standard de macOS : ${n} applications l'exposent dans `
                      + `leur propre menu. Le raccourci système et ces entrées désignent `
                      + `la même action — ce n'est pas un conflit.`,
     aucun_conflit: "Aucun conflit", aucun_conflit_filtre: " parmi ce que le filtre laisse passer",
     aucun_conflit_suite: ". Chaque combinaison n'a qu'un seul preneur.",
     rien_filtre: "Aucune combinaison", rien_pour: "pour", rien_libre: "Cette combinaison est donc libre.",
-    autres_affine: (n) => `${n} autres — affine le filtre.`,
-    choisis_app: "Choisis une application.",
+    autres_affine: (n) => `${n} autres — affiner le filtre.`,
+    choisis_app: "Sélectionner une application.",
     rien_app: (nom) => `Rien dans ${nom} ne correspond au filtre.`,
     illisible: (nom, raison) => `${nom} n'a pas pu être lue : ${raison}.`,
     sans_app: "Aucune application choisie : seuls les raccourcis globaux sont résolus ici. "
@@ -738,24 +753,44 @@ const TEXTES = {
     egalite_avec: (qui) => `à égalité avec ${qui}`,
     passe_devant: "passe devant",
     src_systeme: "raccourci système macOS", src_outil: "outil global",
-    src_pilote: "pilote clavier", src_menu: "menu de l'app",
-    pourquoi_propres: "Ses propres commandes de menu. Actives seulement quand elle est au premier plan.",
-    pourquoi_app: "Raccourcis macOS qui agissent sur l'interface de l'app.",
-    pourquoi_externe: "Agissent sur la fenêtre de l'app ou par-dessus elle, sans toucher son interface.",
-    pourquoi_systeme: "Fonctionnent pendant que l'app est ouverte, mais ne la concernent pas.",
+    src_pilote: "pilote clavier", src_menu: "menu de l'application",
+    pourquoi_propres: "Ses propres commandes de menu, actives seulement lorsqu'elle est au premier plan.",
+    pourquoi_app: "Raccourcis macOS qui agissent sur l'interface de l'application.",
+    pourquoi_externe: "Agissent sur la fenêtre de l'application ou par-dessus elle, sans toucher son interface.",
+    pourquoi_systeme: "Fonctionnent pendant que l'application est ouverte, mais ne la concernent pas.",
     pourquoi_inconnu: "Portée non déterminée.",
     couche_pilote: "Pilote", couche_capture: "Capture", couche_systeme: "Système",
     couche_global: "Global", couche_autre: "Autre", couche_menu: "Menu",
     desactive: "désactivé",
-    scan_intro: "Chaque application cochée sera ouverte le temps de lire sa barre de menu, "
-              + "puis refermée. À lancer quand tu n'utilises pas la machine.",
+    scan_avertissement: "Chaque application cochée sera ouverte, le temps de lire sa barre "
+                      + "de menu, puis refermée. Les applications défilent alors au premier "
+                      + "plan : cette passe est à réserver à un moment où la machine n'est "
+                      + "pas utilisée.",
+    scan_explication: "<p>Les raccourcis d'une application ne sont écrits nulle part sur le "
+        + "disque : ils n'existent que dans sa barre de menu, une fois l'application lancée. "
+        + "Les relever suppose donc de l'ouvrir — c'est ce que commande cet écran.</p>"
+        + "<p>Le tableau réunit, pour chaque application installée, la version présente sur "
+        + "le disque et celle lue lors du dernier relevé. Trois réglages sont à la main de "
+        + "l'utilisateur :</p><ul>"
+        + "<li><b>Scanner</b> — l'application sera relue à la prochaine passe. Cochée "
+        + "d'office lorsqu'elle n'a jamais été lue, ou que le premier nombre de son numéro "
+        + "de version a changé.</li>"
+        + "<li><b>Exclure</b> — l'application est écartée de toute passe. Les jeux et les "
+        + "désinstalleurs le sont déjà ; quelques-unes, dont l'ouverture déclenche une "
+        + "action lourde ou destructrice, ne peuvent pas être réintégrées.</li>"
+        + "<li><b>Source</b> — l'application déclare des raccourcis globaux, qui l'emportent "
+        + "sur les menus de toutes les autres. Constatée automatiquement, elle peut aussi "
+        + "être désignée manuellement.</li></ul>"
+        + "<p>Ces réglages sont conservés dans le fichier que la commande produite écrit "
+        + "avant de lancer le relevé.</p>",
     scan_filtrer: "Filtrer la liste…", scan_tout: "Tout cocher", scan_rien: "Tout décocher",
     scan_defaut: "Sélection conseillée",
     scan_affichees: (n, total) => `${n} affichées sur ${total}`,
     scan_aucune: "Aucune application pour cette recherche.",
     scan_rien_coche: "Aucune application cochée : rien à scanner.",
-    pied: "Les raccourcis d'une app ne vivent que dans sa barre de menu : ils sont lus app "
-        + "par app. Une app lue sans document ouvert expose moins de commandes qu'en usage "
+    pied: "Les raccourcis d'une application ne vivent que dans sa barre de menu : ils sont "
+        + "lus application par application. Une application lue sans document ouvert expose "
+        + "moins de commandes qu'en usage "
         + "réel. L'ordre des étages est fiable, mais deux outils accrochés au même étage "
         + "sont départagés par leur ordre d'enregistrement, que rien sur le disque ne "
         + "consigne. Les combinaisons sont écrites pour le clavier intégré : en AZERTY, un "
@@ -841,8 +876,25 @@ const TEXTES = {
     couche_pilote: "Driver", couche_capture: "Event tap", couche_systeme: "System",
     couche_global: "Global", couche_autre: "Other", couche_menu: "Menu",
     desactive: "disabled",
-    scan_intro: "Each checked application will be opened just long enough to read its menu "
-              + "bar, then closed. Run it when you are not using the machine.",
+    scan_avertissement: "Each ticked application will be opened, just long enough to read "
+                      + "its menu bar, then closed again. Applications come to the front "
+                      + "one after another: run this pass when the machine is not in use.",
+    scan_explication: "<p>An application's shortcuts are written nowhere on disk: they only "
+        + "exist in its menu bar, once the application is running. Collecting them therefore "
+        + "means opening it — that is what this screen commands.</p>"
+        + "<p>The table gathers, for every installed application, the version on disk and the "
+        + "one read during the last pass. Three settings are yours to set:</p><ul>"
+        + "<li><b>Scan</b> — the application will be read again on the next pass. Ticked by "
+        + "default when it has never been read, or when the first number of its version "
+        + "changed.</li>"
+        + "<li><b>Exclude</b> — the application is kept out of every pass. Games and "
+        + "uninstallers already are; a few, whose launch triggers a heavy or destructive "
+        + "action, cannot be brought back in.</li>"
+        + "<li><b>Source</b> — the application declares global hotkeys, which win over every "
+        + "other application's menus. Detected automatically, it can also be set by "
+        + "hand.</li></ul>"
+        + "<p>These settings are stored in the file the generated command writes before "
+        + "starting the pass.</p>",
     scan_filtrer: "Filter the list…", scan_tout: "Check all", scan_rien: "Uncheck all",
     scan_defaut: "Recommended selection",
     scan_affichees: (n, total) => `${n} shown of ${total}`,
@@ -1306,7 +1358,11 @@ function choisirOnglet(vue) {
     s.hidden = s.id !== "onglet-" + vue);
   // Le filtre par touche ne s'applique qu'aux vues de raccourcis. Sur l'écran du
   // prochain scan il ne pilote rien : le laisser laisserait croire le contraire.
+  // Ni le filtre par touche ni celui par application ne pilotent quoi que ce soit sur
+  // l'écran du prochain scan : les y laisser laisserait croire le contraire. Le tableau
+  // a sa propre zone de recherche.
   document.querySelector(".filtre").hidden = vue === "scan";
+  document.querySelector(".bloc-app").hidden = vue === "scan";
   if (vue === "scan") rendreScan();
 }
 document.querySelectorAll(".onglets button").forEach(b =>
@@ -1735,7 +1791,11 @@ def build(index_path):
   <section id="onglet-menu"><div id="vue-menu"></div></section>
   <section id="onglet-effet" hidden><div id="vue-effet"></div></section>
   <section id="onglet-scan" hidden>
-    <p class="scan-intro" data-t="scan_intro"></p>
+    <div class="avertissement" role="note">
+      <span aria-hidden="true">⚠️</span>
+      <p data-t="scan_avertissement"></p>
+    </div>
+    <div class="scan-intro" data-t-html="scan_explication"></div>
     <div class="scan-outils">
       <input type="search" id="scan-recherche" autocomplete="off" autocorrect="off"
              autocapitalize="off" spellcheck="false" data-tp="scan_filtrer">
