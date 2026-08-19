@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 import global_hotkeys
+import libres as combinaisons_libres
 import overrides as user_overrides
 from model import (Binding, Keyboard, ALT, CMD, CTRL, SHIFT, from_ax, rang,
                    render_modifiers, COUCHES)
@@ -269,9 +270,14 @@ def build(apps_dir):
                if a["bundleID"] in ids_outils or a["nom"] in proprios_outils}
     sources |= set(load_reglages().get("sources") or [])
 
+    # Une combinaison dont le seul preneur est désactivé est libre : c'est l'état
+    # réel qui compte, pas la présence d'une ligne dans l'inventaire.
+    occupees = {c["cle"] for c in combinaisons if any(u["actif"] for u in c["usages"])}
+
     return {
         "apps": apps,
         "catalogue": catalogue,
+        "libres": combinaisons_libres.calculer(keyboard, occupees),
         "sources": sorted(sources),
         "reglages": load_reglages(),
         "combinaisons": combinaisons,

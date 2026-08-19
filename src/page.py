@@ -205,6 +205,34 @@ input:focus-visible, select:focus-visible {
 }
 .copier:hover { border-color: var(--petrol); color: var(--petrol); }
 
+/* — Raccourcis libres — */
+.libres-bloc { margin: 0 0 26px; }
+.libres-bloc h2 {
+  font-family: var(--display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--sourdine); font-weight: 600; margin: 0 0 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--creux);
+  display: flex; align-items: baseline; gap: 12px;
+}
+.libres-total { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
+.libres-note { font-size: 14px; color: var(--sourdine); margin: 0; max-width: 110ch; }
+.libres-table { width: 100%; border-collapse: collapse; }
+.libres-table th[scope="row"] {
+  text-align: left; vertical-align: top; padding: 8px 14px 8px 0; width: 1%; white-space: nowrap;
+}
+.libres-compte {
+  font-family: var(--mono); font-size: 11.5px; color: var(--sourdine);
+  vertical-align: top; padding: 10px 14px 8px 0; width: 1%; text-align: right;
+}
+.libres-touches { padding: 6px 0 8px; }
+.libres-table tr + tr th, .libres-table tr + tr td { border-top: 1px solid var(--alu); }
+/* Capsules serrées : le but est d'en montrer le plus possible d'un seul regard. */
+.capsule-libre {
+  display: inline-block; font-family: var(--mono); font-size: 12.5px;
+  background: var(--touche-haut); border: 1px solid var(--creux);
+  border-bottom-width: 2px; border-radius: 5px; padding: 1px 7px; margin: 2px 4px 2px 0;
+  min-width: 26px; text-align: center;
+}
+
 /* — Tableau du prochain scan — */
 /* L'avertissement porte sur une action qui monopolise l'écran plusieurs minutes :
    il se lit avant le reste, donc il est plus gros et cadré, pas fondu dans le texte. */
@@ -217,7 +245,7 @@ input:focus-visible, select:focus-visible {
 .avertissement p {
   margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; color: var(--encre);
 }
-.scan-intro { font-size: 14px; color: var(--sourdine); margin: 0 0 18px; max-width: 96ch; }
+.scan-intro { font-size: 14px; color: var(--sourdine); margin: 0 0 18px; }
 .scan-intro p { margin: 0 0 10px; }
 .scan-intro ul { margin: 0 0 10px; padding-left: 20px; }
 .scan-intro li { margin: 0 0 5px; }
@@ -696,6 +724,22 @@ const TEXTES = {
     effacer_touches: "Effacer les touches", tout_effacer: "Tout effacer",
     copier: "Copier", copie_faite: "Copié ✓", copie_echec: "Copie refusée",
     onglet_scan: "Prochain scan",
+    onglet_libres: "Raccourcis libres",
+    libres_intro: "<p>Combinaisons qu'aucun raccourci ne revendique — ni macOS, ni un outil "
+        + "global, ni le menu d'une des applications relevées. Un raccourci désactivé rend "
+        + "sa combinaison à cette liste.</p>"
+        + "<p>Trois bornes ramènent l'espace des combinaisons à ce qui est réellement "
+        + "attribuable : les quatre modificateurs que tout logiciel sait enregistrer "
+        + "(⌃ ⌥ ⇧ ⌘, la touche Globe étant réservée par macOS) ; les lettres, la rangée du "
+        + "haut, les touches de fonction et les flèches ; et des <b>touches physiques</b>, "
+        + "désignées par ce qu'elles produisent sans Maj — sur un clavier français la rangée "
+        + "des chiffres donne donc « &amp; é \" ' ( », qui est la frappe réelle.</p>",
+    libres_section: (n) => `${n} touches`,
+    libres_total: (n) => `${n} libres`,
+    libres_cinq: (n) => `${n} combinaisons à cinq touches restent libres, ⌃⌥⇧⌘ suivi d'une `
+                      + `touche. Elles ne sont pas listées : une combinaison de cette `
+                      + `longueur se trouve toujours, et n'a pas besoin d'un inventaire.`,
+    libres_vide: "Aucune combinaison libre dans cette catégorie.",
     col_app: "Application", col_version: "Version installée",
     col_version_lue: "Version au dernier scan", col_statut: "Statut",
     col_date: "Dernier scan", col_inclure: "Scanner", col_exclure: "Exclure",
@@ -811,6 +855,22 @@ const TEXTES = {
     effacer_touches: "Clear keys", tout_effacer: "Clear all",
     copier: "Copy", copie_faite: "Copied ✓", copie_echec: "Copy blocked",
     onglet_scan: "Next scan",
+    onglet_libres: "Free shortcuts",
+    libres_intro: "<p>Combinations no shortcut claims — neither macOS, nor a global tool, nor "
+        + "the menu of any surveyed application. A disabled shortcut returns its combination "
+        + "to this list.</p>"
+        + "<p>Three limits reduce the space of combinations to what can actually be assigned: "
+        + "the four modifiers every piece of software can register (⌃ ⌥ ⇧ ⌘, the Globe key "
+        + "being reserved by macOS); letters, the top row, function keys and arrows; and "
+        + "<b>physical keys</b>, named by what they produce without Shift — on a French "
+        + "keyboard the number row therefore reads « &amp; é \" ' ( », which is the actual "
+        + "keystroke.</p>",
+    libres_section: (n) => `${n} keys`,
+    libres_total: (n) => `${n} free`,
+    libres_cinq: (n) => `${n} five-key combinations remain free, ⌃⌥⇧⌘ followed by a key. `
+                      + `They are not listed: a combination that long is always available, `
+                      + `and needs no inventory.`,
+    libres_vide: "No free combination in this category.",
     col_app: "Application", col_version: "Installed version",
     col_version_lue: "Version at last scan", col_statut: "Status",
     col_date: "Last scan", col_inclure: "Scan", col_exclure: "Exclude",
@@ -1364,6 +1424,7 @@ function choisirOnglet(vue) {
   document.querySelector(".filtre").hidden = vue === "scan";
   document.querySelector(".bloc-app").hidden = vue === "scan";
   if (vue === "scan") rendreScan();
+  if (vue === "libres") rendreLibres();
 }
 document.querySelectorAll(".onglets button").forEach(b =>
   b.addEventListener("click", () => choisirOnglet(b.dataset.vue)));
@@ -1424,6 +1485,30 @@ function scanFiltre() {
   return q ? LIGNES.filter(l => sansAccent(l.nom).includes(q)
                              || sansAccent(l.id).includes(q))
            : LIGNES;
+}
+
+const LIBRES = D.libres || [];
+
+function rendreLibres() {
+  const html = LIBRES.map(section => {
+    if (section.touches === 5) {
+      return `<section class="libres-bloc"><h2>${T("libres_section")(5)}</h2>`
+           + `<p class="libres-note">${esc(T("libres_cinq")(section.total))}</p></section>`;
+    }
+    const rangees = section.groupes.map(g =>
+      `<tr><th scope="row"><span class="combo">${esc(g.mods)}</span></th>
+         <td class="libres-compte">${g.touches.length}</td>
+         <td class="libres-touches">${g.touches.map(t =>
+            `<span class="capsule-libre">${esc(t)}</span>`).join("")}</td></tr>`).join("");
+    return `<section class="libres-bloc">
+        <h2>${T("libres_section")(section.touches)}
+          <span class="libres-total">${T("libres_total")(section.total)}</span></h2>
+        ${section.groupes.length
+          ? `<table class="libres-table"><tbody>${rangees}</tbody></table>`
+          : `<p class="libres-note">${T("libres_vide")}</p>`}
+      </section>`;
+  }).join("");
+  document.getElementById("vue-libres").innerHTML = html;
 }
 
 function rendreScan() {
@@ -1744,6 +1829,7 @@ def build(index_path):
     <button data-vue="effet" aria-selected="false" data-t="onglet_effet"></button>
     <button data-vue="conflits" aria-selected="false" data-t="onglet_conflits"></button>
     <button data-vue="combinaisons" aria-selected="false" data-t="onglet_combinaisons"></button>
+    <button data-vue="libres" aria-selected="false" data-t="onglet_libres"></button>
     <button data-vue="scan" aria-selected="false" data-t="onglet_scan"></button>
   </div>
   <div class="bloc-app">
@@ -1790,6 +1876,10 @@ def build(index_path):
   </section>
   <section id="onglet-menu"><div id="vue-menu"></div></section>
   <section id="onglet-effet" hidden><div id="vue-effet"></div></section>
+  <section id="onglet-libres" hidden>
+    <p class="scan-intro" data-t-html="libres_intro"></p>
+    <div id="vue-libres"></div>
+  </section>
   <section id="onglet-scan" hidden>
     <div class="avertissement" role="note">
       <span aria-hidden="true">⚠️</span>
