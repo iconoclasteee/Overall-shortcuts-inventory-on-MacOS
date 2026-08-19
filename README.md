@@ -12,6 +12,10 @@ then gathered into a page you open with a double-click.
 ![Interface in French and English](https://img.shields.io/badge/interface-fran%C3%A7ais%20%7C%20english-6b5b95)
 ![No network access](https://img.shields.io/badge/network%20access-none-2e7d32)
 
+<img src="docs/images/free-shortcuts.png" alt="The Free shortcuts view: modifier sets as columns, keys as rows, every free combination in its own cell" width="100%">
+
+<sub><b>Free shortcuts</b> — what is still unclaimed on this machine. One click copies a combination.</sub>
+
 </div>
 
 > [!WARNING]
@@ -48,6 +52,12 @@ works offline. Six views, in French and English.
 
 The **Free shortcuts** view crosses modifier sets against every assignable key, numeric
 keypad included: each free cell carries the whole combination, and one click copies it.
+
+The **Next scan** view never runs anything itself. It states what each step costs — how
+many applications it opens, and whether it needs the harvester's permission — then builds
+the exact command for you to paste into a terminal:
+
+<img src="docs/images/next-scan-steps.png" alt="The three scan steps: refresh the application list, re-read the system and source applications, scan the ticked applications — each with what it requires and a button to show the command" width="100%">
 
 A **Markdown report** carries the same inventory in flat form — versionable and readable
 offline.

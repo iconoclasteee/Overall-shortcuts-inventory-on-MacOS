@@ -46,6 +46,15 @@ for motif in "${motifs[@]}"; do
   fi
 done
 
+# Une image ne se lit pas au grep : un nom de machine dans un bandeau, une liste de
+# logiciels dans un tableau, un chemin dans une barre d'adresse y passent tous inaperçus.
+# Le contrôle ne peut donc que les énumérer pour qu'un humain les regarde — et le dire,
+# plutôt que de laisser croire qu'il les a inspectées.
+echo "→ Images versionnées (à relire à l'œil : le grep n'y voit rien)"
+git ls-files '*.png' '*.jpg' '*.jpeg' '*.gif' '*.webp' | while read -r f; do
+  echo "      $f ($(( $(wc -c < "$f") / 1024 )) Ko)"
+done
+
 echo "→ Fichiers de données versionnés"
 git ls-files 'data/*' | while read -r f; do echo "      $f ($(wc -c < "$f" | tr -d ' ') octets)"; done
 
