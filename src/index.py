@@ -257,7 +257,15 @@ def build(apps_dir):
                 "menu": b.menu, "ordre": b.ordre, "double": b.double,
             } for b in sorted(membres, key=lambda b: (rang(b.couche), b.proprietaire))],
         })
-    combinaisons.sort(key=lambda c: (not c["conflit"], c["combo"]))
+    # Un seul ordre, et il ne dépend pas du litige : faire remonter les conflits ne
+    # servait que la page « Conflits », qui les filtre déjà, et désordonnait « Par
+    # combinaison », où l'on cherche une frappe précise.
+    #
+    # Le tri porte sur le masque de modificateurs avant la chaîne. Trier la chaîne seule
+    # mélange glyphes de modificateurs et glyphes de touches dans la même comparaison :
+    # « ⇧⌫ » (U+232B) se range après « ⇧⌘A » (U+2318), et le même jeu de modificateurs se
+    # retrouve éclaté en plusieurs endroits de la liste.
+    combinaisons.sort(key=lambda c: (c["mods"], c["combo"]))
     catalogue_path = ROOT / "out" / "catalogue.json"
     catalogue = (json.loads(catalogue_path.read_text(encoding="utf-8"))
                  if catalogue_path.exists() else [])
