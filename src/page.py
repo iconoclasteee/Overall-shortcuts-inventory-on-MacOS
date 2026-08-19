@@ -1431,11 +1431,13 @@ function choisirOnglet(vue) {
     s.hidden = s.id !== "onglet-" + vue);
   // Le filtre par touche ne s'applique qu'aux vues de raccourcis. Sur l'écran du
   // prochain scan il ne pilote rien : le laisser laisserait croire le contraire.
-  // Ni le filtre par touche ni celui par application ne pilotent quoi que ce soit sur
-  // l'écran du prochain scan : les y laisser laisserait croire le contraire. Le tableau
-  // a sa propre zone de recherche.
-  document.querySelector(".filtre").hidden = vue === "scan";
-  document.querySelector(".bloc-app").hidden = vue === "scan";
+  // Deux vues ne se filtrent ni par touche ni par application : le prochain scan, qui
+  // a sa propre zone de recherche, et les combinaisons libres, qui n'appartiennent par
+  // définition à aucune application. Y laisser les filtres laisserait croire qu'ils
+  // pilotent quelque chose.
+  const sansFiltre = vue === "scan" || vue === "libres";
+  document.querySelector(".filtre").hidden = sansFiltre;
+  document.querySelector(".bloc-app").hidden = sansFiltre;
   if (vue === "scan") rendreScan();
   if (vue === "libres") rendreLibres();
 }
