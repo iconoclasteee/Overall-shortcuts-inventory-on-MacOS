@@ -242,10 +242,17 @@ input:focus-visible, select:focus-visible {
 #tableau-scan th {
   text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--sourdine); font-weight: 600;
-  padding: 0 10px 8px; border-bottom: 1px solid var(--creux);
+  padding: 10px 10px 8px;
   /* Les intitulés reviennent à la ligne : bornés en largeur et gardés sur une seule
      ligne, ils se chevauchaient. */
   white-space: normal; line-height: 1.25; vertical-align: bottom;
+  /* Les intitulés restent au bord haut pendant le défilement : à deux cents lignes
+     et huit colonnes, une case à cocher sans son intitulé ne veut plus rien dire.
+     Le fond doit être opaque, sinon les lignes défilent au travers ; et le trait de
+     séparation passe par une ombre intérieure, une bordure ne suivant pas un en-tête
+     collant quand les bordures du tableau sont fusionnées. */
+  position: sticky; top: 0; z-index: 2;
+  background: var(--alu); box-shadow: inset 0 -1px 0 var(--creux);
 }
 #tableau-scan td { padding: 6px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
 /* Une ligne sur deux teintée : à plus de deux cents lignes et huit colonnes, l'œil
