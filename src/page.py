@@ -206,32 +206,41 @@ input:focus-visible, select:focus-visible {
 .copier:hover { border-color: var(--petrol); color: var(--petrol); }
 
 /* — Raccourcis libres — */
-.libres-bloc { margin: 0 0 26px; }
+.libres-bloc { margin: 0 0 30px; }
 .libres-bloc h2 {
   font-family: var(--display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--sourdine); font-weight: 600; margin: 0 0 8px;
-  padding-bottom: 6px; border-bottom: 1px solid var(--creux);
+  color: var(--sourdine); font-weight: 600; margin: 0 0 10px;
   display: flex; align-items: baseline; gap: 12px;
 }
 .libres-total { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
-.libres-note { font-size: 14px; color: var(--sourdine); margin: 0; max-width: 110ch; }
-.libres-table { width: 100%; border-collapse: collapse; }
+.libres-note { font-size: 14px; color: var(--sourdine); margin: 0; }
+/* Tableau à double entrée : les modificateurs en colonnes, les touches en lignes.
+   Une ligne sans aucune case libre est omise à la construction — la garder
+   allongerait le tableau sans rien apprendre. */
+.libres-table { border-collapse: collapse; font-size: 13px; }
+.libres-table thead th {
+  position: sticky; top: 0; z-index: 2; background: var(--alu);
+  box-shadow: inset 0 -1px 0 var(--creux); padding: 8px 10px; text-align: center;
+}
 .libres-table th[scope="row"] {
-  text-align: left; vertical-align: top; padding: 8px 14px 8px 0; width: 1%; white-space: nowrap;
+  font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right;
+  padding: 0 12px 0 0; color: var(--sourdine); white-space: nowrap;
 }
-.libres-compte {
-  font-family: var(--mono); font-size: 11.5px; color: var(--sourdine);
-  vertical-align: top; padding: 10px 14px 8px 0; width: 1%; text-align: right;
+.libres-table td { padding: 2px 3px; }
+.libres-table tbody tr:nth-child(even) { background: var(--zebre); }
+.libres-table .pris { }
+/* Chaque combinaison libre est un bouton : un clic la copie, puisqu'elle a vocation
+   à être reportée dans les réglages d'un autre logiciel. */
+.libres-table .libre {
+  font: inherit; font-family: var(--mono); font-size: 12.5px; cursor: pointer;
+  display: block; width: 100%; padding: 3px 9px; border-radius: 5px;
+  background: var(--touche-haut); border: 1px solid var(--creux); border-bottom-width: 2px;
+  color: var(--encre); white-space: nowrap;
+  transition: background-color .12s ease, border-color .12s ease;
 }
-.libres-touches { padding: 6px 0 8px; }
-.libres-table tr + tr th, .libres-table tr + tr td { border-top: 1px solid var(--alu); }
-/* Capsules serrées : le but est d'en montrer le plus possible d'un seul regard. */
-.capsule-libre {
-  display: inline-block; font-family: var(--mono); font-size: 12.5px;
-  background: var(--touche-haut); border: 1px solid var(--creux);
-  border-bottom-width: 2px; border-radius: 5px; padding: 1px 7px; margin: 2px 4px 2px 0;
-  min-width: 26px; text-align: center;
-}
+.libres-table .libre:hover { border-color: var(--petrol); color: var(--petrol); }
+.libres-table .libre.copie { background: var(--petrol); border-color: var(--petrol); color: var(--plaque); }
+.libres-table .libre:focus-visible { outline: 3px solid var(--anneau); outline-offset: 1px; }
 
 /* — Tableau du prochain scan — */
 /* L'avertissement porte sur une action qui monopolise l'écran plusieurs minutes :
@@ -727,7 +736,9 @@ const TEXTES = {
     onglet_libres: "Raccourcis libres",
     libres_intro: "<p>Combinaisons qu'aucun raccourci ne revendique — ni macOS, ni un outil "
         + "global, ni le menu d'une des applications relevées. Un raccourci désactivé rend "
-        + "sa combinaison à cette liste.</p>"
+        + "sa combinaison à cette liste. Les modificateurs font les colonnes, les touches "
+        + "les lignes ; une case porte la combinaison entière, et un clic la met dans le "
+        + "presse-papiers. Une ligne dont aucune case n'est libre est omise.</p>"
         + "<p>Trois bornes ramènent l'espace des combinaisons à ce qui est réellement "
         + "attribuable : les quatre modificateurs que tout logiciel sait enregistrer "
         + "(⌃ ⌥ ⇧ ⌘, la touche Globe étant réservée par macOS) ; les lettres, la rangée du "
@@ -858,7 +869,9 @@ const TEXTES = {
     onglet_libres: "Free shortcuts",
     libres_intro: "<p>Combinations no shortcut claims — neither macOS, nor a global tool, nor "
         + "the menu of any surveyed application. A disabled shortcut returns its combination "
-        + "to this list.</p>"
+        + "to this list. Modifiers are the columns, keys the rows; a cell carries the whole "
+        + "combination, and one click puts it on the clipboard. A row with no free cell is "
+        + "left out.</p>"
         + "<p>Three limits reduce the space of combinations to what can actually be assigned: "
         + "the four modifiers every piece of software can register (⌃ ⌥ ⇧ ⌘, the Globe key "
         + "being reserved by macOS); letters, the top row, function keys and arrows; and "
@@ -1495,21 +1508,38 @@ function rendreLibres() {
       return `<section class="libres-bloc"><h2>${T("libres_section")(5)}</h2>`
            + `<p class="libres-note">${esc(T("libres_cinq")(section.total))}</p></section>`;
     }
-    const rangees = section.groupes.map(g =>
-      `<tr><th scope="row"><span class="combo">${esc(g.mods)}</span></th>
-         <td class="libres-compte">${g.touches.length}</td>
-         <td class="libres-touches">${g.touches.map(t =>
-            `<span class="capsule-libre">${esc(t)}</span>`).join("")}</td></tr>`).join("");
+    if (!section.lignes.length) {
+      return `<section class="libres-bloc"><h2>${T("libres_section")(section.touches)}</h2>`
+           + `<p class="libres-note">${T("libres_vide")}</p></section>`;
+    }
+    const entete = section.colonnes.map(c =>
+      `<th><span class="combo">${esc(c)}</span></th>`).join("");
+    const corps = section.lignes.map(l =>
+      `<tr><th scope="row">${esc(l.touche)}</th>${
+        l.cases.map(c => c
+          ? `<td><button type="button" class="libre" data-combo="${esc(c)}">${esc(c)}</button></td>`
+          : `<td class="pris"></td>`).join("")}</tr>`).join("");
     return `<section class="libres-bloc">
         <h2>${T("libres_section")(section.touches)}
           <span class="libres-total">${T("libres_total")(section.total)}</span></h2>
-        ${section.groupes.length
-          ? `<table class="libres-table"><tbody>${rangees}</tbody></table>`
-          : `<p class="libres-note">${T("libres_vide")}</p>`}
+        <table class="libres-table"><thead><tr><th></th>${entete}</tr></thead>
+          <tbody>${corps}</tbody></table>
       </section>`;
   }).join("");
   document.getElementById("vue-libres").innerHTML = html;
 }
+
+/* Un clic sur une combinaison libre la met dans le presse-papiers : elle est faite
+   pour être reportée dans les réglages d'un autre logiciel. */
+document.addEventListener("click", async (e) => {
+  const bouton = e.target.closest("button.libre");
+  if (!bouton) return;
+  const combo = bouton.dataset.combo;
+  if (await copierTexte(combo)) {
+    bouton.classList.add("copie");
+    setTimeout(() => bouton.classList.remove("copie"), 900);
+  }
+});
 
 function rendreScan() {
   const liste = scanFiltre();

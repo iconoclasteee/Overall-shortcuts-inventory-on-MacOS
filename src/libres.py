@@ -65,26 +65,40 @@ def _jeux_de_modificateurs(nombre):
 
 
 def calculer(keyboard, occupees):
-    """Sections « n touches », chacune listant les touches libres par modificateurs.
+    """Sections « n touches », chacune sous forme de tableau à double entrée.
 
-    `occupees` est l'ensemble des clés de comparaison déjà revendiquées. Une section
-    ne retient un jeu de modificateurs que s'il lui reste au moins une touche.
+    Les jeux de modificateurs font les colonnes, les touches les lignes. Une case
+    porte la combinaison entière quand elle est libre, rien sinon — de sorte qu'elle
+    se lise et se recopie telle quelle.
+
+    Une ligne dont aucune case n'est libre est omise : la garder allongerait le
+    tableau sans rien apprendre.
+
+    La touche nomme la ligne par ce qu'elle produit **sans Maj**, mais la case
+    affiche la combinaison telle que macOS l'écrit — avec Maj, c'est le caractère
+    décalé qui apparaît, comme partout ailleurs dans cette page.
     """
     touches = univers(keyboard)
     sections = []
     for nombre in (1, 2, 3, 4):
-        groupes = []
-        total = 0
-        for mods in _jeux_de_modificateurs(nombre):
-            libres = []
-            for code in touches:
-                if f"{mods}:k{code}" in occupees:
-                    continue
+        jeux = _jeux_de_modificateurs(nombre)
+        colonnes = [render_modifiers(mods) for mods in jeux]
+        lignes, total = [], 0
+        for code in touches:
+            nom = keyboard.label(code, 0)
+            if not nom:
+                continue
+            cases = []
+            for mods in jeux:
                 libelle = keyboard.label(code, mods)
-                if libelle:
-                    libres.append(libelle)
+                if not libelle or f"{mods}:k{code}" in occupees:
+                    cases.append(None)
+                else:
+                    cases.append(render_modifiers(mods) + libelle)
+            libres = sum(1 for c in cases if c)
             if libres:
-                groupes.append({"mods": render_modifiers(mods), "touches": libres})
-                total += len(libres)
-        sections.append({"touches": nombre + 1, "total": total, "groupes": groupes})
+                lignes.append({"touche": nom, "cases": cases})
+                total += libres
+        sections.append({"touches": nombre + 1, "total": total,
+                         "colonnes": colonnes, "lignes": lignes})
     return sections
