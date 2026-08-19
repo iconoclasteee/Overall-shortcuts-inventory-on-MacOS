@@ -23,6 +23,7 @@ struct Options {
     var scanAll = false
     var force = false              // refaire les apps déjà moissonnées
     var reglages = "out/reglages-scan.json"   // exclusions posées à la main
+    var onlyRunning = false        // ne relire que les apps déjà ouvertes
     var includeGames = false       // les jeux sont écartés par défaut
     var dryRun = false             // lister les cibles sans rien lancer
     var keymap = false             // exporter la correspondance code de touche -> caractère
@@ -39,6 +40,7 @@ func parseArgs() -> Options {
         case "--all": o.scanAll = true
         case "--force": o.force = true
         case "--reglages": o.reglages = it.next() ?? o.reglages
+        case "--only-running": o.onlyRunning = true
         case "--keep-running": o.keepRunning = true
         case "--include-games": o.includeGames = true
         case "--dry-run": o.dryRun = true
@@ -602,7 +604,27 @@ func runAll() {
             print("[\(index + 1)/\(targets.count)] \(bundleID) — déjà fait, ignoré")
             continue
         }
+        // Relecture sans ouverture. Ouvrir une app est la seule chose vraiment gênante
+        // d'une passe : elle surgit pendant qu'on travaille. Se limiter aux apps déjà
+        // lancées permet de rafraîchir des fiches périmées sans que rien ne bouge.
+        if options.onlyRunning,
+           !NSWorkspace.shared.runningApplications.contains(
+                where: { $0.bundleIdentifier == bundleID }) {
+            print("[\(index + 1)/\(targets.count)] \(bundleID) — non lancée, inchangée")
+            continue
+        }
         let outcome = process(bundleID: bundleID, options: options)
+        // Une relecture automatique ne doit jamais appauvrir l'inventaire. Une app
+        // ouverte sans document expose moins de commandes : écraser une fiche pleine
+        // par une fiche vide perdrait des raccourcis sans que personne le demande.
+        if options.onlyRunning, outcome.raccourcis.isEmpty,
+           let brut = FileManager.default.contents(atPath: file),
+           let objet = try? JSONSerialization.jsonObject(with: brut) as? [String: Any],
+           let avant = objet["raccourcis"] as? [Any], !avant.isEmpty {
+            print("[\(index + 1)/\(targets.count)] ⚠️  \(outcome.nom) — "
+                + "0 raccourci lu, fiche précédente conservée (\(avant.count))")
+            continue
+        }
         var ecrit = false
         do {
             try encoder.encode(outcome).write(to: URL(fileURLWithPath: file))

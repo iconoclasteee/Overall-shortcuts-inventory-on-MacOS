@@ -584,6 +584,7 @@ const TEXTES = {
     verrouille: "exclusion non modifiable : le lancement déclenche une action lourde",
     motif_neuf: "nouvelle", motif_majeur: "version majeure",
     scan_selection: (n) => `${n} à scanner`,
+    scan_majeures: "Cocher les versions majeures",
     script_liste: "1 · Mettre à jour la liste des apps",
     script_sources: "2 · Scanner le système et les apps sources",
     script_global: "3 · Scanner tout ce qui est coché",
@@ -664,6 +665,7 @@ const TEXTES = {
     verrouille: "exclusion cannot be lifted: launching triggers a heavy action",
     motif_neuf: "new", motif_majeur: "major version",
     scan_selection: (n) => `${n} to scan`,
+    scan_majeures: "Tick major versions",
     script_liste: "1 · Refresh the app list",
     script_sources: "2 · Scan system and source apps",
     script_global: "3 · Scan everything ticked",
@@ -1350,6 +1352,12 @@ function brancherScan() {
   document.getElementById("scan-defaut").addEventListener("click", () => {
     selectionConseillee(); rendreScan();
   });
+  // Ajoute à la sélection en cours plutôt que de la remplacer : on coche par
+  // couches successives, sans perdre ce qu'on venait de choisir à la main.
+  document.getElementById("scan-majeures").addEventListener("click", () => {
+    LIGNES.forEach(l => { if (!estExclue(l) && ecartMajeur(l)) aScanner.add(l.id); });
+    rendreScan();
+  });
 
   document.getElementById("vue-scan").addEventListener("change", (e) => {
     const c = e.target.closest("input[data-id]");
@@ -1425,7 +1433,7 @@ function brancherScan() {
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherLangues() brancherCopie();
+brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherLangues(); brancherCopie();
 appliquerLangue();
 
 rendreTout();
@@ -1597,6 +1605,7 @@ def build(index_path):
       <input type="search" id="scan-recherche" autocomplete="off" autocorrect="off"
              autocapitalize="off" spellcheck="false" data-tp="scan_filtrer">
       <button type="button" class="bouton" id="scan-defaut" data-t="scan_defaut"></button>
+      <button type="button" class="bouton" id="scan-majeures" data-t="scan_majeures"></button>
       <button type="button" class="bouton" id="scan-tout" data-t="scan_tout"></button>
       <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
       <span id="scan-total" class="sous"></span>
