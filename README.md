@@ -50,8 +50,8 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
    sans aucune case libre est omise ; les combinaisons à cinq touches sont comptées,
    pas listées — à cette longueur il en reste toujours.
 6. **Prochain scan** — le tableau des applications installées : version sur le disque,
-   version au dernier relevé, statut, date, et trois cases — *scanner*, *exclure*,
-   *outil de raccourcis*. Huit vues rapides restreignent la liste (à scanner, jamais
+   version au dernier relevé, statut, date du dernier relevé, nombre de raccourcis lus,
+   et trois cases — *scanner*, *exclure*, *outil de raccourcis*. Huit vues rapides restreignent la liste (à scanner, jamais
    lues, version majeure, outils de raccourcis, 0 raccourci, illisibles, exclues), et
    se combinent avec la recherche. L'écran ne lance rien : il produit la commande
    exacte à coller dans un terminal, et chaque étape indique si elle exige

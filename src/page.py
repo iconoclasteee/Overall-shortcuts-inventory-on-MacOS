@@ -309,6 +309,8 @@ input:focus-visible, select:focus-visible {
 #tableau-scan th:nth-child(5), #tableau-scan th:nth-child(6) { width: 150px; }
 #tableau-scan th:nth-child(7) { width: 104px; }
 #tableau-scan th:nth-child(8) { width: 176px; }
+#tableau-scan th:nth-child(9) { width: 96px; text-align: right; }
+#tableau-scan .lus { text-align: right; }
 #tableau-scan .appoint { width: auto; padding: 0; }
 #tableau-scan .date span { display: block; white-space: nowrap; }
 #tableau-scan .num { font-family: var(--mono); font-size: 13.5px; line-height: 1.35; }
@@ -731,7 +733,8 @@ const TEXTES = {
     libres_vide: "Aucune combinaison libre dans cette catégorie.",
     col_app: "Application", col_version: "Version installée",
     col_version_lue: "Version au dernier scan", col_statut: "Statut",
-    col_date: "Dernier scan", col_inclure: "Scanner", col_exclure: "Exclure",
+    col_date: "Dernier scan", col_lus: "Raccourcis lus",
+    col_inclure: "Scanner", col_exclure: "Exclure",
     col_source: "Outil de raccourcis", jamais: "jamais lue", aucun_lu: "0 raccourci",
     lus: (n) => `${n} raccourcis lus`, auto_source: "coché par le programme : des raccourcis globaux ont été trouvés dans les préférences de cette application. Le constat ne se corrige pas à la main.",
     verrouille: "exclusion non modifiable : le lancement déclenche une action lourde",
@@ -870,7 +873,8 @@ const TEXTES = {
     libres_vide: "No free combination in this category.",
     col_app: "Application", col_version: "Installed version",
     col_version_lue: "Version at last scan", col_statut: "Status",
-    col_date: "Last scan", col_inclure: "Scan", col_exclure: "Exclude",
+    col_date: "Last scan", col_lus: "Shortcuts read",
+    col_inclure: "Scan", col_exclure: "Exclude",
     col_source: "Hotkey tool", jamais: "never read", aucun_lu: "0 shortcuts",
     lus: (n) => `${n} shortcuts read`, auto_source: "ticked by the program: global hotkeys were found in this application’s preferences. An observation, not a choice.",
     verrouille: "exclusion cannot be lifted: launching triggers a heavy action",
@@ -1564,7 +1568,8 @@ function rendreScan() {
   const liste = scanFiltre();
   // Les trois cases d'abord : ce qu'on décide, avant ce qu'on constate.
   const entetes = ["col_inclure", "col_exclure", "col_source", "col_app",
-                   "col_version", "col_version_lue", "col_statut", "col_date"];
+                   "col_version", "col_version_lue", "col_statut", "col_date",
+                   "col_lus"];
   const corps = liste.map(l => {
     const exclue = estExclue(l);
     const neuve = jamaisLue(l), majeure = ecartMajeur(l);
@@ -1592,6 +1597,8 @@ function rendreScan() {
           title="${l.lus === null ? "" : esc(T("lus")(l.lus))}">${
         esc(l.statut ? (l.lus === 0 ? T("aucun_lu") : l.statut) : T("jamais"))}</td>
       <td class="num date"><span>${esc(l.scanneLe || "—")}</span></td>
+      <td class="num lus ${l.lus === 0 ? "statut-vide" : ""}">${
+        l.lus === null ? "—" : l.lus}</td>
       <td class="appoint"></td>
     </tr>`;
   }).join("");
