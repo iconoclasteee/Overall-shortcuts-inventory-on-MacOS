@@ -725,6 +725,8 @@ const TEXTES = {
         + "distinctes de la rangée du haut ; et des <b>touches physiques</b>, "
         + "désignées par ce qu'elles produisent sans Maj — sur un clavier français la rangée "
         + "des chiffres donne donc « &amp; é \" ' ( », qui est la frappe réelle.</p>",
+    couche_pilote: "pilote", couche_capture: "capture", couche_systeme: "système",
+    couche_global: "global", couche_autre: "autre", couche_menu: "menu",
     libres_section: (n) => `${n} touches`,
     libres_total: (n) => `${n} libres`,
     libres_cinq: (n) => `${n} combinaisons à cinq touches restent libres, ⌃⌥⇧⌘ suivi d'une `
@@ -865,6 +867,8 @@ const TEXTES = {
         + "<b>physical keys</b>, named by what they produce without Shift — on a French "
         + "keyboard the number row therefore reads « &amp; é \" ' ( », which is the actual "
         + "keystroke.</p>",
+    couche_pilote: "driver", couche_capture: "event tap", couche_systeme: "system",
+    couche_global: "global", couche_autre: "other", couche_menu: "menu",
     libres_section: (n) => `${n} keys`,
     libres_total: (n) => `${n} free`,
     libres_cinq: (n) => `${n} five-key combinations remain free, ⌃⌥⇧⌘ followed by a key. `
@@ -1629,6 +1633,8 @@ function appliquerLangue() {
   const champ = document.getElementById("filtre-app");
   if (!filtreApp) champ.value = T("toutes_apps");
   rendreTout();
+  if (!document.getElementById("onglet-libres").hidden) rendreLibres();
+  if (!document.getElementById("onglet-scan").hidden) rendreScan();
 }
 
 async function copierTexte(texte) {
