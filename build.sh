@@ -45,5 +45,9 @@ echo "   ⚠️  L'autorisation d'accessibilité est à réaccorder : retirer la
 echo "      $NAME.app de Réglages Système → Confidentialité et sécurité →"
 echo "      Accessibilité avec « − », puis l'y glisser à nouveau."
 echo "   Vérifier ensuite :"
+# Le fichier est effacé d'abord, et attendu ensuite : laissé en place, il rendrait le
+# verdict de l'exécution précédente — « accordee » alors que la compilation qu'on vient
+# de faire vient justement d'invalider le droit. Exactement le faux positif à éviter.
+echo "      rm -f /tmp/verdict"
 echo "      open -n -a \"\$(pwd)/$APP\" --args --check --verdict /tmp/verdict"
-echo "      sleep 1 && cat /tmp/verdict"
+echo "      until [ -f /tmp/verdict ]; do sleep 0.2; done; cat /tmp/verdict"

@@ -39,44 +39,69 @@ HARVESTER="$BUNDLE/Contents/MacOS/ShortcutHarvester"
 # journal, relayé ici en direct, et le fichier de statut, dont l'apparition est le seul
 # signal de fin fiable.
 moissonner() {
-  local dossier journal statut pid code lu total
+  local dossier journal statut pid code lu total inactif
   dossier=$(mktemp -d); journal="$dossier/journal"; statut="$dossier/statut"
   : > "$journal"
 
-  open -n -a "$BUNDLE" --args "$@" --journal "$journal" --statut "$statut"
+  # Retrouve NOTRE moissonneur, et pas un autre.
+  #
+  # `pgrep` apparie par nom : deux passes lancées en parallèle se confondraient, et
+  # l'interruption de l'une tuerait le moissonneur de l'autre. Le chemin du journal, lui,
+  # sort de `mktemp` et n'appartient qu'à cet appel — il est dans la ligne de commande du
+  # processus. On le croise avec le nom du programme, `open` portant le même argument
+  # dans la sienne.
+  trouver_pid() {
+    local candidat
+    for candidat in $(pgrep -f -- "$journal" 2>/dev/null || true); do
+      case "$(ps -o comm= -p "$candidat" 2>/dev/null)" in
+        */ShortcutHarvester) echo "$candidat"; return 0 ;;
+      esac
+    done
+    return 1
+  }
 
-  # Le PID exact, et non le nom du processus : deux passes lancées en parallèle se
-  # confondraient, et l'interruption tuerait la mauvaise.
-  pid=""
-  for _ in $(seq 1 100); do
-    pid=$(pgrep -n -x ShortcutHarvester 2>/dev/null || true)
-    if [ -n "$pid" ] || [ -f "$statut" ]; then break; fi
-    sleep 0.1
-  done
+  # Le piège est posé avant toute attente. Lancé par LaunchServices, le moissonneur ne
+  # descend pas de ce shell : Ctrl-C ne l'atteint pas, et une interruption survenue
+  # pendant qu'on cherche son identifiant le laisserait ouvrir les applications tout
+  # seul. Il le retrouve donc lui-même, au moment du signal.
+  trap 'kill "$(trouver_pid)" 2>/dev/null || true; rm -rf "$dossier"; exit 130' INT TERM
 
-  # Lancé par LaunchServices, le moissonneur ne descend pas de ce shell : Ctrl-C ne
-  # l'atteindrait pas, et il continuerait d'ouvrir des applications tout seul.
-  trap 'kill "$pid" 2>/dev/null || true; rm -rf "$dossier"; exit 130' INT TERM
+  if ! open -n -a "$BUNDLE" --args "$@" --journal "$journal" --statut "$statut"; then
+    trap - INT TERM; rm -rf "$dossier"
+    echo "⛔️ LaunchServices n'a pas pu lancer le moissonneur."
+    return 127
+  fi
 
   # Le journal est relu par tranches plutôt que suivi par `tail -f` : pas de tâche de
   # fond à tuer, pas de message du shell à la tuer, et les dernières lignes sont lues
   # à coup sûr — un `tail` interrompu peut les laisser derrière lui.
   lu=0
   relayer() {
-    total=$(wc -l < "$journal" 2>/dev/null | tr -d ' ' || echo 0)
+    total=$(wc -l < "$journal" 2>/dev/null | tr -d " " || echo 0)
     if [ "${total:-0}" -gt "$lu" ]; then
       sed -n "$((lu + 1)),${total}p" "$journal"
       lu=$total
     fi
   }
 
+  pid=""; inactif=0
   while :; do
     relayer
     if [ -f "$statut" ]; then break; fi
-    if [ -z "$pid" ]; then code=127; break; fi
-    if ! kill -0 "$pid" 2>/dev/null; then
+    if [ -z "$pid" ]; then pid=$(trouver_pid || true); fi
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
       sleep 0.5                     # laisse le temps d'écrire le statut en sortant
       if [ ! -f "$statut" ]; then code=127; break; fi
+    fi
+    # `open` a rendu la main sans erreur : le moissonneur existe, même s'il tarde à
+    # apparaître. Renoncer sur un délai court l'abandonnerait bien vivant, à ouvrir les
+    # applications hors de toute surveillance — on n'abandonne donc qu'après une longue
+    # inactivité complète, et en le disant.
+    if [ -z "$pid" ] && [ "$lu" -eq 0 ]; then
+      inactif=$((inactif + 1))
+      if [ "$inactif" -gt 1200 ]; then code=126; break; fi
+    else
+      inactif=0
     fi
     sleep 0.1
   done
@@ -85,7 +110,10 @@ moissonner() {
   trap - INT TERM
   code=${code:-$(cat "$statut" 2>/dev/null || echo 127)}
   rm -rf "$dossier"
-  if [ "$code" = 127 ]; then
+  if [ "$code" = 126 ]; then
+    echo "⛔️ Le moissonneur n'a donné aucun signe de vie en deux minutes."
+    echo "   Il tourne peut-être encore : pgrep -x ShortcutHarvester"
+  elif [ "$code" = 127 ]; then
     echo "⛔️ Le moissonneur s'est interrompu sans rendre de statut."
   fi
   return "$code"
@@ -96,10 +124,21 @@ moissonner() {
 autorisation_bundle() {
   local dossier verdict reponse i
   dossier=$(mktemp -d); verdict="$dossier/verdict"
-  open -n -a "$BUNDLE" --args --check --verdict "$verdict" 2>/dev/null || true
+  if ! open -n -a "$BUNDLE" --args --check --verdict "$verdict" 2>/dev/null; then
+    rm -rf "$dossier"
+    echo "⚠️  LaunchServices n'a pas pu lancer le moissonneur : autorisation invérifiable." >&2
+    return 1
+  fi
   i=0
-  while [ ! -f "$verdict" ] && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i + 1)); done
-  reponse=$(cat "$verdict" 2>/dev/null || echo absente)
+  while [ ! -f "$verdict" ] && [ "$i" -lt 300 ]; do sleep 0.1; i=$((i + 1)); done
+  # Une absence de réponse n'est pas un refus : le dire évite de renvoyer l'utilisateur
+  # vers Réglages Système pour une panne de lancement.
+  if [ ! -f "$verdict" ]; then
+    rm -rf "$dossier"
+    echo "⚠️  Le moissonneur n'a pas répondu en 30 s : autorisation non vérifiée." >&2
+    return 1
+  fi
+  reponse=$(cat "$verdict")
   rm -rf "$dossier"
   [ "$reponse" = accordee ]
 }
@@ -160,15 +199,30 @@ if [ ${#TARGET[@]} -eq 0 ]; then
   if [ -n "$PERIMEES" ] && [ "$AUTORISE" = oui ]; then
     echo "→ Fiches périmées relues, sans ouvrir d'application"
     moissonner --bundle-ids "$PERIMEES" --force --only-running \
-               --out "$RACINE/$APPS_DIR" --reglages "$RACINE/out/reglages-scan.json" || true
+               --out "$RACINE/$APPS_DIR" --reglages "$RACINE/out/reglages-scan.json" \
+               ${SUPPL[@]+"${SUPPL[@]}"} || true
   elif [ -n "$PERIMEES" ]; then
     echo "→ Fiches périmées : relecture impossible sans l'autorisation du moissonneur"
   fi
 else
   if [ "$AUTORISE" != oui ]; then
-    # Le verdict est déjà tombé plus haut, sur le bundle. Exécuter le moissonneur ici
-    # ne sert qu'à afficher son mode d'emploi : lancé par `open`, il ne rendrait rien.
-    "$HARVESTER" --check || true
+    # Message écrit ici, et non délégué au moissonneur : exécuté depuis ce shell, son
+    # `--check` répondrait sur le terminal — le processus responsable. Un terminal encore
+    # autorisé par une passe antérieure lui ferait afficher « autorisation accordée »
+    # juste avant que run.sh s'arrête, sans rien expliquer.
+    echo
+    echo "⛔️ Le moissonneur n'a pas l'autorisation d'accessibilité."
+    echo
+    echo "   Ouvrir Réglages Système → Confidentialité et sécurité → Accessibilité,"
+    echo "   puis y faire glisser :"
+    echo "     $BUNDLE"
+    echo
+    echo "   S'il y figure déjà, la ligne date d'une compilation antérieure : la retirer"
+    echo "   avec « − », puis la remettre. L'autorisation est liée à l'empreinte exacte"
+    echo "   du binaire, qu'un aller-retour de l'interrupteur ne réenregistre pas."
+    echo
+    echo "   Révéler le bundle dans le Finder :"
+    echo "     open -R \"$BUNDLE\""
     exit 1
   fi
   echo "→ Raccourcis par application"

@@ -186,8 +186,9 @@ Vérifier ensuite — en passant par LaunchServices, sans quoi c'est le terminal
 interroge et non le bundle :
 
 ```bash
+rm -f /tmp/verdict                   # sinon on relit le verdict de la fois d'avant
 open -n -a "$(pwd)/bin/ShortcutHarvester.app" --args --check --verdict /tmp/verdict
-sleep 1 && cat /tmp/verdict          # « accordee » ou « absente »
+until [ -f /tmp/verdict ]; do sleep 0.2; done; cat /tmp/verdict   # « accordee » ou « absente »
 ```
 
 Si la réponse est `absente` alors que l'app figure bien dans la liste, l'entrée date
