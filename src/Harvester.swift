@@ -37,6 +37,13 @@ struct Options {
 /// Où écrire le code de sortie. Nil tant que les options ne sont pas lues.
 var cheminStatut: String?
 
+/// Application que nous venons d'ouvrir et qui n'est pas encore refermée.
+///
+/// Une interruption doit la refermer. Sans cela chaque Ctrl-C en abandonne une, et elles
+/// s'accumulent sans que rien ne le signale — mesuré sur deux passes interrompues à
+/// quinze minutes d'intervalle, deux applications encore ouvertes une heure plus tard.
+var appEnCours: NSRunningApplication?
+
 /// Seule sortie du programme.
 ///
 /// Lancé par `open` — la seule façon pour ce bundle d'être son propre processus
@@ -356,6 +363,9 @@ func process(bundleID: String, options: Options) -> AppResult {
                       [], running: wasRunning, launched: launchedByUs)
     }
 
+    // Retenue le temps de la lecture, pour qu'une interruption sache quoi refermer.
+    if launchedByUs && !options.keepRunning { appEnCours = process }
+
     // Le délai repart d'ici : le lancement a déjà consommé son propre budget, et le
     // décompter deux fois classerait « expirée » une app lente à ouvrir mais saine.
     let deadline = Date().addingTimeInterval(options.timeout)
@@ -375,6 +385,7 @@ func process(bundleID: String, options: Options) -> AppResult {
     if launchedByUs && !options.keepRunning {
         process.terminate()
     }
+    appEnCours = nil
 
     let statut: String
     let detail: String?
@@ -819,6 +830,30 @@ func runAll() {
         fflush(stdout)
     }
 }
+
+// Une interruption — Ctrl-C, ou le signal que run.sh envoie pour arrêter une passe —
+// doit refermer l'application ouverte à l'instant où elle arrive.
+//
+// Le gestionnaire ne peut pas être un handler POSIX : presque rien n'y est appelable, et
+// `terminate()` encore moins. DispatchSource livre le signal comme un événement ordinaire
+// sur la boucle principale, que ce programme garde libre exprès. Il faut en revanche
+// neutraliser d'abord la disposition par défaut, sinon le processus est tué avant que
+// l'événement lui soit remis.
+let sourcesSignal: [DispatchSourceSignal] = [SIGINT, SIGTERM].map { numero in
+    signal(numero, SIG_IGN)
+    let source = DispatchSource.makeSignalSource(signal: numero, queue: .main)
+    source.setEventHandler {
+        appEnCours?.terminate()
+        appEnCours = nil
+        // Laisse au système le temps de remettre la demande de fermeture avant de rendre
+        // la main : la demande part d'ici, mais elle est traitée par l'autre processus.
+        usleep(300_000)
+        sortir(130)
+    }
+    source.resume()
+    return source
+}
+_ = sourcesSignal   // retenues en vie : leur libération annulerait la surveillance
 
 // Tout le travail tourne hors du thread principal, qui reste libre pour la boucle
 // d'exécution. NSWorkspace.openApplication rappelle son bloc de complétion via

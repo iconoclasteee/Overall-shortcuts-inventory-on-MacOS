@@ -310,9 +310,9 @@ reconstruire : voir [SECURITE.md](SECURITE.md).
 - Une passe `--all` **lance et quitte les apps une par une** : à tout instant, une seule
   application est ouverte du fait de l'outil, sans focus volé ni fenêtre visible. À faire
   quand la machine n'est pas en cours d'utilisation.
-- **Un `Ctrl-C` laisse ouverte l'application en cours de lecture** — une seule, celle que
-  l'outil venait de lancer et n'a pas eu le temps de refermer. Rien n'est perdu côté
-  inventaire, mais l'application reste à fermer à la main.
+- Un `Ctrl-C` referme l'application en cours de lecture avant de rendre la main, si
+  c'est l'outil qui l'avait ouverte. Une application que vous aviez ouverte vous-même
+  n'est jamais touchée, ni pendant la passe ni sur interruption.
 
 ## D'où viennent les données
 
