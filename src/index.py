@@ -10,6 +10,7 @@ modificateurs). Deux raccourcis qui partagent cette clé se disputent la même f
 """
 
 import json
+from datetime import datetime
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -67,9 +68,14 @@ def app_bindings(keyboard, apps_dir):
         if not isinstance(app, dict) or "statut" not in app or "bundleID" not in app:
             print(f"⚠️  incomplet, ignoré : {path.name}")
             continue
-        apps.append({k: app.get(k) for k in
-                     ("nom", "bundleID", "version", "categorie", "statut", "detail",
-                      "lance_par_nous")})
+        fiche = {k: app.get(k) for k in
+                 ("nom", "bundleID", "version", "categorie", "statut", "detail",
+                  "lance_par_nous")}
+        # La fiche ne date pas le moissonnage ; sa date d'écriture le fait. `--sources`
+        # ne réécrit pas les fiches, donc elle désigne bien la dernière lecture réelle.
+        fiche["scanne_le"] = datetime.fromtimestamp(
+            path.stat().st_mtime).strftime("%Y-%m-%d %Hh%M")
+        apps.append(fiche)
         if app["statut"] != "ok":
             continue
         redefinis = user_overrides.load(app["bundleID"])
@@ -172,6 +178,22 @@ def gagnant(bindings):
 SEUIL_CONVENTION = 0.5
 
 
+def load_reglages():
+    """Choix posés à la main depuis la page : exclusions et apps sources.
+
+    Écrit par l'utilisateur, jamais par le programme — son absence est le cas normal.
+    """
+    chemin = ROOT / "out" / "reglages-scan.json"
+    if not chemin.exists():
+        return {}
+    try:
+        donnees = json.loads(chemin.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print(f"⚠️  {chemin.name} illisible, réglages ignorés")
+        return {}
+    return donnees if isinstance(donnees, dict) else {}
+
+
 def build(apps_dir):
     keyboard = Keyboard()
     portees, libelles_portee = load_portees()
@@ -233,9 +255,25 @@ def build(apps_dir):
     catalogue_path = ROOT / "out" / "catalogue.json"
     catalogue = (json.loads(catalogue_path.read_text(encoding="utf-8"))
                  if catalogue_path.exists() else [])
+
+    # Apps « source de raccourcis » : celles qui accrochent la touche avant les menus.
+    # Constatées à partir de ce qu'elles déclarent réellement, plus celles que
+    # l'utilisateur a désignées à la main. Le rapprochement se fait aussi par nom :
+    # Keyboard Maestro enregistre ses raccourcis sous l'identifiant de son moteur,
+    # alors que l'app installée est son éditeur — le seul identifiant les manquerait.
+    proprios_outils = {b.proprietaire for b in bindings
+                       if b.couche in ("pilote", "capture", "global", "autre")}
+    ids_outils = {b.bundle_id for b in bindings
+                  if b.couche in ("pilote", "capture", "global", "autre") and b.bundle_id}
+    sources = {a["bundleID"] for a in catalogue
+               if a["bundleID"] in ids_outils or a["nom"] in proprios_outils}
+    sources |= set(load_reglages().get("sources") or [])
+
     return {
         "apps": apps,
         "catalogue": catalogue,
+        "sources": sorted(sources),
+        "reglages": load_reglages(),
         "combinaisons": combinaisons,
         "libelles_portee": libelles_portee,
         "couches": {"fr": {k: v[1] for k, v in COUCHES.items()},

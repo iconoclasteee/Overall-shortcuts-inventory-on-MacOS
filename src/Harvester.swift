@@ -22,6 +22,7 @@ struct Options {
     var checkOnly = false
     var scanAll = false
     var force = false              // refaire les apps déjà moissonnées
+    var reglages = "out/reglages-scan.json"   // exclusions posées à la main
     var includeGames = false       // les jeux sont écartés par défaut
     var dryRun = false             // lister les cibles sans rien lancer
     var keymap = false             // exporter la correspondance code de touche -> caractère
@@ -37,6 +38,7 @@ func parseArgs() -> Options {
         case "--check": o.checkOnly = true
         case "--all": o.scanAll = true
         case "--force": o.force = true
+        case "--reglages": o.reglages = it.next() ?? o.reglages
         case "--keep-running": o.keepRunning = true
         case "--include-games": o.includeGames = true
         case "--dry-run": o.dryRun = true
@@ -409,11 +411,25 @@ struct Installee: Encodable {
     let categorie: String?
     let exclu: Bool
     let raison: String?
+    // Verrouillée : exclusion que l'utilisateur ne peut pas lever depuis la page.
+    // Ces apps déclenchent une action lourde ou destructrice au simple lancement.
+    let verrou: Bool
 }
 
 /// Recense les apps installées dans les dossiers balayés, en indiquant pour chacune
+/// Exclusions posées à la main depuis la page. Le fichier est écrit par l'utilisateur,
+/// pas par le programme : son absence est le cas normal, pas une erreur.
+func reglagesManuels(_ chemin: String) -> (exclues: Set<String>, incluses: Set<String>) {
+    guard let data = FileManager.default.contents(atPath: chemin),
+          let objet = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else { return ([], []) }
+    return (Set(objet["exclues"] as? [String] ?? []),
+            Set(objet["incluses"] as? [String] ?? []))
+}
+
 /// si la passe l'écarte et pourquoi. Rien n'est lancé ici.
-func recenser(includeGames: Bool) -> [Installee] {
+func recenser(includeGames: Bool,
+              exclues: Set<String> = [], incluses: Set<String> = []) -> [Installee] {
     // Chemins explicites, sans récursion. Deux dossiers du dossier de départ sont
     // volontairement absents :
     //   ~/Applications              bibliothèque Steam (23 jeux sur 25 apps)
@@ -423,6 +439,36 @@ func recenser(includeGames: Bool) -> [Installee] {
     var directories = ["/Applications", "/Applications/Utilities",
                        "/System/Applications", "/System/Applications/Utilities"]
     directories.append(NSHomeDirectory() + "/Applications")
+
+    // Les installeurs rangent couramment leurs apps dans un sous-dossier à leur nom
+    // (/Applications/Arturia, /Applications/Antidote, /Applications/WhatsApp.localized),
+    // parfois sur deux niveaux (/Applications/Native Instruments/Controller Editor/).
+    // Sans cette descente elles sont invisibles du recensement, donc absentes de la
+    // page et impossibles à cocher.
+    //
+    // Un dossier dont le nom porte une extension est un **paquet**, pas un rangement :
+    // y descendre remonterait des exécutables internes qu'aucun utilisateur ne lance,
+    // tel l'installeur de pilote logé dans un .bundle.
+    let paquets = [".app", ".bundle", ".framework", ".plugin", ".kext", ".prefPane",
+                   ".qlgenerator", ".appex", ".xpc"]
+    func sousDossiers(_ racine: String, profondeur: Int) -> [String] {
+        guard profondeur > 0 else { return [] }
+        var trouves: [String] = []
+        let contenu = ((try? FileManager.default.contentsOfDirectory(atPath: racine)) ?? []).sorted()
+        for entree in contenu where !paquets.contains(where: { entree.hasSuffix($0) }) {
+            let chemin = racine + "/" + entree
+            var estDossier: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: chemin, isDirectory: &estDossier),
+                  estDossier.boolValue else { continue }
+            trouves.append(chemin)
+            trouves += sousDossiers(chemin, profondeur: profondeur - 1)
+        }
+        return trouves
+    }
+    for chemin in sousDossiers("/Applications", profondeur: 2)
+    where !directories.contains(chemin) {
+        directories.append(chemin)
+    }
 
     // Lanceurs de jeux : pas de catégorie déclarée, mais même coût de lancement.
     let gameLaunchers: Set<String> = ["com.valvesoftware.steam"]
@@ -459,14 +505,31 @@ func recenser(includeGames: Bool) -> [Installee] {
         let contents = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
         for entry in contents.sorted() where entry.hasSuffix(".app") {
             let path = directory + "/" + entry
-            guard let bundle = Bundle(path: path), let id = bundle.bundleIdentifier,
-                  seen.insert(id).inserted else { continue }
+            guard let bundle = Bundle(path: path), let id = bundle.bundleIdentifier
+            else { continue }
+            // Deux apps peuvent partager un identifiant (digikam et showfoto par
+            // exemple) : le lancement se faisant par identifiant, la seconde est
+            // inatteignable. On garde la première et on le dit plutôt que de la
+            // laisser disparaître en silence.
+            guard seen.insert(id).inserted else {
+                FileHandle.standardError.write(
+                    "  ℹ️  \(entry) partage l'identifiant \(id), déjà recensé — ignorée\n"
+                        .data(using: .utf8)!)
+                continue
+            }
             let category = infoValue(bundle, "LSApplicationCategoryType")
             var raison: String?
             let nom = FileManager.default.displayName(atPath: path)
                 .replacingOccurrences(of: ".app", with: "")
+            let verrou = neverLaunch[id] != nil
             if let motif = neverLaunch[id] {
                 raison = motif
+            } else if incluses.contains(id) {
+                // Choix explicite de l'utilisateur : il prime sur les règles du
+                // programme, sauf sur les exclusions verrouillées ci-dessus.
+                raison = nil
+            } else if exclues.contains(id) {
+                raison = "écartée à la main"
             } else if estDesinstalleur(nom) {
                 raison = "désinstalleur"
             } else if !includeGames {
@@ -481,7 +544,8 @@ func recenser(includeGames: Bool) -> [Installee] {
             out.append(Installee(
                 nom: nom, bundleID: id, chemin: path,
                 version: infoValue(bundle, "CFBundleShortVersionString"),
-                categorie: category, exclu: raison != nil, raison: raison))
+                categorie: category, exclu: raison != nil, raison: raison,
+                verrou: verrou))
         }
     }
     return out.sorted { $0.nom.localizedCaseInsensitiveCompare($1.nom) == .orderedAscending }
@@ -491,7 +555,9 @@ let catalogueEncoder = JSONEncoder()
 catalogueEncoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
 
 if options.catalogue {
-    let liste = recenser(includeGames: options.includeGames)
+    let reglages = reglagesManuels(options.reglages)
+    let liste = recenser(includeGames: options.includeGames,
+                         exclues: reglages.exclues, incluses: reglages.incluses)
     if let data = try? catalogueEncoder.encode(liste),
        let texte = String(data: data, encoding: .utf8) { print(texte) }
     exit(0)
@@ -499,7 +565,9 @@ if options.catalogue {
 
 var targets = options.bundleIDs
 if options.scanAll {
-    let installees = recenser(includeGames: options.includeGames)
+    let reglages = reglagesManuels(options.reglages)
+    let installees = recenser(includeGames: options.includeGames,
+                              exclues: reglages.exclues, incluses: reglages.incluses)
     targets += installees.filter { !$0.exclu }.map(\.bundleID)
     print("\(targets.count) apps à parcourir"
         + (options.includeGames ? " (jeux inclus)" : " (jeux exclus — --include-games pour les garder)"))

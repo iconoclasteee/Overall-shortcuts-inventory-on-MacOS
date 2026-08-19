@@ -26,7 +26,7 @@ ORDRE_COUCHES = ["pilote", "capture", "systeme", "global", "autre", "menu"]
 CSS = """
 :root {
   --alu: #DAD8D3; --plaque: #F4F3F0; --creux: #C3C0B9; --encre: #16181C;
-  --sourdine: #6E7078; --petrol: #0B6E6E; --vermillon: #B8352A;
+  --sourdine: #6E7078; --petrol: #0B6E6E; --vermillon: #B8352A; --ambre: #9A5B12;
   --touche-haut: #FBFAF8; --touche-bas: #D8D5CE; --ombre: rgba(22,24,28,.18);
   --largeur-combo: 168px;
   --display: "Space Grotesk", "Avenir Next Condensed", system-ui, sans-serif;
@@ -36,7 +36,7 @@ CSS = """
 @media (prefers-color-scheme: dark) {
   :root {
     --alu: #131519; --plaque: #1C1F25; --creux: #2E323A; --encre: #E8E7E3;
-    --sourdine: #94979F; --petrol: #4FD1C5; --vermillon: #F0776A;
+    --sourdine: #94979F; --petrol: #4FD1C5; --vermillon: #F0776A; --ambre: #E0A458;
     --touche-haut: #333842; --touche-bas: #1E2128; --ombre: rgba(0,0,0,.5);
   }
 }
@@ -173,6 +173,37 @@ h1 em { font-style: normal; color: var(--petrol); }
   background: var(--plaque); border: 1px solid var(--creux); color: var(--encre);
 }
 .copier:hover { border-color: var(--petrol); color: var(--petrol); }
+
+/* — Tableau du prochain scan — */
+.scan-intro { font-size: 14px; color: var(--sourdine); margin: 0 0 14px; max-width: 90ch; }
+.scan-outils { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; flex-wrap: wrap; }
+.scan-outils input { flex: 0 0 260px; }
+.scan-outils .sous { margin-left: auto; }
+#tableau-scan { width: 100%; border-collapse: collapse; font-size: 13px; }
+#tableau-scan th {
+  text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--sourdine); font-weight: 600;
+  padding: 0 10px 8px; border-bottom: 1px solid var(--creux); white-space: nowrap;
+}
+#tableau-scan td { padding: 5px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
+#tableau-scan tr:hover td { background: var(--alu); }
+#tableau-scan .num { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+#tableau-scan .cocher { width: 1%; text-align: center; }
+/* La couleur porte l'information : pourquoi cette ligne est cochée, et ce qui cloche.
+   Le motif est répété en toutes lettres — une couleur seule ne se lit pas. */
+#tableau-scan tr.neuve td:nth-child(2) { color: var(--petrol); font-weight: 600; }
+#tableau-scan tr.majeure .num.installee { color: var(--ambre); font-weight: 600; }
+#tableau-scan tr.exclue td { color: var(--sourdine); }
+#tableau-scan tr.exclue td:nth-child(2) { text-decoration: line-through; }
+#tableau-scan .statut-ok { color: var(--sourdine); }
+#tableau-scan .statut-ko { color: var(--vermillon); font-weight: 600; }
+#tableau-scan .marque {
+  font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 999px; border: 1px solid currentColor; margin-left: 8px;
+}
+#tableau-scan .m-neuve { color: var(--petrol); }
+#tableau-scan .m-majeure { color: var(--ambre); }
+#tableau-scan .m-motif { color: var(--sourdine); border: none; padding-left: 0; }
 
 /* — Onglets — */
 nav {
@@ -545,6 +576,16 @@ const TEXTES = {
     pave_numerique: "Pavé numérique",
     effacer_touches: "Effacer les touches", tout_effacer: "Tout effacer",
     copier: "Copier", copie_faite: "Copié ✓", copie_echec: "Copie refusée",
+    onglet_scan: "Prochain scan",
+    col_app: "Application", col_version: "Version installée",
+    col_version_lue: "Version au dernier scan", col_statut: "Statut",
+    col_date: "Dernier scan", col_inclure: "Scanner", col_exclure: "Exclure",
+    col_source: "Source", jamais: "jamais lue", auto_source: "constaté : cette app déclare des raccourcis globaux",
+    verrouille: "exclusion non modifiable : le lancement déclenche une action lourde",
+    motif_neuf: "nouvelle", motif_majeur: "version majeure",
+    scan_selection: (n) => `${n} à scanner`,
+    scan_actualiser: "Actualiser la liste",
+    scan_actualiser_cmd: "# Recense les apps installées et reconstruit la page. N'ouvre aucune application.",
     ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
     double: "double frappe", fermer: "Fermer",
@@ -618,6 +659,16 @@ const TEXTES = {
     pave_numerique: "Numeric keypad",
     effacer_touches: "Clear keys", tout_effacer: "Clear all",
     copier: "Copy", copie_faite: "Copied ✓", copie_echec: "Copy blocked",
+    onglet_scan: "Next scan",
+    col_app: "Application", col_version: "Installed version",
+    col_version_lue: "Version at last scan", col_statut: "Status",
+    col_date: "Last scan", col_inclure: "Scan", col_exclure: "Exclude",
+    col_source: "Source", jamais: "never read", auto_source: "observed: this app declares global hotkeys",
+    verrouille: "exclusion cannot be lifted: launching triggers a heavy action",
+    motif_neuf: "new", motif_majeur: "major version",
+    scan_selection: (n) => `${n} to scan`,
+    scan_actualiser: "Refresh the list",
+    scan_actualiser_cmd: "# Lists installed apps and rebuilds the page. Opens no application.",
     ph_touche: "or type the key", ph_texte: "copy, capture, full screen…",
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
     double: "double press", fermer: "Close",
@@ -1119,40 +1170,114 @@ document.addEventListener("click", (e) => {
   detail.hidden = ouvert;
 });
 
-document.querySelectorAll(".onglets button").forEach(b => b.addEventListener("click", () => {
+function choisirOnglet(vue) {
   document.querySelectorAll(".onglets button").forEach(x =>
-    x.setAttribute("aria-selected", String(x === b)));
+    x.setAttribute("aria-selected", String(x.dataset.vue === vue)));
   document.querySelectorAll("main > section").forEach(s =>
-    s.hidden = s.id !== "onglet-" + b.dataset.vue);
-}));
+    s.hidden = s.id !== "onglet-" + vue);
+  if (vue === "scan") rendreScan();
+}
+document.querySelectorAll(".onglets button").forEach(b =>
+  b.addEventListener("click", () => choisirOnglet(b.dataset.vue)));
 
-/* Sélection des apps à scanner. L'écran ne lance encore rien lui-même : il produit
-   la commande exacte à exécuter, exclusions comprises. Le branchement viendra avec
-   la question des autorisations. */
+/* Prochain scan. L'écran ne lance rien lui-même : il produit la commande exacte à
+   exécuter, réglages compris. Le branchement direct viendra avec la question des
+   autorisations. Les choix vivent en mémoire jusqu'à ce que la commande les écrive
+   dans out/reglages-scan.json — ce fichier reste la seule vérité, et la page le relit
+   à chaque production. */
 const CATALOGUE = D.catalogue || [];
-const aScanner = new Set(CATALOGUE.filter(a => !a.exclu).map(a => a.bundleID));
+const REGLAGES = D.reglages || {};
+const SOURCES_AUTO = new Set(D.sources || []);
+const exclues = new Set(REGLAGES.exclues || []);
+const incluses = new Set(REGLAGES.incluses || []);
+const sourcesChoisies = new Set(REGLAGES.sources || []);
+const FICHES = Object.fromEntries((D.apps || []).map(a => [a.bundleID, a]));
+
+const LIGNES = CATALOGUE.map(a => {
+  const f = FICHES[a.bundleID] || {};
+  return {
+    id: a.bundleID, nom: a.nom,
+    installee: a.version || null, lue: f.version || null,
+    statut: f.statut || null, scanneLe: f.scanne_le || null,
+    raison: a.raison || null, verrou: !!a.verrou, excluCalcule: !!a.exclu,
+  };
+});
+
+function estExclue(l) {
+  if (l.verrou) return true;
+  if (incluses.has(l.id)) return false;
+  if (exclues.has(l.id)) return true;
+  return l.excluCalcule;
+}
+
+/* Le premier nombre du numéro de version : « 3.7.8 » donne « 3 ». Une version
+   illisible ou absente compte comme un écart : mieux vaut relire pour rien que
+   présenter des raccourcis périmés comme à jour.
+   (Exemple volontairement à trois nombres : à quatre, il ressemblerait à une
+   adresse IP et ferait sonner verifier-publication.sh à tort.) */
+function majeur(v) { const m = String(v == null ? "" : v).match(/\d+/); return m ? m[0] : null; }
+function jamaisLue(l) { return !l.scanneLe; }
+function ecartMajeur(l) {
+  if (jamaisLue(l)) return false;
+  const a = majeur(l.installee), b = majeur(l.lue);
+  return a === null || b === null || a !== b;
+}
+function conseillee(l) { return !estExclue(l) && (jamaisLue(l) || ecartMajeur(l)); }
+
+const aScanner = new Set();
+function selectionConseillee() {
+  aScanner.clear();
+  LIGNES.forEach(l => { if (conseillee(l)) aScanner.add(l.id); });
+}
+selectionConseillee();
 
 function scanFiltre() {
   const q = sansAccent(document.getElementById("scan-recherche").value.trim());
-  return q ? CATALOGUE.filter(a => sansAccent(a.nom).includes(q)
-                                || sansAccent(a.bundleID).includes(q))
-           : CATALOGUE;
+  return q ? LIGNES.filter(l => sansAccent(l.nom).includes(q)
+                             || sansAccent(l.id).includes(q))
+           : LIGNES;
 }
 
 function rendreScan() {
   const liste = scanFiltre();
-  document.getElementById("scan-grille").innerHTML = liste.length ? liste.map(a =>
-    `<label><input type="checkbox" data-id="${esc(a.bundleID)}"
-       ${aScanner.has(a.bundleID) ? "checked" : ""}>
-     <span>${esc(a.nom)}${a.raison ? `<span class="motif">${T("scan_ecartee")(esc(a.raison))}</span>` : ""}</span>
-     </label>`).join("") : `<p class="vide">Aucune application pour cette recherche.</p>`;
+  const entetes = ["col_inclure", "col_app", "col_version", "col_version_lue",
+                   "col_statut", "col_date", "col_exclure", "col_source"];
+  const corps = liste.map(l => {
+    const exclue = estExclue(l);
+    const neuve = jamaisLue(l), majeure = ecartMajeur(l);
+    const classes = [exclue ? "exclue" : "", neuve ? "neuve" : "", majeure ? "majeure" : ""]
+      .filter(Boolean).join(" ");
+    const marque = neuve ? `<span class="marque m-neuve">${T("motif_neuf")}</span>`
+                 : majeure ? `<span class="marque m-majeure">${T("motif_majeur")}</span>`
+                 : l.raison ? `<span class="marque m-motif">${esc(l.raison)}</span>` : "";
+    const auto = SOURCES_AUTO.has(l.id) && !sourcesChoisies.has(l.id);
+    return `<tr class="${classes}">
+      <td class="cocher"><input type="checkbox" data-role="inclure" data-id="${esc(l.id)}"
+          ${aScanner.has(l.id) ? "checked" : ""} ${exclue ? "disabled" : ""}></td>
+      <td>${esc(l.nom)}${marque}</td>
+      <td class="num installee">${esc(l.installee || "—")}</td>
+      <td class="num">${esc(l.lue || "—")}</td>
+      <td class="${l.statut === "ok" ? "statut-ok" : l.statut ? "statut-ko" : "statut-ok"}">${
+        esc(l.statut || T("jamais"))}</td>
+      <td class="num">${esc(l.scanneLe || "—")}</td>
+      <td class="cocher"><input type="checkbox" data-role="exclure" data-id="${esc(l.id)}"
+          ${exclue ? "checked" : ""} ${l.verrou ? "disabled" : ""}
+          title="${l.verrou ? esc(T("verrouille")) : ""}"></td>
+      <td class="cocher"><input type="checkbox" data-role="source" data-id="${esc(l.id)}"
+          ${auto || sourcesChoisies.has(l.id) ? "checked" : ""} ${auto ? "disabled" : ""}
+          title="${auto ? esc(T("auto_source")) : ""}"></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("vue-scan").innerHTML = liste.length
+    ? `<table id="tableau-scan"><thead><tr>${
+        entetes.map(c => `<th>${T(c)}</th>`).join("")}</tr></thead><tbody>${corps}</tbody></table>`
+    : `<p class="vide">${T("scan_aucune")}</p>`;
   document.getElementById("scan-total").textContent =
-    T("scan_affichees")(liste.length, CATALOGUE.length);
-  document.getElementById("scan-etat").textContent = T("scan_a_scanner")(aScanner.size);
+    `${T("scan_affichees")(liste.length, LIGNES.length)} · ${T("scan_selection")(aScanner.size)}`;
+  document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
 }
 
-/* Applique la langue à tout ce qui est écrit en dur dans la page, puis redessine
-   les vues, dont les libellés sont produits à la volée. */
+
 function appliquerLangue() {
   document.documentElement.lang = LANGUE;
   document.querySelectorAll("[data-t]").forEach(n => { n.textContent = T(n.dataset.t); });
@@ -1218,38 +1343,56 @@ function brancherRelire() {
 }
 
 function brancherScan() {
-  const boite = document.getElementById("scan");
-  document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
-  document.getElementById("ouvrir-scan").addEventListener("click", () => {
-    rendreScan(); boite.showModal();
-  });
-  document.getElementById("scan-fermer").addEventListener("click", () => boite.close());
+  document.getElementById("ouvrir-scan").addEventListener("click", () => choisirOnglet("scan"));
   document.getElementById("scan-recherche").addEventListener("input", rendreScan);
 
   // Cocher en masse ne porte que sur ce que le filtre laisse voir : sans cela,
   // « tout décocher » viderait aussi les apps qu'on ne regarde pas.
   const masse = (etat) => {
-    scanFiltre().forEach(a => etat ? aScanner.add(a.bundleID) : aScanner.delete(a.bundleID));
-    majCompte();
-  };
-  const majCompte = () => {
+    scanFiltre().forEach(l => {
+      if (etat && estExclue(l)) return;
+      etat ? aScanner.add(l.id) : aScanner.delete(l.id);
+    });
     rendreScan();
-    document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
   };
   document.getElementById("scan-tout").addEventListener("click", () => masse(true));
   document.getElementById("scan-rien").addEventListener("click", () => masse(false));
   document.getElementById("scan-defaut").addEventListener("click", () => {
-    aScanner.clear();
-    CATALOGUE.filter(a => !a.exclu).forEach(a => aScanner.add(a.bundleID));
-    majCompte();
+    selectionConseillee(); rendreScan();
   });
-  document.getElementById("scan-grille").addEventListener("change", (e) => {
+
+  document.getElementById("vue-scan").addEventListener("change", (e) => {
     const c = e.target.closest("input[data-id]");
     if (!c) return;
-    c.checked ? aScanner.add(c.dataset.id) : aScanner.delete(c.dataset.id);
-    document.getElementById("scan-etat").textContent = T("scan_a_scanner")(aScanner.size);
-    document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
+    const id = c.dataset.id;
+    if (c.dataset.role === "inclure") {
+      c.checked ? aScanner.add(id) : aScanner.delete(id);
+    } else if (c.dataset.role === "exclure") {
+      // Deux listes plutôt qu'une : le programme écarte déjà les jeux et les
+      // désinstalleurs, il faut donc pouvoir dire « malgré tout, prends-la ».
+      exclues.delete(id); incluses.delete(id);
+      (c.checked ? exclues : incluses).add(id);
+      if (c.checked) aScanner.delete(id);
+    } else {
+      c.checked ? sourcesChoisies.add(id) : sourcesChoisies.delete(id);
+    }
+    rendreScan();
   });
+
+  // Recenser et moissonner sont deux gestes distincts : le premier met la liste à
+  // jour en dix secondes sans ouvrir la moindre app, le second ouvre les apps une à
+  // une. Les confondre obligerait à subir le second pour obtenir le premier.
+  document.getElementById("scan-actualiser").addEventListener("click", () => {
+    const bloc = document.getElementById("scan-commande");
+    const cadre = document.getElementById("bloc-scan-commande");
+    cadre.hidden = false;
+    const commande = `cd ${RACINE} && ./run.sh --sources`;
+    bloc.textContent = `${T("scan_actualiser_cmd")}
+${commande}`;
+    bloc.dataset.commande = commande;
+    cadre.querySelector(".copier").hidden = false;
+  });
+
   document.getElementById("scan-lancer").addEventListener("click", () => {
     const bloc = document.getElementById("scan-commande");
     const cadre = document.getElementById("bloc-scan-commande");
@@ -1261,16 +1404,19 @@ function brancherScan() {
       bouton.hidden = true;
       return;
     }
-    const complet = aScanner.size === CATALOGUE.filter(a => !a.exclu).length
-      && CATALOGUE.filter(a => !a.exclu).every(a => aScanner.has(a.bundleID));
-    const commande = complet
-      ? `cd ${RACINE} && ./run.sh --all`
-      : `cd ${RACINE} && \\
+    const reglages = JSON.stringify({
+      exclues: [...exclues], incluses: [...incluses], sources: [...sourcesChoisies],
+    });
+    // --force est indispensable : sans lui le moissonneur saute toute app dont la
+    // fiche existe déjà, c'est-à-dire précisément celles qu'on relit pour cause de
+    // nouvelle version.
+    const commande = `cd ${RACINE} && \\
+  printf '%s\\n' '${reglages}' > out/reglages-scan.json && \\
   bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester \\
-    --bundle-ids ${[...aScanner].join(",")} --out out/apps && ./run.sh --all`;
-    bloc.textContent = `${complet ? T("scan_defaut_cmd") : T("scan_perso_cmd")}
+    --bundle-ids ${[...aScanner].join(",")} --force --out out/apps && \\
+  ./run.sh --sources`;
+    bloc.textContent = `${T("scan_perso_cmd")}
 ${commande}`;
-    // Le commentaire reste à l'écran pour dire ce qu'on copie, mais pas dans la copie.
     bloc.dataset.commande = commande;
     bouton.hidden = false;
   });
@@ -1400,6 +1546,7 @@ def build(index_path):
     <button data-vue="effet" aria-selected="false" data-t="onglet_effet"></button>
     <button data-vue="conflits" aria-selected="false" data-t="onglet_conflits"></button>
     <button data-vue="combinaisons" aria-selected="false" data-t="onglet_combinaisons"></button>
+    <button data-vue="scan" aria-selected="false" data-t="onglet_scan"></button>
   </div>
   <div class="bloc-app">
   <button type="button" id="bascule-app" class="bascule" aria-pressed="false">
@@ -1445,6 +1592,24 @@ def build(index_path):
   </section>
   <section id="onglet-menu"><div id="vue-menu"></div></section>
   <section id="onglet-effet" hidden><div id="vue-effet"></div></section>
+  <section id="onglet-scan" hidden>
+    <p class="scan-intro" data-t="scan_intro"></p>
+    <div class="scan-outils">
+      <input type="search" id="scan-recherche" autocomplete="off" autocorrect="off"
+             autocapitalize="off" spellcheck="false" data-tp="scan_filtrer">
+      <button type="button" class="bouton" id="scan-defaut" data-t="scan_defaut"></button>
+      <button type="button" class="bouton" id="scan-tout" data-t="scan_tout"></button>
+      <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
+      <span id="scan-total" class="sous"></span>
+      <button type="button" class="bouton" id="scan-actualiser" data-t="scan_actualiser"></button>
+      <button type="button" class="bouton primaire" id="scan-lancer" data-t="scan_lancer"></button>
+    </div>
+    <div class="bloc-commande" id="bloc-scan-commande" hidden>
+      <code class="commande" id="scan-commande"></code>
+      <button type="button" class="copier" data-t="copier"></button>
+    </div>
+    <div id="vue-scan"></div>
+  </section>
 </main>
 <dialog id="relire"><div class="detail-corps">
   <div class="detail-tete">
@@ -1465,32 +1630,6 @@ def build(index_path):
     <button type="button" id="detail-fermer" class="croix" aria-label="Fermer">✕</button>
   </div>
   <div id="detail-contenu"></div>
-</div></dialog>
-
-<dialog id="scan"><div class="scan-corps">
-  <div class="scan-tete">
-    <h2 data-t="scan_titre"></h2>
-    <p data-t="scan_intro"></p>
-  </div>
-  <div class="scan-outils">
-    <input type="search" id="scan-recherche" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-tp="scan_filtrer">
-    <button type="button" class="bouton" id="scan-tout" data-t="scan_tout"></button>
-    <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
-    <button type="button" class="bouton" id="scan-defaut" data-t="scan_defaut"></button>
-    <span id="scan-total" class="eyebrow" style="margin:0"></span>
-  </div>
-  <div class="scan-liste"><div class="scan-grille" id="scan-grille"></div></div>
-  <div class="scan-pied">
-    <span class="sous" id="scan-etat"></span>
-    <span style="display:flex;gap:10px">
-      <button type="button" class="bouton" id="scan-fermer" data-t="fermer"></button>
-      <button type="button" class="bouton primaire" id="scan-lancer" data-t="scan_lancer"></button>
-    </span>
-  </div>
-  <div class="bloc-commande" id="bloc-scan-commande" hidden>
-    <code class="commande" id="scan-commande"></code>
-    <button type="button" class="copier" data-t="copier"></button>
-  </div>
 </div></dialog>
 
 <footer data-t="pied"></footer>
