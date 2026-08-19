@@ -46,10 +46,14 @@ def from_ax(mask):
     """Masque d'un élément de menu accessible.
 
     Command y est implicite : c'est le bit 0x08 qui l'*exclut*, pas qui l'ajoute.
+    Le bit 0x10 porte la touche Globe (fn) : macOS s'en sert pour les raccourcis
+    modernes tels que 🌐F pour le plein écran. L'ignorer indexait ces raccourcis
+    sous la touche nue, où ils se mélangeaient à de vrais raccourcis sans modificateur.
     """
     mask = mask or 0
     return ((SHIFT if mask & 0x01 else 0) | (ALT if mask & 0x02 else 0)
-            | (CTRL if mask & 0x04 else 0) | (0 if mask & 0x08 else CMD))
+            | (CTRL if mask & 0x04 else 0) | (0 if mask & 0x08 else CMD)
+            | (FN if mask & 0x10 else 0))
 
 
 def render_modifiers(mods):
