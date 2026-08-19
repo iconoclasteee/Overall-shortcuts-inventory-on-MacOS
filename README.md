@@ -3,6 +3,11 @@
 Inventaire complet des raccourcis clavier d'un Mac : le système, puis application par
 application, dans un seul document Markdown classé par catégorie.
 
+> ⚠️ **Avant la première passe, lisez [SECURITE.md](SECURITE.md).** Cet outil exige
+> l'autorisation d'accessibilité de macOS — la plus large du système — et ouvre
+> automatiquement vos applications. Ce fichier explique ce que cela implique et les
+> précautions à prendre.
+
 ## Pourquoi
 
 Aucun outil ne produit cet inventaire. Les outils existants (CheatSheet, KeyCue,
@@ -27,7 +32,7 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
 
 ## Ce que ça produit
 
-**`out/raccourcis.html`** — une page autonome, quatre vues :
+**`out/raccourcis.html`** — une page autonome, six vues :
 
 1. **Commandes par menu** — les raccourcis de l'app choisie, dans l'ordre de sa barre
    de menu, puis les raccourcis globaux rangés selon qu'ils agissent *dans* l'app,
@@ -37,7 +42,13 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
    de touches.
 3. **Conflits** — les combinaisons réclamées par plusieurs preneurs, avec qui gagne
    et pourquoi.
-4. **Par combinaison** — cherche une touche ou une commande, vois partout où elle sert.
+4. **Par combinaison** — chercher une touche ou une commande, et voir partout où elle sert.
+5. **Raccourcis libres** — une grille à double entrée : les modificateurs en colonnes,
+   les touches en lignes, la combinaison entière dans chaque case libre. Un clic la met
+   dans le presse-papiers. Les combinaisons à cinq touches sont comptées, pas listées.
+6. **Prochain scan** — le tableau des applications installées : version sur le disque,
+   version au dernier relevé, statut, date, et trois cases — scanner, exclure, source.
+   L'écran ne lance rien : il produit la commande exacte à coller dans un terminal.
 
 L'interface est disponible en **français et en anglais** (drapeaux en haut à droite,
 choix mémorisé). Le contenu lu dans macOS — chemins de menus, noms de commandes,
@@ -45,8 +56,10 @@ catégories — reste dans la langue du système et n'est pas traduit : le réé
 reviendrait à altérer une donnée.
 
 Un filtre unique (application, modificateurs, touche, nombre de touches, libellé)
-s'applique aux quatre vues. Le filtre par application se désactive : tout est alors
-montré, toutes apps confondues.
+s'applique aux quatre premières vues. Le filtre par application se désactive : tout est
+alors montré, toutes apps confondues. Les deux dernières vues n'ont pas de filtre — une
+combinaison libre n'appartient à aucune application, et le tableau du scan a sa propre
+recherche.
 
 ### Doubles frappes
 
@@ -76,6 +89,7 @@ voir la note de licence en fin de fichier.
 
 ```bash
 ./build.sh          # compile le moissonneur (une fois)
+./run.sh --sources  # ~10 s, n'ouvre aucune application
 ./run.sh --test     # 6 apps représentatives, pour valider la mécanique
 ./run.sh --all      # les apps installées
 
@@ -83,8 +97,19 @@ voir la note de licence en fin de fichier.
 bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester --all --dry-run
 ```
 
+`--sources` relit ce qui se lit sans ouvrir d'application : raccourcis système,
+préférences des outils, raccourcis redéfinis par l'utilisateur, recensement des apps
+installées. Il relit aussi les fiches dont la version a changé, **à condition que
+l'application soit déjà ouverte** (`--only-running`) — et refuse d'écraser une fiche
+pleine par une fiche vide, une app ouverte sans document exposant moins de commandes.
+
 La passe est **reprenable** : chaque app est écrite dans son propre JSON, une relance
 saute ce qui existe déjà. `Ctrl-C` ne perd rien. `--force` refait tout.
+
+Les exclusions et inclusions posées à la main depuis la page vivent dans
+`out/reglages-scan.json`, que le moissonneur relit (`--reglages`). Une exclusion
+verrouillée — une app dont le lancement déclenche une action destructrice — ne peut pas
+être levée depuis la page.
 
 ## Autorisation d'accessibilité
 
@@ -154,6 +179,11 @@ src/tables.py         codes de touches et glyphes, extraits de BridgeSupport
 src/system_shortcuts.py   raccourcis système → out/system-shortcuts.json
 src/Harvester.swift   moissonneur d'accessibilité → out/apps/<bundle-id>.json
 src/report.py         assemblage du Markdown final
+src/page.py           page HTML autonome, en français et en anglais
+src/libres.py         combinaisons qu'aucun raccourci ne revendique
+src/perimees.py       fiches dont la version ne correspond plus à l'installée
+src/raccourci_systeme.py  désactive ou réactive un raccourci système
+out/reglages-scan.json     exclusions et sources posées à la main (ignoré)
 data/app-descriptions.json   amorce des rôles d'app (apps macOS uniquement)
 out/app-descriptions.json    rôles des apps installées (propre à la machine, ignoré)
 ```
