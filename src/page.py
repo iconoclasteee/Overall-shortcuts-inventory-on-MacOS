@@ -259,11 +259,17 @@ input:focus-visible, select:focus-visible {
 .etape-texte { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .etape-texte b { font-family: var(--display); font-size: 15px; }
 .etape-texte span { font-size: 13px; color: var(--sourdine); line-height: 1.45; }
-.ici {
+.ici, .exige, .sans-exige {
   font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-  font-style: normal; color: var(--petrol); border: 1px solid currentColor;
+  font-style: normal; border: 1px solid currentColor;
   border-radius: 999px; padding: 1px 7px; margin-left: 10px; vertical-align: 2px;
+  white-space: nowrap;
 }
+.ici { color: var(--petrol); }
+/* Ce que l'étape exige du système, dit sur l'étape elle-même : c'est la question
+   qu'on se pose avant de lancer, pas après. */
+.exige { color: var(--ambre); }
+.sans-exige { color: var(--sourdine); }
 #tableau-scan { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
 #tableau-scan th {
   text-align: left; font-family: var(--display); font-size: 13px; letter-spacing: .06em;
@@ -736,6 +742,8 @@ const TEXTES = {
     script_sources: "Relire le système et les applications sources",
     script_global: "Scanner les applications cochées",
     commencer_ici: "commencer ici",
+    exige_autorisation: "autorisation d'accessibilité",
+    sans_autorisation: "aucune autorisation",
     voir_commande: "Voir la commande",
     note_liste: "Le tableau ci-dessous ne connaît que les applications recensées lors de "
               + "la dernière passe. Sans cette étape, une application installée depuis "
@@ -873,6 +881,8 @@ const TEXTES = {
     script_sources: "Re-read the system and source applications",
     script_global: "Scan the ticked applications",
     commencer_ici: "start here",
+    exige_autorisation: "accessibility permission",
+    sans_autorisation: "no permission needed",
     voir_commande: "Show the command",
     note_liste: "The table below only knows the applications listed during the last "
               + "pass. Without this step, an application installed since will not "
@@ -1932,6 +1942,37 @@ def build(index_path):
       <p data-t="scan_avertissement"></p>
     </div>
     <div class="scan-intro" data-t-html="scan_explication"></div>
+    <ol class="etapes">
+      <li class="etape">
+        <span class="puce">1</span>
+        <div class="etape-texte">
+          <b data-t="script_liste"></b><em class="ici" data-t="commencer_ici"></em>
+          <em class="sans-exige" data-t="sans_autorisation"></em>
+          <span data-t="note_liste"></span>
+        </div>
+        <button type="button" class="bouton primaire" id="script-liste" data-t="voir_commande"></button>
+      </li>
+      <li class="etape">
+        <span class="puce">2</span>
+        <div class="etape-texte">
+          <b data-t="script_sources"></b><em class="exige" data-t="exige_autorisation"></em>
+          <span data-t="note_sources"></span>
+        </div>
+        <button type="button" class="bouton" id="script-sources" data-t="voir_commande"></button>
+      </li>
+      <li class="etape">
+        <span class="puce">3</span>
+        <div class="etape-texte">
+          <b data-t="script_global"></b><em class="exige" data-t="exige_autorisation"></em>
+          <span data-t="note_global"></span>
+        </div>
+        <button type="button" class="bouton" id="script-global" data-t="voir_commande"></button>
+      </li>
+    </ol>
+    <div class="bloc-commande" id="bloc-scan-commande" hidden>
+      <code class="commande" id="scan-commande"></code>
+      <button type="button" class="copier" data-t="copier"></button>
+    </div>
     <div class="scan-outils">
       <input type="search" id="scan-recherche" autocomplete="off" autocorrect="off"
              autocapitalize="off" spellcheck="false" data-tp="scan_filtrer">
@@ -1950,36 +1991,6 @@ def build(index_path):
       <button type="button" data-vue-scan="vides" aria-pressed="false" data-t="vue_vides"></button>
       <button type="button" data-vue-scan="echecs" aria-pressed="false" data-t="vue_echecs"></button>
       <button type="button" data-vue-scan="exclues" aria-pressed="false" data-t="vue_exclues"></button>
-    </div>
-    <ol class="etapes">
-      <li class="etape">
-        <span class="puce">1</span>
-        <div class="etape-texte">
-          <b data-t="script_liste"></b><em class="ici" data-t="commencer_ici"></em>
-          <span data-t="note_liste"></span>
-        </div>
-        <button type="button" class="bouton primaire" id="script-liste" data-t="voir_commande"></button>
-      </li>
-      <li class="etape">
-        <span class="puce">2</span>
-        <div class="etape-texte">
-          <b data-t="script_sources"></b>
-          <span data-t="note_sources"></span>
-        </div>
-        <button type="button" class="bouton" id="script-sources" data-t="voir_commande"></button>
-      </li>
-      <li class="etape">
-        <span class="puce">3</span>
-        <div class="etape-texte">
-          <b data-t="script_global"></b>
-          <span data-t="note_global"></span>
-        </div>
-        <button type="button" class="bouton" id="script-global" data-t="voir_commande"></button>
-      </li>
-    </ol>
-    <div class="bloc-commande" id="bloc-scan-commande" hidden>
-      <code class="commande" id="scan-commande"></code>
-      <button type="button" class="copier" data-t="copier"></button>
     </div>
     <div id="vue-scan"></div>
   </section>
