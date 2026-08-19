@@ -12,6 +12,7 @@ ni conservé.
 
 import json
 import plistlib
+import re
 import sys
 from pathlib import Path
 
@@ -139,12 +140,15 @@ def scan_keyboard_maestro(keyboard):
 
 # Trois conventions couvrent la plupart des apps qui enregistrent un raccourci global :
 #   · un dictionnaire {keyCode, modifierFlags} — masque NSEvent (Rectangle Pro)
-#   · une chaîne JSON sous une clé préfixée, avec carbonKeyCode/carbonModifiers —
-#     c'est la bibliothèque KeyboardShortcuts, très répandue (ChatGPT, CleanShot X)
+#   · une chaîne JSON portant carbonKeyCode/carbonModifiers — c'est la bibliothèque
+#     KeyboardShortcuts, très répandue (ChatGPT, CleanShot X). Repérée à son contenu
+#     et non au nom de la clé : chaque app choisit son préfixe, et une liste de
+#     préfixes codée en dur rate silencieusement la suivante.
 #   · une archive NSKeyedArchiver, que produit ShortcutRecorder (PopClip)
 # Les lire génériquement plutôt qu'app par app fait apparaître les nouvelles sources
 # sans qu'il faille les prévoir.
-PREFIXES_JSON = ("KeyboardShortcuts_", "LAVA")
+# Sert seulement à alléger le libellé affiché, jamais à décider si une clé compte.
+PREFIXE_LIBELLE = re.compile(r"^[A-Za-z]*Shortcuts?_|^LAVA")
 
 
 def _nom_app(bundle_id, catalogue):
@@ -241,23 +245,29 @@ def scan_preferences(keyboard, ignorer=()):
                     code, masque = archive
                     ajouter(bundle_id, cle, code, from_nsevent(masque))
                     continue
-            # Convention 2 : JSON sous clé préfixée, masques Carbon.
-            if not any(cle.startswith(prefixe) for prefixe in PREFIXES_JSON):
+            # Convention 2 : JSON à masques Carbon, reconnu à son contenu.
+            # Une clé suffixée « @contexte » décrit un raccourci valable seulement dans
+            # ce contexte — le panneau ouvert d'un permutateur de fenêtres, par exemple.
+            # Le compter comme global le ferait disputer ⌘A ou ⌘H à toutes les apps,
+            # alors qu'il ne répond que pendant l'affichage du panneau.
+            if "@" in cle:
                 continue
-            brut = valeur if isinstance(valeur, (str, bytes)) else None
-            if brut is None:
+            if not isinstance(valeur, (str, bytes)):
+                continue
+            texte = valeur if isinstance(valeur, str) else valeur.decode("utf-8", "replace")
+            if "carbonKey" not in texte:
                 continue
             try:
-                spec = json.loads(brut)
-            except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+                spec = json.loads(texte)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(spec, dict):
                 continue
             code = spec.get("carbonKeyCode", spec.get("carbonKey"))
             if code is None:
                 continue
-            action = cle
-            for prefixe in PREFIXES_JSON:
-                action = action.removeprefix(prefixe)
-            ajouter(bundle_id, action, code, from_carbon(spec.get("carbonModifiers")))
+            ajouter(bundle_id, PREFIXE_LIBELLE.sub("", cle), code,
+                    from_carbon(spec.get("carbonModifiers")))
 
     if orphelins:
         print(f"  ℹ️  {len(orphelins)} domaines de préférences sans app installée, "
