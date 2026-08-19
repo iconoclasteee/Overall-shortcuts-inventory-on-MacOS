@@ -158,12 +158,21 @@ h1 em { font-style: normal; color: var(--petrol); }
 }
 .bouton.primaire { background: var(--petrol); border-color: var(--petrol); color: var(--plaque); }
 .bouton:focus-visible, .scan-grille label:focus-within { outline: 2px solid var(--petrol); outline-offset: 2px; }
+.bloc-commande { position: relative; margin: 0 26px 18px; }
 .commande {
-  display: block; font-family: var(--mono); font-size: 12.5px; padding: 14px 16px;
-  margin: 0 26px 18px; background: var(--alu); border: 1px solid var(--creux);
-  border-radius: 8px; white-space: pre-wrap; word-break: break-all; max-height: 150px;
-  overflow-y: auto;
+  display: block; font-family: var(--mono); font-size: 12.5px;
+  padding: 14px 92px 14px 16px; margin: 0; background: var(--alu);
+  border: 1px solid var(--creux); border-radius: 8px; white-space: pre-wrap;
+  word-break: break-all; max-height: 150px; overflow-y: auto;
 }
+/* Posé dans le coin du bloc plutôt qu'à sa suite : la commande peut défiler,
+   le bouton doit rester atteignable sans faire défiler quoi que ce soit. */
+.copier {
+  position: absolute; top: 8px; right: 8px; font-family: var(--corps);
+  font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+  background: var(--plaque); border: 1px solid var(--creux); color: var(--encre);
+}
+.copier:hover { border-color: var(--petrol); color: var(--petrol); }
 
 /* — Onglets — */
 nav {
@@ -535,6 +544,7 @@ const TEXTES = {
     l_nombre: "Nombre de touches", l_texte: "Libellé de commande",
     pave_numerique: "Pavé numérique",
     effacer_touches: "Effacer les touches", tout_effacer: "Tout effacer",
+    copier: "Copier", copie_faite: "Copié ✓", copie_echec: "Copie refusée",
     ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
     double: "double frappe", fermer: "Fermer",
@@ -607,6 +617,7 @@ const TEXTES = {
     l_nombre: "Key count", l_texte: "Command label",
     pave_numerique: "Numeric keypad",
     effacer_touches: "Clear keys", tout_effacer: "Clear all",
+    copier: "Copy", copie_faite: "Copied ✓", copie_echec: "Copy blocked",
     ph_touche: "or type the key", ph_texte: "copy, capture, full screen…",
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
     double: "double press", fermer: "Close",
@@ -1163,6 +1174,35 @@ function appliquerLangue() {
   rendreTout();
 }
 
+async function copierTexte(texte) {
+  try {
+    await navigator.clipboard.writeText(texte);
+    return true;
+  } catch (e) {
+    const zone = document.createElement("textarea");
+    zone.value = texte;
+    zone.setAttribute("readonly", "");
+    zone.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(zone);
+    zone.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e2) { ok = false; }
+    document.body.removeChild(zone);
+    return ok;
+  }
+}
+
+function brancherCopie() {
+  document.querySelectorAll("button.copier").forEach(bouton => {
+    bouton.addEventListener("click", async () => {
+      const bloc = bouton.parentElement.querySelector(".commande");
+      const ok = await copierTexte(bloc.dataset.commande || bloc.textContent);
+      bouton.textContent = T(ok ? "copie_faite" : "copie_echec");
+      setTimeout(() => { bouton.textContent = T("copier"); }, 1600);
+    });
+  });
+}
+
 function brancherLangues() {
   document.querySelectorAll(".langues button").forEach(b => b.addEventListener("click", () => {
     LANGUE = b.dataset.langue;
@@ -1212,26 +1252,32 @@ function brancherScan() {
   });
   document.getElementById("scan-lancer").addEventListener("click", () => {
     const bloc = document.getElementById("scan-commande");
+    const cadre = document.getElementById("bloc-scan-commande");
+    const bouton = cadre.querySelector(".copier");
+    cadre.hidden = false;
     if (!aScanner.size) {
-      bloc.hidden = false;
       bloc.textContent = T("scan_rien_coche");
+      delete bloc.dataset.commande;
+      bouton.hidden = true;
       return;
     }
     const complet = aScanner.size === CATALOGUE.filter(a => !a.exclu).length
       && CATALOGUE.filter(a => !a.exclu).every(a => aScanner.has(a.bundleID));
-    bloc.hidden = false;
-    bloc.textContent = complet
-      ? `${T("scan_defaut_cmd")}
-cd ${RACINE} && ./run.sh --all`
-      : `${T("scan_perso_cmd")}
-cd ${RACINE} && \\
+    const commande = complet
+      ? `cd ${RACINE} && ./run.sh --all`
+      : `cd ${RACINE} && \\
   bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester \\
     --bundle-ids ${[...aScanner].join(",")} --out out/apps && ./run.sh --all`;
+    bloc.textContent = `${complet ? T("scan_defaut_cmd") : T("scan_perso_cmd")}
+${commande}`;
+    // Le commentaire reste à l'écran pour dire ce qu'on copie, mais pas dans la copie.
+    bloc.dataset.commande = commande;
+    bouton.hidden = false;
   });
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
-brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherRelire(); brancherLangues();
+brancherFiltres(); brancherChoixApp(); brancherBasculeApp(); brancherDetail(); brancherScan(); brancherRelire(); brancherLangues() brancherCopie();
 appliquerLangue();
 
 rendreTout();
@@ -1406,7 +1452,10 @@ def build(index_path):
     <button type="button" id="relire-fermer" class="croix" aria-label="Fermer">✕</button>
   </div>
   <p style="margin:0 0 14px;font-size:14px" data-t-html="relire_intro"></p>
-  <code class="commande" style="margin:0">cd {ROOT} && ./run.sh --sources</code>
+  <div class="bloc-commande" style="margin:0">
+    <code class="commande">cd {ROOT} && ./run.sh --sources</code>
+    <button type="button" class="copier" data-t="copier"></button>
+  </div>
   <p style="margin:14px 0 0;font-size:13px;color:var(--sourdine)" data-t="relire_apres"></p>
 </div></dialog>
 
@@ -1438,7 +1487,10 @@ def build(index_path):
       <button type="button" class="bouton primaire" id="scan-lancer" data-t="scan_lancer"></button>
     </span>
   </div>
-  <code class="commande" id="scan-commande" hidden></code>
+  <div class="bloc-commande" id="bloc-scan-commande" hidden>
+    <code class="commande" id="scan-commande"></code>
+    <button type="button" class="copier" data-t="copier"></button>
+  </div>
 </div></dialog>
 
 <footer data-t="pied"></footer>
