@@ -238,9 +238,9 @@ input:focus-visible, select:focus-visible {
   font-style: normal; color: var(--petrol); border: 1px solid currentColor;
   border-radius: 999px; padding: 1px 7px; margin-left: 10px; vertical-align: 2px;
 }
-#tableau-scan { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+#tableau-scan { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
 #tableau-scan th {
-  text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: .06em;
+  text-align: left; font-family: var(--display); font-size: 13px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--sourdine); font-weight: 600;
   padding: 10px 10px 8px;
   /* Les intitulés reviennent à la ligne : bornés en largeur et gardés sur une seule
@@ -254,12 +254,12 @@ input:focus-visible, select:focus-visible {
   position: sticky; top: 0; z-index: 2;
   background: var(--alu); box-shadow: inset 0 -1px 0 var(--creux);
 }
-#tableau-scan td { padding: 6px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
+#tableau-scan td { padding: 7px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
 /* Une ligne sur deux teintée : à plus de deux cents lignes et huit colonnes, l'œil
    perd la ligne entre la première case et la date. */
 #tableau-scan tbody tr:nth-child(even) { background: var(--zebre); }
 #tableau-scan tbody tr:hover { background: var(--survol); }
-#tableau-scan th:nth-child(-n+3) { text-align: center; width: 76px; }
+#tableau-scan th:nth-child(-n+3) { text-align: center; width: 84px; }
 #tableau-scan .cocher { text-align: center; }
 #tableau-scan input[type="checkbox"] { accent-color: var(--petrol); width: 15px; height: 15px; }
 /* Écarter est un geste qui retranche : il se signale comme tel, pas comme un choix
@@ -270,13 +270,13 @@ input:focus-visible, select:focus-visible {
 /* Les colonnes sont serrées à gauche, contre le nom de l'application : c'est la
    comparaison des deux versions qui compte, et l'œil ne doit pas traverser la page
    pour la faire. La dernière colonne, vide, absorbe la place restante. */
-#tableau-scan th:nth-child(4) { width: 32ch; }
-#tableau-scan th:nth-child(5), #tableau-scan th:nth-child(6) { width: 15ch; }
-#tableau-scan th:nth-child(7) { width: 9ch; }
-#tableau-scan th:nth-child(8) { width: 18ch; }
+#tableau-scan th:nth-child(4) { width: 330px; }
+#tableau-scan th:nth-child(5), #tableau-scan th:nth-child(6) { width: 150px; }
+#tableau-scan th:nth-child(7) { width: 104px; }
+#tableau-scan th:nth-child(8) { width: 176px; }
 #tableau-scan .appoint { width: auto; padding: 0; }
-#tableau-scan .date span { -webkit-line-clamp: 1; }
-#tableau-scan .num { font-family: var(--mono); font-size: 11.5px; line-height: 1.35; }
+#tableau-scan .date span { display: block; white-space: nowrap; }
+#tableau-scan .num { font-family: var(--mono); font-size: 13.5px; line-height: 1.35; }
 #tableau-scan .num span {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; overflow-wrap: anywhere;
@@ -290,8 +290,8 @@ input:focus-visible, select:focus-visible {
 #tableau-scan .statut-ok { color: var(--sourdine); }
 #tableau-scan .statut-ko { color: var(--vermillon); font-weight: 600; }
 #tableau-scan .marque {
-  font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
-  padding: 1px 6px; border-radius: 999px; border: 1px solid currentColor; margin-left: 8px;
+  font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; margin-left: 8px;
   white-space: nowrap;
 }
 #tableau-scan .m-neuve { color: var(--petrol); }
