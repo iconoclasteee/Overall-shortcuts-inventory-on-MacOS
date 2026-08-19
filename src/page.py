@@ -240,9 +240,12 @@ input:focus-visible, select:focus-visible {
 }
 #tableau-scan { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 #tableau-scan th {
-  text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: .08em;
+  text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--sourdine); font-weight: 600;
-  padding: 0 10px 8px; border-bottom: 1px solid var(--creux); white-space: nowrap;
+  padding: 0 10px 8px; border-bottom: 1px solid var(--creux);
+  /* Les intitulés reviennent à la ligne : bornés en largeur et gardés sur une seule
+     ligne, ils se chevauchaient. */
+  white-space: normal; line-height: 1.25; vertical-align: bottom;
 }
 #tableau-scan td { padding: 6px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
 /* Une ligne sur deux teintée : à plus de deux cents lignes et huit colonnes, l'œil
@@ -257,11 +260,19 @@ input:focus-visible, select:focus-visible {
 #tableau-scan .case-exclure { accent-color: var(--vermillon); }
 /* Un numéro de version peut être long sans mériter la place qu'il prend. On borne à
    une quinzaine de caractères et on laisse revenir à la ligne les rares qui débordent. */
+/* Les colonnes sont serrées à gauche, contre le nom de l'application : c'est la
+   comparaison des deux versions qui compte, et l'œil ne doit pas traverser la page
+   pour la faire. La dernière colonne, vide, absorbe la place restante. */
+#tableau-scan th:nth-child(4) { width: 32ch; }
 #tableau-scan th:nth-child(5), #tableau-scan th:nth-child(6) { width: 15ch; }
-#tableau-scan th:nth-child(7) { width: 11ch; }
-#tableau-scan th:nth-child(8) { width: 16ch; }
-#tableau-scan .num {
-  font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; line-height: 1.35;
+#tableau-scan th:nth-child(7) { width: 9ch; }
+#tableau-scan th:nth-child(8) { width: 18ch; }
+#tableau-scan .appoint { width: auto; padding: 0; }
+#tableau-scan .date span { -webkit-line-clamp: 1; }
+#tableau-scan .num { font-family: var(--mono); font-size: 11.5px; line-height: 1.35; }
+#tableau-scan .num span {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
 }
 #tableau-scan tr.neuve .app { color: var(--petrol); font-weight: 600; }
 #tableau-scan tr.majeure .num.installee { color: var(--ambre); font-weight: 600; }
@@ -1373,16 +1384,19 @@ function rendreScan() {
           ${auto || sourcesChoisies.has(l.id) ? "checked" : ""} ${auto ? "disabled" : ""}
           title="${auto ? esc(T("auto_source")) : ""}"></td>
       <td class="app">${esc(l.nom)}${marque}</td>
-      <td class="num installee">${esc(l.installee || "—")}</td>
-      <td class="num">${esc(l.lue || "—")}</td>
+      <td class="num installee" title="${esc(l.installee || "")}"><span>${
+        esc(l.installee || "—")}</span></td>
+      <td class="num" title="${esc(l.lue || "")}"><span>${esc(l.lue || "—")}</span></td>
       <td class="statut ${l.statut === "ok" || !l.statut ? "statut-ok" : "statut-ko"}">${
         esc(l.statut || T("jamais"))}</td>
-      <td class="num date">${esc(l.scanneLe || "—")}</td>
+      <td class="num date"><span>${esc(l.scanneLe || "—")}</span></td>
+      <td class="appoint"></td>
     </tr>`;
   }).join("");
   document.getElementById("vue-scan").innerHTML = liste.length
     ? `<table id="tableau-scan"><thead><tr>${
-        entetes.map(c => `<th>${T(c)}</th>`).join("")}</tr></thead><tbody>${corps}</tbody></table>`
+        entetes.map(c => `<th>${T(c)}</th>`).join("")}<th class="appoint"></th></tr></thead>`
+      + `<tbody>${corps}</tbody></table>`
     : `<p class="vide">${T("scan_aucune")}</p>`;
   document.getElementById("scan-total").textContent =
     `${T("scan_affichees")(liste.length, LIGNES.length)} · ${T("scan_selection")(aScanner.size)}`;
