@@ -1,13 +1,13 @@
-"""Tables de correspondance touches/glyphes — extraites de macOS, jamais écrites à la main.
+"""Key/glyph lookup tables — extracted from macOS, never written by hand.
 
-Source unique de vérité : le fichier BridgeSupport de HIToolbox, présent sur toute
-machine macOS. Il contient les énumérations Carbon officielles :
-  - kVK_*      : codes de touches virtuels (indépendants de la disposition clavier)
-  - kMenu*Glyph: glyphes utilisés par les menus pour les touches non imprimables
+Single source of truth: HIToolbox's BridgeSupport file, present on every macOS machine. It
+holds the official Carbon enumerations:
+  - kVK_*      : virtual key codes (independent of the keyboard layout)
+  - kMenu*Glyph: glyphs menus use for non-printing keys
 
-On lit ce fichier au lieu de recopier les valeurs : aucune table n'est saisie de mémoire.
-Seule la traduction "nom de constante -> symbole affiché" est écrite ici, et elle est
-directement déductible du nom (kVK_LeftArrow -> flèche gauche).
+That file is read rather than its values copied out: no table here is typed from memory.
+Only the "constant name -> displayed symbol" translation is written here, and it follows
+directly from the name (kVK_LeftArrow -> left arrow).
 """
 
 import re
@@ -22,7 +22,7 @@ _ENUM_RE = re.compile(r"<enum name='([A-Za-z0-9_]+)' value64='(-?\d+)'/>")
 
 
 def _load_enums(prefix, suffix=""):
-    """Retourne {nom_constante: valeur} pour les constantes correspondantes."""
+    """Returns {constant name: value} for the matching constants."""
     if not BRIDGESUPPORT.exists():
         raise SystemExit(
             f"Introuvable : {BRIDGESUPPORT}\n"
@@ -37,16 +37,16 @@ def _load_enums(prefix, suffix=""):
     return out
 
 
-# --- Codes de touches virtuels -------------------------------------------------
+# --- Virtual key codes -------------------------------------------------
 
-# Ponctuation : le nom de la constante dit quelle touche c'est.
+# Punctuation: the constant's name says which key it is.
 _PUNCT = {
     "Comma": ",", "Period": ".", "Slash": "/", "Backslash": "\\",
     "Semicolon": ";", "Quote": "'", "LeftBracket": "[", "RightBracket": "]",
     "Grave": "`", "Minus": "-", "Equal": "=",
 }
 
-# Touches spéciales : symboles standards de la notation clavier Apple.
+# Special keys: standard symbols of Apple's keyboard notation.
 _SPECIAL = {
     "Return": "⏎", "Tab": "⇥", "Space": "Espace", "Delete": "⌫",
     "ForwardDelete": "⌦", "Escape": "⎋", "Help": "Aide",
@@ -64,9 +64,9 @@ APPKIT = Path(
     "/AppKit.bridgesupport"
 )
 
-# Passerelle entre le nom AppKit d'une touche et le libellé que porte la table Carbon.
-# Les deux fichiers décrivent la même touche sous deux noms ; c'est une équivalence de
-# nommage, pas une valeur recopiée — les codes viennent des fichiers, ici comme ailleurs.
+# Bridge between a key's AppKit name and the label the Carbon table carries. Both files
+# describe the same key under two names; this is a naming equivalence, not a copied value —
+# the codes come from the files, here as everywhere else.
 _EQUIVALENCES = {
     "NSUpArrowFunctionKey": "↑", "NSDownArrowFunctionKey": "↓",
     "NSLeftArrowFunctionKey": "←", "NSRightArrowFunctionKey": "→",
@@ -77,12 +77,12 @@ _EQUIVALENCES = {
 
 
 def function_key_chars():
-    """{caractère → libellé de touche} pour ce que macOS écrit en \\UF7xx.
+    """{character → key label} for what macOS writes as \\UF7xx.
 
-    Une redéfinition utilisateur visant F5 ou une flèche n'est pas rangée par macOS
-    sous un caractère imprimable, mais sous un point de code de la zone privée. Sans
-    cette table, la touche reste irrésoluble : le raccourci est compté sur son ancienne
-    combinaison, et la nouvelle est annoncée libre.
+    A user redefinition aimed at F5 or an arrow is not stored by macOS under a printable
+    character, but under a private-use code point. Without this table the key stays
+    unresolvable: the shortcut is counted on its old combination, and the new one is
+    announced free.
     """
     if not APPKIT.exists():
         return {}
@@ -98,7 +98,7 @@ def function_key_chars():
 
 
 def _keycode_label(name):
-    """Traduit un nom de constante kVK_* en libellé affichable."""
+    """Turns a kVK_* constant name into a displayable label."""
     body = name[len("kVK_"):]
     if body.startswith("ANSI_"):
         body = body[len("ANSI_"):]
@@ -114,7 +114,7 @@ def _keycode_label(name):
 
 
 def keycode_labels():
-    """{code_virtuel: libellé}. Sur collision, garde le nom le plus court/simple."""
+    """{virtual code: label}. On collision, keeps the shortest/simplest name."""
     labels = {}
     for name, code in sorted(_load_enums("kVK_").items()):
         label = _keycode_label(name)
@@ -124,16 +124,16 @@ def keycode_labels():
 
 
 def keypad_codes():
-    """Codes des touches du pavé numérique.
+    """Key codes of the numeric keypad.
 
-    Elles produisent les mêmes caractères que la rangée du haut ; sans les écarter,
-    remonter du caractère « 4 » à sa touche tomberait sur le pavé plutôt que sur la
-    touche principale.
+    They produce the same characters as the top row; without setting them aside, going
+    back from the character "4" to its key would land on the keypad rather than on the
+    main key.
     """
     return {code for name, code in _load_enums("kVK_ANSI_Keypad").items()}
 
 
-# --- Glyphes de menu -----------------------------------------------------------
+# --- Menu glyphs -----------------------------------------------------------
 
 _GLYPH = {
     "TabRight": "⇥", "TabLeft": "⇤", "Enter": "⌤", "Space": "Espace",
@@ -150,7 +150,7 @@ _GLYPH = {
 
 
 def glyph_labels():
-    """{numéro_de_glyphe: libellé}. Les glyphes non pertinents (0, blanc) sont exclus."""
+    """{glyph number: label}. Irrelevant glyphs (0, blank) are excluded."""
     labels = {}
     for name, code in sorted(_load_enums("kMenu", "Glyph").items()):
         body = name[len("kMenu"):-len("Glyph")]
@@ -163,15 +163,15 @@ def glyph_labels():
     return labels
 
 
-# --- Correspondance glyphe de menu → code de touche ---
+# --- Menu glyph → key code mapping ---
 
-# Les menus décrivent les touches sans caractère par un glyphe, les outils tiers par un
-# code de touche. Sans passerelle, ⌃⇥ vu dans un menu et ⌃⇥ vu chez Keyboard Maestro
-# restent deux choses différentes — et le conflit passe inaperçu.
+# Menus describe character-less keys by a glyph, third-party tools by a key code. Without
+# a bridge, ⌃⇥ seen in a menu and ⌃⇥ seen in Keyboard Maestro remain two different things —
+# and the conflict goes unnoticed.
 #
-# La passerelle se fait par **nom de constante**, pas par valeur : les deux
-# énumérations viennent du même fichier système. Seuls les noms qui divergent sont
-# listés ici, et ils le sont sous forme de noms, pas de nombres.
+# The bridge is made by **constant name**, not by value: both enumerations come from the
+# same system file. Only the names that diverge are listed here, and they are listed as
+# names, not as numbers.
 _GLYPH_ALIAS = {
     "TabRight": "Tab", "TabLeft": "Tab",
     "Return": "Return", "NonmarkingReturn": "Return", "ReturnR2L": "Return",
@@ -184,7 +184,7 @@ _GLYPH_ALIAS = {
 
 
 def glyph_to_keycode():
-    """{numéro de glyphe: code de touche} pour les touches sans caractère."""
+    """{glyph number: key code} for character-less keys."""
     keycodes = {name[len("kVK_"):]: code for name, code in _load_enums("kVK_").items()}
     mapping = {}
     for name, glyph in _load_enums("kMenu", "Glyph").items():
@@ -196,10 +196,10 @@ def glyph_to_keycode():
 
 
 def keycode_symbols():
-    """{code de touche: symbole} pour les touches sans caractère (⌤, ⌧, ⏎…).
+    """{key code: symbol} for character-less keys (⌤, ⌧, ⏎…).
 
-    Construit en croisant les deux énumérations système : glyphe → code d'un côté,
-    glyphe → symbole de l'autre. Aucun symbole n'est écrit à la main ici.
+    Built by crossing the two system enumerations: glyph → code on one side, glyph → symbol
+    on the other. No symbol is written by hand here.
     """
     labels = glyph_labels()
     out = {}

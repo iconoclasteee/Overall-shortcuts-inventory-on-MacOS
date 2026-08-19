@@ -1,13 +1,12 @@
-// Moissonneur de raccourcis de menu macOS.
+// macOS menu shortcut harvester.
 //
-// Pourquoi ce binaire existe : les raccourcis d'une app ne sont écrits nulle part sur
-// le disque. Ils ne vivent que dans la barre de menu construite en mémoire au lancement.
-// Le seul moyen de les lire est l'API d'accessibilité (AX), qui exige une autorisation
-// explicite — d'où un binaire dédié plutôt qu'un script : l'autorisation ne concerne
-// que lui, et pas le terminal entier.
+// Why this binary exists: an app's shortcuts are written nowhere on disk. They live only
+// in the menu bar built in memory at launch. The only way to read them is the
+// accessibility API (AX), which requires an explicit grant — hence a dedicated binary
+// rather than a script: the grant covers it alone, and not the whole terminal.
 //
-// Il émet du JSON brut (caractère, masque de modificateurs, glyphe). Le rendu lisible
-// (⌘⇧K) est fait côté Python, où vivent les tables extraites de macOS.
+// It emits raw JSON (character, modifier mask, glyph). Readable rendering (⌘⇧K) happens on
+// the Python side, where the tables extracted from macOS live.
 
 import AppKit
 import ApplicationServices
@@ -21,36 +20,35 @@ struct Options {
     var timeout: Double = 25       // plafond par app, en secondes
     var checkOnly = false
     var scanAll = false
-    var force = false              // refaire les apps déjà moissonnées
-    var reglages = "out/reglages-scan.json"   // exclusions posées à la main
-    var onlyRunning = false        // ne relire que les apps déjà ouvertes
-    var includeGames = false       // les jeux sont écartés par défaut
+    var force = false              // redo apps already harvested
+    var reglages = "out/scan-settings.json"   // hand-set exclusions
+    var onlyRunning = false        // re-read only apps already running
+    var includeGames = false       // games are skipped by default
     var dryRun = false             // lister les cibles sans rien lancer
-    var verdict: String?           // où écrire le résultat de --check
-    var keymap = false             // exporter la correspondance code de touche -> caractère
-    var catalogue = false          // exporter la liste des apps installées, sans rien lancer
-    var keepRunning = false        // ne pas quitter les apps qu'on a lancées
-    var journal: String?           // où recopier les sorties standard et d'erreur
-    var statut: String?            // où écrire le code de sortie
+    var verdict: String?           // where to write the result of --check
+    var keymap = false             // export the key code -> character mapping
+    var catalogue = false          // export the installed-app list, launching nothing
+    var keepRunning = false        // do not quit the apps we launched
+    var journal: String?           // where to copy standard output and error
+    var statut: String?            // where to write the exit code
 }
 
-/// Où écrire le code de sortie. Nil tant que les options ne sont pas lues.
+/// Where to write the exit code. Nil until the options have been read.
 var cheminStatut: String?
 
-/// Application que nous venons d'ouvrir et qui n'est pas encore refermée.
+/// Application we have just opened and have not closed yet.
 ///
-/// Une interruption doit la refermer. Sans cela chaque Ctrl-C en abandonne une, et elles
-/// s'accumulent sans que rien ne le signale — mesuré sur deux passes interrompues à
-/// quinze minutes d'intervalle, deux applications encore ouvertes une heure plus tard.
+/// An interrupt must close it. Without that, every Ctrl-C abandons one, and they pile up
+/// with nothing to flag it — measured on two passes interrupted fifteen minutes apart, two
+/// applications still open an hour later.
 var appEnCours: NSRunningApplication?
 
-/// Seule sortie du programme.
+/// The program's only exit.
 ///
-/// Lancé par `open` — la seule façon pour ce bundle d'être son propre processus
-/// responsable, donc de se voir appliquer sa propre autorisation d'accessibilité plutôt
-/// que celle du terminal — le programme ne rend ni sortie standard ni code d'erreur à
-/// qui l'a lancé. Ce fichier est alors l'unique canal de retour, et son apparition le
-/// seul signal de fin fiable.
+/// Launched by `open` — the one way for this bundle to be its own responsible process, and
+/// therefore to have its own accessibility grant applied rather than the terminal's — the
+/// program returns neither standard output nor an exit code to whoever launched it. This
+/// file is then the sole channel back, and its appearance the only reliable end signal.
 func sortir(_ code: Int32) -> Never {
     if let chemin = cheminStatut {
         try? "\(code)".write(toFile: chemin, atomically: true, encoding: .utf8)
@@ -58,11 +56,11 @@ func sortir(_ code: Int32) -> Never {
     exit(code)
 }
 
-/// Ouvre le canal de retour avant toute autre chose.
+/// Opens the channel back before anything else.
 ///
-/// Il doit être en place avant l'analyse des options, puisque c'est elle qui rejette
-/// une option inconnue : sans ce préalable, son message partirait dans le vide et
-/// run.sh attendrait un statut qui n'arriverait jamais.
+/// It must be in place before the options are parsed, since parsing is what rejects an
+/// unknown option: without this, its message would go nowhere and run.sh would wait for a
+/// status that never arrived.
 func preparerCanaux() {
     let args = CommandLine.arguments
     func valeur(_ nom: String) -> String? {
@@ -76,8 +74,8 @@ func preparerCanaux() {
     dup2(fd, STDOUT_FILENO)
     dup2(fd, STDERR_FILENO)
     close(fd)
-    // Vers un fichier, la sortie standard passe en tampon de bloc : la progression
-    // n'apparaîtrait qu'à la toute fin. Ligne à ligne, elle se lit pendant la passe.
+    // Into a file, standard output switches to block buffering: progress would appear
+    // only at the very end. Line by line, it can be read during the pass.
     setvbuf(stdout, nil, _IOLBF, 0)
 }
 
@@ -111,7 +109,7 @@ func parseArgs() -> Options {
     return o
 }
 
-// MARK: - Accessibilité
+// MARK: - Accessibility
 
 enum AX {
     static func isTrusted() -> Bool {
@@ -121,7 +119,7 @@ enum AX {
 
     static func app(_ pid: pid_t, timeout: Float) -> AXUIElement {
         let element = AXUIElementCreateApplication(pid)
-        // Sans plafond, une app bloquée sur une boîte de dialogue fige la lecture.
+        // Without a ceiling, an app stuck on a dialog freezes the read.
         AXUIElementSetMessagingTimeout(element, timeout)
         return element
     }
@@ -155,7 +153,7 @@ enum AX {
     }
 }
 
-// MARK: - Parcours des menus
+// MARK: - Walking the menus
 
 struct Shortcut: Encodable {
     let chemin: String        // "Fichier > Enregistrer sous…"
@@ -166,26 +164,25 @@ struct Shortcut: Encodable {
     let source: String        // "menubar" ou "extras"
 }
 
-let maxDepth = 12  // les menus réels plafonnent vers 5 ; au-delà, l'arbre est suspect
+let maxDepth = 12  // real menus top out near 5; beyond that, the tree is suspect
 
 func walk(_ items: [AXUIElement], path: [String], menu: String, source: String,
           depth: Int, limite: Date, into found: inout [Shortcut], tronque: inout Bool) {
     guard depth < maxDepth else { return }
     for item in items {
-        // Le délai borne aussi le parcours de l'arbre, pas seulement l'attente de la
-        // barre de menu. Sans cela, le seul plafond est le délai **par message**
-        // d'accessibilité, appliqué à chacune des centaines de requêtes : un serveur
-        // lent répond à chaque fois dans les temps tout en immobilisant la passe bien
-        // au-delà du délai annoncé.
+        // The budget also bounds the walk through the tree, not just the wait for the
+        // menu bar. Without that, the only ceiling is the **per-message** accessibility
+        // timeout, applied to each of hundreds of requests: a slow server answers within
+        // time every single time while pinning the pass far beyond the announced budget.
         if Date() >= limite { tronque = true; return }
         let title = AX.string(item, kAXTitleAttribute as String) ?? ""
         let subPath = title.isEmpty ? path : path + [title]
 
         let char = AX.string(item, "AXMenuItemCmdChar")
         let glyph = AX.int(item, "AXMenuItemCmdGlyph")
-        // Un raccourci existe si un caractère OU un glyphe est présent. HotkeyClash
-        // n'exploite que le caractère ; pour un inventaire il faut aussi les glyphes,
-        // sinon toutes les flèches et touches F disparaissent silencieusement.
+        // A shortcut exists if a character OR a glyph is present. HotkeyClash uses only
+        // the character; an inventory needs the glyphs too, otherwise every arrow and
+        // function key vanishes silently.
         let hasChar = !(char ?? "").isEmpty
         let hasGlyph = (glyph ?? 0) != 0
         if hasChar || hasGlyph {
@@ -223,16 +220,15 @@ func harvest(pid: pid_t, timeout: Double, limite: Date) -> (raccourcis: [Shortcu
 
 enum EtatMenu { case pret, sansMenu, expire }
 
-/// Délai laissé à une app fraîchement lancée pour construire sa barre de menu, avant
-/// de conclure qu'elle n'en a pas.
+/// Grace period given to a freshly launched app to build its menu bar, before concluding
+/// that it has none.
 let delaiDeGrace: Double = 4
 
-/// Attend que la barre de menu soit lisible.
+/// Waits until the menu bar is readable.
 ///
-/// Trois issues, et la distinction compte : une app d'arrière-plan n'expose aucune
-/// barre de menu et le savoir en quatre secondes évite d'attendre le délai complet
-/// pour chacune. Confondre les deux cas coûtait plusieurs minutes par passe et
-/// donnait un diagnostic faux.
+/// Three outcomes, and the distinction matters: a background app exposes no menu bar at
+/// all, and knowing that in four seconds avoids waiting the full budget for each one.
+/// Conflating the two cases cost several minutes per pass and gave a false diagnosis.
 func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> EtatMenu {
     let finDeGrace = Date().addingTimeInterval(delaiDeGrace)
     var barreVue = false
@@ -242,21 +238,20 @@ func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> EtatMenu {
         if let bar = AX.element(app, kAXMenuBarAttribute as String) {
             barreVue = true
             let titres = AX.children(bar)
-            // Deux conditions, et la seconde compte autant que la première. Des titres
-            // de menus peuvent exister alors qu'aucun n'a encore de contenu : c'est
-            // l'état d'une app arrêtée sur un sélecteur de projet ou une fenêtre
-            // modale. S'en contenter donnait un statut « ok » à une lecture qui
-            // rapportait zéro raccourci — un échec présenté comme un succès.
+            // Two conditions, and the second counts as much as the first. Menu titles can
+            // exist while none of them has content yet: that is the state of an app sitting
+            // on a project picker or a modal window. Settling for that gave an "ok" status
+            // to a read that returned zero shortcuts — a failure presented as a success.
             let peuple = titres.contains { !AX.children($0).isEmpty }
-            // Plus d'un menu = barre construite. Un seul menu peut être un état
-            // transitoire au lancement : on ne l'accepte qu'une fois le délai de
-            // grâce passé, faute de quoi une app à menu unique expirerait.
+            // More than one menu = the bar is built. A single menu can be a transient
+            // launch state: it is accepted only once the grace period has passed, failing
+            // which a single-menu app would time out.
             if peuple && (titres.count > 1 || (titres.count >= 1 && Date() > finDeGrace)) {
                 return .pret
             }
         }
-        // Les apps d'arrière-plan n'ont pas de barre de menu classique : leurs
-        // raccourcis vivent dans le menu de leur icône de statut.
+        // Background apps have no conventional menu bar: their shortcuts live in the menu
+        // of their status icon.
         if let extras = AX.element(app, kAXExtrasMenuBarAttribute as String) {
             barreVue = true
             if !AX.children(extras).isEmpty { return .pret }
@@ -267,7 +262,7 @@ func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> EtatMenu {
     return .expire
 }
 
-// MARK: - Résultat par app
+// MARK: - Per-app result
 
 struct AppResult: Encodable {
     let nom: String
@@ -312,9 +307,9 @@ func process(bundleID: String, options: Options) -> AppResult {
                       [], running: false, launched: false)
     }
 
-    // Les apps publiées par Parallels sont des passerelles vers un Windows en machine
-    // virtuelle : les ouvrir démarrerait la VM. Hors périmètre, et jamais lancées,
-    // même si un identifiant de bundle y mène.
+    // Apps published by Parallels are gateways to a Windows virtual machine: opening one
+    // would boot the VM. Out of scope, and never launched, even if a bundle identifier
+    // leads there.
     if url.path.contains("Applications (Parallels)") {
         return result("hors_perimetre", "App Windows publiée par Parallels",
                       [], running: false, launched: false)
@@ -326,8 +321,8 @@ func process(bundleID: String, options: Options) -> AppResult {
 
     if running == nil {
         let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = false        // ne pas voler le focus à l'utilisateur
-        configuration.hides = true             // masquer les fenêtres qui s'ouvrent
+        configuration.activates = false        // do not steal the user's focus
+        configuration.hides = true             // hide the windows that open
         configuration.addsToRecentItems = false
         let semaphore = DispatchSemaphore(value: 0)
         var launchError: Error?
@@ -337,10 +332,10 @@ func process(bundleID: String, options: Options) -> AppResult {
             semaphore.signal()
         }
         if semaphore.wait(timeout: .now() + options.timeout) == .timedOut {
-            // L'ouverture a bien été demandée : si l'app finit par s'ouvrir, elle
-            // resterait ouverte alors que nous seuls l'avons lancée. On la referme
-            // quand le système nous répond enfin, et la fiche dit la vérité —
-            // « lancée par nous », et non « jamais lancée ».
+            // The open was genuinely requested: if the app does eventually come up, it
+            // would stay open when we alone launched it. We close it once the system
+            // finally answers, and the record tells the truth — "launched by us", not
+            // "never launched".
             if !options.keepRunning {
                 DispatchQueue.global(qos: .utility).async {
                     if semaphore.wait(timeout: .now() + options.timeout) == .success {
@@ -363,11 +358,11 @@ func process(bundleID: String, options: Options) -> AppResult {
                       [], running: wasRunning, launched: launchedByUs)
     }
 
-    // Retenue le temps de la lecture, pour qu'une interruption sache quoi refermer.
+    // Held for the duration of the read, so an interrupt knows what to close.
     if launchedByUs && !options.keepRunning { appEnCours = process }
 
-    // Le délai repart d'ici : le lancement a déjà consommé son propre budget, et le
-    // décompter deux fois classerait « expirée » une app lente à ouvrir mais saine.
+    // The budget restarts here: the launch has already consumed its own, and counting it
+    // twice would class a slow-to-open but healthy app as "timed out".
     let deadline = Date().addingTimeInterval(options.timeout)
     let etat = waitForMenuBar(pid: process.processIdentifier, deadline: deadline,
                               timeout: options.timeout)
@@ -380,8 +375,8 @@ func process(bundleID: String, options: Options) -> AppResult {
         tronque = lecture.tronque
     }
 
-    // On ne quitte que ce qu'on a lancé, et jamais de force : un forceTerminate peut
-    // faire perdre du travail non enregistré.
+    // We quit only what we launched, and never by force: a forceTerminate can lose
+    // unsaved work.
     if launchedByUs && !options.keepRunning {
         process.terminate()
     }
@@ -391,8 +386,8 @@ func process(bundleID: String, options: Options) -> AppResult {
     let detail: String?
     switch etat {
     case .pret:
-        // Une lecture écourtée reste utilisable, mais elle est incomplète : le dire
-        // vaut mieux que laisser croire à un inventaire exhaustif.
+        // A truncated read is still usable, but it is incomplete: saying so beats letting
+        // it pass for an exhaustive inventory.
         statut = "ok"
         detail = tronque
             ? "Lecture interrompue au délai imparti : la barre de menu n'a pas été "
@@ -409,14 +404,14 @@ func process(bundleID: String, options: Options) -> AppResult {
     return result(statut, detail, shortcuts, running: wasRunning, launched: launchedByUs)
 }
 
-// MARK: - Entrée
+// MARK: - Entry point
 
 let options = parseArgs()
 
-// Le journal réunit sortie standard et sortie d'erreur — c'est ce qu'on veut d'une
-// progression destinée à être lue. Mais --catalogue et --keymap émettent leurs données
-// sur la sortie standard : les y mêler produirait un JSON invalide, sans que rien ne le
-// signale. Le refus vaut mieux qu'un fichier corrompu.
+// The journal merges standard output and standard error — which is what one wants of
+// progress meant to be read. But --catalogue and --keymap emit their data on standard
+// output: mixing them in would produce invalid JSON, with nothing to flag it. Refusing
+// beats a corrupted file.
 if options.journal != nil && (options.catalogue || options.keymap) {
     FileHandle.standardError.write(
         "--journal est incompatible avec --catalogue et --keymap, dont la sortie standard porte les données.\n"
@@ -424,13 +419,12 @@ if options.journal != nil && (options.catalogue || options.keymap) {
     sortir(2)
 }
 
-// Correspondance code de touche -> caractère, pour la disposition clavier active.
+// Key code -> character mapping, for the active keyboard layout.
 //
-// Indispensable pour comparer des raccourcis venus de sources différentes : les menus
-// exposent un caractère ("V"), les outils tiers un code de touche brut (9). Traduire
-// l'un en l'autre avec une table ANSI donnerait des résultats faux sur un clavier
-// AZERTY — le code 41 y produit « m », pas « ; ». On demande donc la réponse au
-// système, pour la disposition réellement en service.
+// Essential for comparing shortcuts from different sources: menus expose a character
+// ("V"), third-party tools a raw key code (9). Translating one into the other with an ANSI
+// table would give wrong answers on an AZERTY keyboard — code 41 produces "m" there, not
+// ";". So the answer is asked of the system, for the layout actually in service.
 func dumpKeymap() {
     guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
           let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
@@ -438,8 +432,8 @@ func dumpKeymap() {
         FileHandle.standardError.write("Disposition clavier illisible\n".data(using: .utf8)!)
         sortir(1)
     }
-    // La disposition conditionne toutes les combinaisons affichées : son nom fait
-    // partie du résultat, pas d'un commentaire.
+    // The layout governs every combination displayed: its name belongs in the result, not
+    // in a comment.
     func propriete(_ cle: CFString) -> String {
         guard let brut = TISGetInputSourceProperty(source, cle) else { return "" }
         return (Unmanaged<CFString>.fromOpaque(brut).takeUnretainedValue() as String)
@@ -463,7 +457,7 @@ func dumpKeymap() {
             var deadKeyState: UInt32 = 0
             var length = 0
             var characters = [UniChar](repeating: 0, count: 8)
-            // UCKeyTranslate attend l'état des modificateurs décalé de 8 bits.
+            // UCKeyTranslate expects the modifier state shifted by 8 bits.
             let modifierState = shifted ? UInt32(shiftKey >> 8) : 0
             let status = UCKeyTranslate(
                 layout, code, UInt16(kUCKeyActionDown), modifierState, UInt32(LMGetKbdType()),
@@ -471,8 +465,8 @@ func dumpKeymap() {
                 characters.count, &length, &characters)
             guard status == noErr, length > 0 else { return nil }
             let text = String(utf16CodeUnits: characters, count: length)
-            // Les caractères de contrôle (retour, tabulation) ne sont pas affichables :
-            // leur libellé vient de la table des glyphes, pas d'ici.
+            // Control characters (return, tab) are not displayable: their label comes
+            // from the glyph table, not from here.
             guard text.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) })
             else { return nil }
             return echapper(text)
@@ -480,9 +474,9 @@ func dumpKeymap() {
 
         for code in UInt16(0)...127 {
             guard let plain = translate(code, shifted: false) else { continue }
-            // Les deux niveaux sont nécessaires : sur AZERTY la touche du « 4 » produit
-            // « ' » sans Maj. Apple affiche pourtant ⇧⌘4 — c'est le caractère décalé
-            // qui sert de libellé dès que Maj fait partie de la combinaison.
+            // Both levels are needed: on AZERTY the "4" key produces "'" without Shift.
+            // Apple still displays ⇧⌘4 — the shifted character serves as the label as soon
+            // as Shift is part of the combination.
             let shifted = translate(code, shifted: true) ?? plain
             entries.append("  \"\(code)\": [\"\(plain)\", \"\(shifted)\"]")
         }
@@ -501,12 +495,12 @@ func dumpKeymap() {
 
 if options.keymap { dumpKeymap() }
 
-/// Refuse de continuer sans l'autorisation d'accessibilité.
+/// Refuses to continue without accessibility permission.
 ///
-/// N'est appelé que par les modes qui lisent réellement une barre de menu. Recenser
-/// les apps installées ou exporter la disposition clavier ne demande rien : exiger
-/// l'autorisation pour ces modes rendrait la page impossible à régénérer après une
-/// recompilation, alors qu'aucune application n'y est ouverte.
+/// Called only by the modes that genuinely read a menu bar. Listing installed apps or
+/// exporting the keyboard layout requires nothing: demanding the grant for those modes
+/// would make the page impossible to regenerate after a rebuild, when no application is
+/// being opened at all.
 func exigerAutorisation() {
     guard AX.isTrusted() else {
         FileHandle.standardError.write("""
@@ -545,19 +539,18 @@ struct Installee: Encodable {
     let categorie: String?
     let exclu: Bool
     let raison: String?
-    // Verrouillée : exclusion que l'utilisateur ne peut pas lever depuis la page.
-    // Ces apps déclenchent une action lourde ou destructrice au simple lancement.
+    // Locked: an exclusion the user cannot lift from the page. These apps trigger a heavy
+    // or destructive action on launch alone.
     let verrou: Bool
 }
 
-/// Recense les apps installées dans les dossiers balayés, en indiquant pour chacune
-/// Exclusions posées à la main depuis la page. Le fichier est écrit par l'utilisateur,
-/// pas par le programme : son absence est le cas normal, pas une erreur.
+/// Exclusions set by hand from the page. The file is written by the user, not by the
+/// program: its absence is the normal case, not an error.
 func reglagesManuels(_ chemin: String) -> (exclues: Set<String>, incluses: Set<String>) {
-    // Absent, le fichier donne le même résultat que vide : aucune exclusion. C'est le cas
-    // normal sur une installation neuve, mais c'est aussi ce qui arriverait si le chemin
-    // était relatif et le programme lancé par `open` — les exclusions posées à la main
-    // seraient alors ignorées en silence, et des apps écartées s'ouvriraient quand même.
+    // Absent, the file gives the same result as an empty one: no exclusions. That is the
+    // normal case on a fresh install, but it is also what would happen if the path were
+    // relative and the program launched by `open` — hand-set exclusions would then be
+    // ignored in silence, and skipped apps would open anyway.
     if !FileManager.default.fileExists(atPath: chemin) {
         FileHandle.standardError.write(
             "ℹ️  Aucun réglage manuel : \(URL(fileURLWithPath: chemin).path) est absent.\n"
@@ -571,28 +564,27 @@ func reglagesManuels(_ chemin: String) -> (exclues: Set<String>, incluses: Set<S
             Set(objet["incluses"] as? [String] ?? []))
 }
 
-/// si la passe l'écarte et pourquoi. Rien n'est lancé ici.
+/// Lists the apps installed in the folders swept, saying for each whether the pass skips
+/// it and why. Nothing is launched here.
 func recenser(includeGames: Bool,
               exclues: Set<String> = [], incluses: Set<String> = []) -> [Installee] {
-    // Chemins explicites, sans récursion. Deux dossiers du dossier de départ sont
-    // volontairement absents :
-    //   ~/Applications              bibliothèque Steam (23 jeux sur 25 apps)
-    //   ~/Applications (Parallels)  passerelles vers un Windows en machine virtuelle
-    // Les ouvrir coûterait plusieurs gigaoctets de chargement pour une barre de menu
-    // vide, voire démarrerait une VM.
+    // Explicit paths, no recursion. Two folders are deliberately absent:
+    //   ~/Applications              personal library, most often a game collection
+    //   ~/Applications (Parallels)  gateways to a Windows virtual machine
+    // Opening those would cost gigabytes of loading for an empty menu bar, or would boot a
+    // VM outright.
     var directories = ["/Applications", "/Applications/Utilities",
                        "/System/Applications", "/System/Applications/Utilities"]
     directories.append(NSHomeDirectory() + "/Applications")
 
-    // Les installeurs rangent couramment leurs apps dans un sous-dossier à leur nom
-    // (/Applications/Arturia, /Applications/Antidote, /Applications/WhatsApp.localized),
-    // parfois sur deux niveaux (/Applications/Native Instruments/Controller Editor/).
-    // Sans cette descente elles sont invisibles du recensement, donc absentes de la
-    // page et impossibles à cocher.
+    // Installers commonly file their apps under a sub-folder named after themselves
+    // (/Applications/<vendor>/, /Applications/<product>.localized), sometimes two levels
+    // deep (/Applications/<vendor>/<product>/). Without this descent they are invisible to
+    // the census, therefore absent from the page and impossible to tick.
     //
-    // Un dossier dont le nom porte une extension est un **paquet**, pas un rangement :
-    // y descendre remonterait des exécutables internes qu'aucun utilisateur ne lance,
-    // tel l'installeur de pilote logé dans un .bundle.
+    // A folder whose name carries an extension is a **package**, not a filing cabinet:
+    // descending into it would surface internal executables nobody launches, such as the
+    // driver installer lodged inside a .bundle.
     let paquets = [".app", ".bundle", ".framework", ".plugin", ".kext", ".prefPane",
                    ".qlgenerator", ".appex", ".xpc"]
     func sousDossiers(_ racine: String, profondeur: Int) -> [String] {
@@ -614,28 +606,28 @@ func recenser(includeGames: Bool,
         directories.append(chemin)
     }
 
-    // Lanceurs de jeux : pas de catégorie déclarée, mais même coût de lancement.
+    // Game launchers: no declared category, but the same launch cost.
     let gameLaunchers: Set<String> = ["com.valvesoftware.steam"]
 
-    // Apps qu'on ne lance jamais automatiquement : les ouvrir déclenche une action
-    // lourde ou destructrice, sans rapport avec la lecture d'une barre de menu.
+    // Apps never launched automatically: opening one triggers a heavy or destructive
+    // action, unrelated to reading a menu bar.
     let neverLaunch: [String: String] = [
         "com.apple.MigrateAssistant": "ferme toutes les apps et déconnecte la session",
         "com.apple.bootcampassistant": "assistant de partitionnement de disque",
         "com.apple.backup.launcher": "ouvre l'interface de restauration en plein écran",
-        // Déclencheurs de fonctions système : ils n'ont pas de barre de menu, et deux
-        // passes (25 s puis 45 s) l'ont confirmé. Rien n'est perdu — leurs raccourcis
-        // sont inventoriés côté système, via les tables du panneau Clavier de macOS.
+        // System-function triggers: they have no menu bar, and two passes (25 s then
+        // 45 s) confirmed it. Nothing is lost — their shortcuts are inventoried on the
+        // system side, through the tables of the macOS Keyboard panel.
         "com.apple.exposelauncher": "déclencheur système, aucune barre de menu",
-        // Observé : elle déclenche une capture dès l'ouverture et s'empare de l'écran.
+        // Observed: it fires a capture on opening and takes over the screen.
         "com.apple.screenshot.launcher": "déclenche une capture dès le lancement",
         "com.apple.siri.launcher": "déclencheur système, aucune barre de menu",
         "com.apple.apps.launcher": "déclencheur système, aucune barre de menu",
         "com.apple.ScreenContinuity": "déclencheur système, aucune barre de menu",
     ]
 
-    // Les désinstalleurs se reconnaissent à leur nom, quel que soit l'éditeur : une
-    // règle générale vaut mieux qu'une liste d'identifiants relevés sur une machine.
+    // Uninstallers are recognised by name, whichever the vendor: a general rule beats a
+    // list of identifiers collected from one machine.
     func estDesinstalleur(_ nom: String) -> Bool {
         let minuscule = nom.lowercased()
         return ["uninstall", "désinstall", "desinstall", "deinstall"]
@@ -651,10 +643,9 @@ func recenser(includeGames: Bool,
             let path = directory + "/" + entry
             guard let bundle = Bundle(path: path), let id = bundle.bundleIdentifier
             else { continue }
-            // Deux apps peuvent partager un identifiant (digikam et showfoto par
-            // exemple) : le lancement se faisant par identifiant, la seconde est
-            // inatteignable. On garde la première et on le dit plutôt que de la
-            // laisser disparaître en silence.
+            // Two apps can share one identifier: since launching goes by identifier, the
+            // second is unreachable. We keep the first and say so rather than letting it
+            // disappear in silence.
             guard seen.insert(id.lowercased()).inserted else {
                 FileHandle.standardError.write(
                     "  ℹ️  \(entry) partage l'identifiant \(id), déjà recensé — ignorée\n"
@@ -669,8 +660,8 @@ func recenser(includeGames: Bool,
             if let motif = neverLaunch[id] {
                 raison = motif
             } else if incluses.contains(id) {
-                // Choix explicite de l'utilisateur : il prime sur les règles du
-                // programme, sauf sur les exclusions verrouillées ci-dessus.
+                // The user's explicit choice: it wins over the program's rules, except
+                // over the locked exclusions above.
                 raison = nil
             } else if exclues.contains(id) {
                 raison = "écartée à la main"
@@ -725,7 +716,7 @@ guard !targets.isEmpty else {
     sortir(2)
 }
 
-// Sortie avant toute écriture et tout lancement : --dry-run doit rester inoffensif.
+// Exit before any write and any launch: --dry-run must stay harmless.
 if options.dryRun {
     for (index, bundleID) in targets.enumerated() {
         print("[\(index + 1)/\(targets.count)] \(bundleID)")
@@ -733,14 +724,14 @@ if options.dryRun {
     sortir(0)
 }
 
-// Le dossier de sortie est éprouvé AVANT d'ouvrir la moindre application. Sans ce
-// contrôle, une passe entière peut se dérouler — chaque app ouverte, lue, refermée —
-// pour n'écrire nulle part, et le programme sortait quand même en annonçant un succès.
+// The output folder is tested BEFORE opening a single application. Without this check, a
+// whole pass can unfold — each app opened, read, closed — only to write nowhere, and the
+// program would still exit announcing success.
 //
-// Le cas n'a rien de théorique : LaunchServices ne transmet pas le répertoire courant,
-// donc un programme lancé par `open` démarre à la racine du disque. Un chemin relatif y
-// désigne « /out/apps », où rien n'est inscriptible. D'où le rappel du chemin absolu
-// réellement visé, qui rend la cause lisible d'un coup d'œil.
+// The case is not theoretical: LaunchServices does not pass on the working directory, so a
+// program launched by `open` starts at the root of the disk. A relative path there means
+// "/out/apps", where nothing is writable. Hence the reminder of the absolute path actually
+// aimed at, which makes the cause readable at a glance.
 do {
     try FileManager.default.createDirectory(atPath: options.outDir,
                                             withIntermediateDirectories: true)
@@ -768,15 +759,15 @@ exigerAutorisation()
 let encoder = JSONEncoder()
 encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
 
-/// Écritures qui ont échoué. Une passe qui n'a rien pu écrire doit le dire par son code
-/// de sortie : run.sh ne lit pas les messages, il lit le statut.
+/// Writes that failed. A pass that could write nothing must say so through its exit code:
+/// run.sh does not read messages, it reads the status.
 var echecsEcriture = 0
 
 func runAll() {
     for (index, bundleID) in targets.enumerated() {
-        // Un identifiant de bundle sert ici de nom de fichier. Il est lu sur le disque,
-        // donc il n'est pas de confiance : un « / » y ferait écrire hors du dossier de
-        // sortie. Les caractères admis sont ceux qu'Apple recommande pour un identifiant.
+        // A bundle identifier serves as a file name here. It is read from disk, so it is
+        // not trusted: a "/" in it would write outside the output folder. The characters
+        // allowed are the ones Apple recommends for an identifier.
         guard !bundleID.isEmpty,
               bundleID.allSatisfy({ $0.isLetter || $0.isNumber || ".-_ ".contains($0) })
         else {
@@ -786,14 +777,14 @@ func runAll() {
             continue
         }
         let file = "\(options.outDir)/\(bundleID).json"
-        // Reprise : une passe interrompue ne recommence pas ce qui est déjà sur le disque.
+        // Resume: an interrupted pass does not redo what is already on disk.
         if !options.force && FileManager.default.fileExists(atPath: file) {
             print("[\(index + 1)/\(targets.count)] \(bundleID) — déjà fait, ignoré")
             continue
         }
-        // Relecture sans ouverture. Ouvrir une app est la seule chose vraiment gênante
-        // d'une passe : elle surgit pendant qu'on travaille. Se limiter aux apps déjà
-        // lancées permet de rafraîchir des fiches périmées sans que rien ne bouge.
+        // Re-read without opening. Opening an app is the only genuinely intrusive part of
+        // a pass: it appears while you are working. Limiting the pass to apps already
+        // running refreshes stale records without anything moving on screen.
         if options.onlyRunning,
            !NSWorkspace.shared.runningApplications.contains(
                 where: { $0.bundleIdentifier == bundleID }) {
@@ -801,9 +792,9 @@ func runAll() {
             continue
         }
         let outcome = process(bundleID: bundleID, options: options)
-        // Une relecture automatique ne doit jamais appauvrir l'inventaire. Une app
-        // ouverte sans document expose moins de commandes : écraser une fiche pleine
-        // par une fiche vide perdrait des raccourcis sans que personne le demande.
+        // An automatic re-read must never impoverish the inventory. An app opened without
+        // a document exposes fewer commands: overwriting a full record with an empty one
+        // would lose shortcuts nobody asked to lose.
         if options.onlyRunning, outcome.raccourcis.isEmpty,
            let brut = FileManager.default.contents(atPath: file),
            let objet = try? JSONSerialization.jsonObject(with: brut) as? [String: Any],
@@ -831,33 +822,33 @@ func runAll() {
     }
 }
 
-// Une interruption — Ctrl-C, ou le signal que run.sh envoie pour arrêter une passe —
-// doit refermer l'application ouverte à l'instant où elle arrive.
+// An interrupt — Ctrl-C, or the signal run.sh sends to stop a pass — must close the
+// application open at the moment it arrives.
 //
-// Le gestionnaire ne peut pas être un handler POSIX : presque rien n'y est appelable, et
-// `terminate()` encore moins. DispatchSource livre le signal comme un événement ordinaire
-// sur la boucle principale, que ce programme garde libre exprès. Il faut en revanche
-// neutraliser d'abord la disposition par défaut, sinon le processus est tué avant que
-// l'événement lui soit remis.
+// The handler cannot be a POSIX signal handler: almost nothing is callable from one, and
+// `terminate()` least of all. DispatchSource delivers the signal as an ordinary event on
+// the main loop, which this program keeps free on purpose. The default disposition must be
+// neutralised first, though, otherwise the process is killed before the event reaches
+// it.
 let sourcesSignal: [DispatchSourceSignal] = [SIGINT, SIGTERM].map { numero in
     signal(numero, SIG_IGN)
     let source = DispatchSource.makeSignalSource(signal: numero, queue: .main)
     source.setEventHandler {
         appEnCours?.terminate()
         appEnCours = nil
-        // Laisse au système le temps de remettre la demande de fermeture avant de rendre
-        // la main : la demande part d'ici, mais elle est traitée par l'autre processus.
+        // Gives the system time to deliver the quit request before returning: the request
+        // leaves from here, but it is handled by the other process.
         usleep(300_000)
         sortir(130)
     }
     source.resume()
     return source
 }
-_ = sourcesSignal   // retenues en vie : leur libération annulerait la surveillance
+_ = sourcesSignal   // kept alive: releasing them would cancel the watch
 
-// Tout le travail tourne hors du thread principal, qui reste libre pour la boucle
-// d'exécution. NSWorkspace.openApplication rappelle son bloc de complétion via
-// cette boucle : bloquer le thread principal en l'attendant provoquerait un interblocage.
+// All the work runs off the main thread, which stays free for the run loop.
+// NSWorkspace.openApplication calls its completion block back through that loop: blocking
+// the main thread while waiting for it would deadlock.
 DispatchQueue.global(qos: .userInitiated).async {
     runAll()
     if echecsEcriture > 0 {

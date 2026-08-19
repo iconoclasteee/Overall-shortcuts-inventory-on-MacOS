@@ -1,10 +1,10 @@
-"""Rendu HTML de l'index — un fichier autonome, trois vues.
+"""HTML rendering of the index — one self-contained file, six views.
 
-Parti pris visuel : le sujet, c'est le clavier. Les combinaisons sont donc rendues
-comme des touches physiques, et l'élément signature est **la pile d'interception** —
-une frappe descend les étages (pilote, capture, système, global, menu) et le premier
-qui la réclame l'avale. C'est le mécanisme réel, et c'est ce qui rend « qui gagne ? »
-lisible d'un coup d'œil au lieu d'être une phrase à décrypter.
+Visual stance: the subject is the keyboard. Combinations are therefore rendered as
+physical keys, and the signature element is **the interception stack** — a keystroke
+descends the layers (driver, event tap, system, global, menu) and the first one to claim
+it swallows it. That is the real mechanism, and it is what makes "who wins?" readable at a
+glance instead of a sentence to decipher.
 """
 
 import html as html_std
@@ -54,7 +54,7 @@ body {
 }
 .enveloppe { padding: 0 clamp(24px, 3vw, 56px) 96px; }
 
-/* — En-tête : la thèse, pas un bandeau décoratif — */
+/* — Header: the thesis, not a decorative banner — */
 header { padding: 30px 0 22px; border-bottom: 2px solid var(--encre); }
 .eyebrow {
   font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
@@ -88,7 +88,7 @@ h1 em { font-style: normal; color: var(--petrol); }
 .langues button:hover { filter: none; opacity: .85; }
 .langues button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 
-/* — Lancement d'un scan — */
+/* — Starting a scan — */
 .actions-scan { justify-self: center; display: flex; align-items: stretch; gap: 10px; }
 .bouton-scan {
   font-family: var(--display); font-size: 15px; font-weight: 600; line-height: 1;
@@ -130,10 +130,10 @@ h1 em { font-style: normal; color: var(--petrol); }
   padding: 14px 26px; border-bottom: 1px solid var(--creux);
 }
 .scan-outils input[type="search"] { flex: 1; min-width: 200px; max-width: 340px; font-size: 14px; padding: 9px 12px; }
-/* Boutons — anatomie reprise de shadcn/ui : hauteur constante, rayon doux, ombre
-   d'un pixel, transition de couleur, et un anneau de focus épais plutôt qu'un
-   contour fin. Ce qui les fait lire comme des boutons, c'est la constance : même
-   hauteur, même rayon, même retrait au clic, partout dans la page. */
+/* Buttons — anatomy taken from shadcn/ui: constant height, soft radius, one-pixel
+   shadow, colour transition, and a thick focus ring rather than a thin outline. What
+   makes them read as buttons is the consistency: same height, same radius, same press
+   inset, everywhere in the page. */
 .bouton {
   font: inherit; font-size: 14px; font-weight: 500; line-height: 1;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -154,8 +154,8 @@ input:focus-visible, select:focus-visible {
   outline: 3px solid var(--anneau); outline-offset: 1px;
 }
 
-/* Champs de saisie — même hauteur et même rayon que les boutons : c'est cet
-   alignement qui fait qu'une barre d'outils se lit comme un ensemble. */
+/* Input fields — same height and radius as the buttons: that alignment is what makes a
+   toolbar read as one thing. */
 .scan-outils input[type="search"], #filtre-app, #recherche, #touche-libre {
   height: 36px; border-radius: var(--rayon-sm); border: 1px solid var(--creux);
   background: var(--plaque); color: var(--encre); padding: 0 12px; font: inherit;
@@ -169,8 +169,8 @@ input:focus-visible, select:focus-visible {
   border: 1px solid var(--creux); border-radius: 8px; white-space: pre-wrap;
   word-break: break-all; max-height: 150px; overflow-y: auto;
 }
-/* Posé dans le coin du bloc plutôt qu'à sa suite : la commande peut défiler,
-   le bouton doit rester atteignable sans faire défiler quoi que ce soit. */
+/* Placed in the block's corner rather than after it: the command can scroll, the button
+   must stay reachable without scrolling anything. */
 .copier {
   position: absolute; top: 8px; right: 8px; font-family: var(--corps);
   font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
@@ -178,11 +178,11 @@ input:focus-visible, select:focus-visible {
 }
 .copier:hover { border-color: var(--petrol); color: var(--petrol); }
 
-/* — Raccourcis libres — */
+/* — Free shortcuts — */
 .libres-note { font-size: 14px; color: var(--sourdine); margin: 18px 0 0; }
-/* Une seule grille à double entrée : les modificateurs en colonnes, groupés par
-   nombre de touches et séparés par un trait ; les touches en lignes. Rien ne revient
-   à la ligne — une combinaison coupée en deux ne se lit plus. */
+/* One single cross-table: modifiers as columns, grouped by key count and separated by a
+   rule; keys as rows. Nothing wraps — a combination split across two lines stops being
+   readable. */
 .libres-table { border-collapse: collapse; font-size: 15px; }
 .libres-table th, .libres-table td { white-space: nowrap; }
 .libres-table thead th {
@@ -203,8 +203,8 @@ input:focus-visible, select:focus-visible {
 .libres-table td { padding: 2px 3px; }
 .libres-table tbody tr:nth-child(even) { background: var(--zebre); }
 .libres-table .borne { border-right: 2px solid var(--creux); padding-right: 10px; }
-/* Chaque combinaison libre est un bouton : un clic la copie, puisqu'elle a vocation
-   à être reportée dans les réglages d'un autre logiciel. */
+/* Every free combination is a button: one click copies it, since its purpose is to be
+   carried over into another program's settings. */
 .libres-table .libre {
   font: inherit; font-family: var(--mono); font-size: 14.5px; cursor: pointer;
   display: block; width: 100%; padding: 4px 10px; border-radius: 5px;
@@ -216,9 +216,9 @@ input:focus-visible, select:focus-visible {
 .libres-table .libre.copie { background: var(--petrol); border-color: var(--petrol); color: var(--plaque); }
 .libres-table .libre:focus-visible { outline: 3px solid var(--anneau); outline-offset: 1px; }
 
-/* — Tableau du prochain scan — */
-/* L'avertissement porte sur une action qui monopolise l'écran plusieurs minutes :
-   il se lit avant le reste, donc il est plus gros et cadré, pas fondu dans le texte. */
+/* — Next-scan table — */
+/* The warning concerns an action that takes over the screen for several minutes: it must
+   be read before the rest, so it is larger and framed, not blended into the text. */
 .avertissement {
   display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start;
   margin: 0 0 16px; padding: 16px 18px; border-radius: var(--rayon);
@@ -236,8 +236,8 @@ input:focus-visible, select:focus-visible {
 .scan-outils { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; flex-wrap: wrap; }
 .scan-outils input { flex: 0 0 260px; }
 .scan-outils .sous { margin-left: auto; }
-/* Trois étapes numérotées plutôt que trois boutons côte à côte : l'ordre compte,
-   et une rangée de boutons identiques ne dit pas par lequel commencer. */
+/* Three numbered steps rather than three buttons side by side: order matters, and a row
+   of identical buttons does not say which one to start with. */
 .etapes {
   list-style: none; margin: 0 0 18px; padding: 6px;
   border: 1px solid var(--creux); border-radius: var(--rayon);
@@ -249,8 +249,8 @@ input:focus-visible, select:focus-visible {
 }
 .etape + .etape { border-top: 1px solid var(--alu); }
 .etape:hover { background: var(--zebre); }
-/* L'étape dont la commande est à l'écran : sans ce repère, trois blocs identiques
-   et une seule commande visible, on ne sait plus laquelle on s'apprête à copier. */
+/* The step whose command is on screen: without this marker — three identical blocks and
+   one visible command — you no longer know which one you are about to copy. */
 .etape.choisie { background: var(--zebre); box-shadow: inset 3px 0 0 var(--petrol); }
 .puce {
   display: inline-flex; align-items: center; justify-content: center;
@@ -269,8 +269,8 @@ input:focus-visible, select:focus-visible {
   white-space: nowrap;
 }
 .ici { color: var(--petrol); }
-/* Ce que l'étape exige du système, dit sur l'étape elle-même : c'est la question
-   qu'on se pose avant de lancer, pas après. */
+/* What the step requires of the system, said on the step itself: that is the question you
+   ask before running it, not after. */
 .exige { color: var(--ambre); }
 .sans-exige { color: var(--sourdine); }
 #tableau-scan { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
@@ -278,33 +278,32 @@ input:focus-visible, select:focus-visible {
   text-align: left; font-family: var(--display); font-size: 13px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--sourdine); font-weight: 600;
   padding: 10px 10px 8px;
-  /* Les intitulés reviennent à la ligne : bornés en largeur et gardés sur une seule
-     ligne, ils se chevauchaient. */
+  /* Headings wrap: bounded in width and kept on one line, they overlapped. */
   white-space: normal; line-height: 1.25; vertical-align: bottom;
-  /* Les intitulés restent au bord haut pendant le défilement : à deux cents lignes
-     et huit colonnes, une case à cocher sans son intitulé ne veut plus rien dire.
-     Le fond doit être opaque, sinon les lignes défilent au travers ; et le trait de
-     séparation passe par une ombre intérieure, une bordure ne suivant pas un en-tête
-     collant quand les bordures du tableau sont fusionnées. */
+  /* Headings stay pinned to the top edge while scrolling: at two hundred rows and eight
+     columns, a checkbox without its heading means nothing any more. The background must
+     be opaque, otherwise rows scroll through it; and the separating rule goes through an
+     inset shadow, since a border does not follow a sticky header when the table's borders
+     are collapsed. */
   position: sticky; top: 0; z-index: 2;
   background: var(--alu); box-shadow: inset 0 -1px 0 var(--creux);
 }
 #tableau-scan td { padding: 7px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
-/* Une ligne sur deux teintée : à plus de deux cents lignes et huit colonnes, l'œil
-   perd la ligne entre la première case et la date. */
+/* Every other row tinted: past two hundred rows and eight columns, the eye loses the row
+   between the first checkbox and the date. */
 #tableau-scan tbody tr:nth-child(even) { background: var(--zebre); }
 #tableau-scan tbody tr:hover { background: var(--survol); }
 #tableau-scan th:nth-child(-n+3) { text-align: center; width: 84px; }
 #tableau-scan .cocher { text-align: center; }
 #tableau-scan input[type="checkbox"] { accent-color: var(--petrol); width: 15px; height: 15px; }
-/* Écarter est un geste qui retranche : il se signale comme tel, pas comme un choix
-   neutre parmi d'autres. */
+/* Excluding is a subtractive act: it announces itself as one, not as a neutral choice
+   among others. */
 #tableau-scan .case-exclure { accent-color: var(--vermillon); }
-/* Un numéro de version peut être long sans mériter la place qu'il prend. On borne à
-   une quinzaine de caractères et on laisse revenir à la ligne les rares qui débordent. */
-/* Les colonnes sont serrées à gauche, contre le nom de l'application : c'est la
-   comparaison des deux versions qui compte, et l'œil ne doit pas traverser la page
-   pour la faire. La dernière colonne, vide, absorbe la place restante. */
+/* A version string can be long without deserving the room it takes. We bound it to about
+   fifteen characters and let the rare overflowing ones wrap. */
+/* The columns are packed to the left, against the application name: what matters is
+   comparing the two versions, and the eye should not cross the page to do it. The last
+   column, empty, absorbs the remaining room. */
 #tableau-scan th:nth-child(4) { width: 330px; }
 #tableau-scan th:nth-child(5), #tableau-scan th:nth-child(6) { width: 150px; }
 #tableau-scan th:nth-child(7) { width: 104px; }
@@ -326,8 +325,8 @@ input:focus-visible, select:focus-visible {
 #tableau-scan tr.exclue .app { color: var(--vermillon); font-weight: 600; }
 #tableau-scan .statut-ok { color: var(--sourdine); }
 #tableau-scan .statut-ko { color: var(--vermillon); font-weight: 600; }
-/* Lue sans encombre, mais sans rien trouver : ce n'est pas un échec, ce n'est pas
-   un succès non plus. Le dire vaut mieux qu'afficher « ok ». */
+/* Read without trouble, but finding nothing: that is not a failure, and it is not a
+   success either. Saying so beats displaying "ok". */
 #tableau-scan .statut-vide { color: var(--ambre); font-weight: 600; }
 #tableau-scan .marque {
   font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
@@ -338,14 +337,13 @@ input:focus-visible, select:focus-visible {
 #tableau-scan .m-majeure { color: var(--ambre); }
 #tableau-scan .m-motif { color: var(--sourdine); border: none; padding-left: 0; }
 
-/* — Onglets — */
+/* — Tabs — */
 nav {
   display: flex; justify-content: space-between; align-items: center; gap: 28px;
   margin: 0 0 22px; border-bottom: 1px solid var(--creux);
 }
-/* Onglets — la pilule de shadcn/ui : un rail creusé, l'onglet actif posé dessus
-   comme une carte. Un soulignement se lit comme un titre ; une pastille surélevée
-   se lit comme un contrôle sur lequel on clique. */
+/* Tabs — shadcn/ui's pill: a recessed rail with the active tab resting on it like a
+   card. An underline reads as a heading; a raised pill reads as a control you click. */
 .onglets {
   display: inline-flex; gap: 2px; background: var(--alu); padding: 4px;
   border-radius: var(--rayon); border: 1px solid var(--creux);
@@ -366,7 +364,7 @@ nav button:hover { color: var(--encre); }
 nav button:focus-visible, input:focus-visible, select:focus-visible,
 .ligne:focus-visible { outline: 2px solid var(--petrol); outline-offset: 3px; }
 
-/* — Touches — */
+/* — Keys — */
 .combo { display: inline-flex; gap: 3px; align-items: center; flex-wrap: wrap; }
 .cap {
   font-family: var(--mono); font-size: 13px; font-weight: 500; line-height: 1;
@@ -377,7 +375,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 }
 .cap.large { padding-left: 10px; padding-right: 10px; }
 
-/* — Pile d'interception : l'élément signature — */
+/* — Interception stack: the signature element — */
 .pile { display: grid; gap: 2px; font-family: var(--mono); font-size: 11px; }
 .etage {
   display: grid; grid-template-columns: 62px 10px 1fr; align-items: center;
@@ -393,7 +391,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .etage.gagne .puce { background: var(--petrol); border-color: var(--petrol);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--petrol) 22%, transparent); }
 
-/* — Listes — */
+/* — Lists — */
 .ligne {
   display: grid; grid-template-columns: var(--largeur-combo) minmax(0, 1fr);
   gap: 14px; align-items: start;
@@ -430,16 +428,16 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .conflit-detail .verdict { border-left-color: var(--vermillon); }
 .verdict.convention { border-left-color: var(--sourdine); color: var(--sourdine); }
 
-/* — Contrôles — */
-/* Deux natures de filtre : à gauche la combinaison de touches, à droite la recherche
-   de libellé. Les séparer évite de les prendre pour un même réglage. */
+/* — Controls — */
+/* Two kinds of filter: the key combination on the left, the label search on the right.
+   Separating them avoids taking the two for one setting. */
 .filtre {
   display: grid; grid-template-columns: minmax(0, max-content) auto minmax(170px, 1fr);
   gap: 10px 28px; margin: 0 0 28px; padding: 16px 20px; align-items: stretch;
   background: var(--plaque); border: 1px solid var(--creux); border-radius: 10px;
 }
 .colonne-touches { display: grid; gap: 8px; min-width: 0; }
-/* Étiquette puis contrôle, collés : un grand vide entre les deux les dissocie. */
+/* Label then control, tight together: a wide gap between the two pulls them apart. */
 .colonne-nombre {
   display: grid; gap: 6px; justify-items: start; align-content: start; min-width: 0;
   padding-left: 28px; border-left: 1px solid var(--creux);
@@ -452,7 +450,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   display: grid; gap: 6px; justify-items: stretch; align-content: start;
   min-width: 0; padding-left: 28px; border-left: 1px solid var(--creux);
 }
-/* Sans min-width nul sur la colonne, le champ déborde du panneau. */
+/* Without min-width zero on the column, the field overflows the panel. */
 .colonne-texte input {
   width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
   font-size: 14px; padding: 9px 12px;
@@ -461,10 +459,10 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .colonne-texte .etiquette { width: auto; }
 .rangee-filtre { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
 .rangee-filtre .etiquette { padding-top: 9px; }
-/* Chercher un texte n'est pas filtrer une combinaison : la ligne est séparée pour
-   qu'on ne prenne pas les deux pour un même réglage. */
-/* Les touches de fonction occupent leur propre rangée : mêlées aux flèches et aux
-   touches d'édition, elles formeraient un pavé de vingt boutons illisible. */
+/* Searching text is not filtering a combination: the row is separated so the two are not
+   taken for one setting. */
+/* Function keys get their own row: mixed in with the arrows and editing keys they would
+   form an unreadable block of twenty buttons. */
 .rangees-touches { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .etiquette {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
@@ -483,7 +481,7 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
   box-shadow: none;
 }
 .capsules button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
-/* Le champ libre est une touche parmi les autres : même gabarit que les capsules. */
+/* The free-text field is a key among the others: same shape as the caps. */
 #touche-libre {
   width: 118px; flex: none; text-align: center; font-family: var(--mono);
   font-size: 13px; padding: 8px 6px; border-radius: 5px;
@@ -571,24 +569,24 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
   padding: 11px 0; border-bottom: 1px solid var(--creux);
 }
 .resultat .titre { font-size: 15px; }
-/* Vert : la commande appartient à l'application elle-même. Le reste — raccourcis
-   système et outils globaux — garde la couleur du texte courant. */
+/* Green: the command belongs to the application itself. Everything else — system
+   shortcuts and global tools — keeps the body text colour. */
 .resultat.propre-app .titre { color: var(--petrol); }
-/* Le titre de section suit ses lignes : vert pour les menus de l'application,
-   neutre pour les raccourcis venus d'ailleurs. */
+/* The section heading follows its rows: green for the application's menus, neutral for
+   shortcuts coming from elsewhere. */
 .groupe-portee h3.titre-app { color: var(--petrol); }
-/* Le titre de section suit ses lignes : vert pour les menus de l'app, neutre pour
-   le menu Apple et pour les raccourcis venus d'ailleurs. */
+/* The section heading follows its rows: green for the app's menus, neutral for the Apple
+   menu and for shortcuts coming from elsewhere. */
 .groupe-portee h3.titre-app { color: var(--petrol); }
-/* Une combinaison disputée se repère à la couleur : la ligne dit ce que la commande
-   fait, pas qu'un autre preneur pourrait la lui prendre. */
+/* A disputed combination is spotted by colour: the row says what the command does, not
+   that another claimant might take it away. */
 .resultat.rang-conflit .titre { color: var(--vermillon); }
 .resultat.rang-conflit .cap { border-color: var(--vermillon); color: var(--vermillon); }
 .resultat.ouvrable { cursor: pointer; }
 .resultat.ouvrable:hover { background: var(--alu); }
 .resultat.ouvrable:focus-visible { outline: 2px solid var(--vermillon); outline-offset: 2px; }
-/* Une double frappe n'est pas une combinaison : elle se signale, sinon « ⌘⌘ » se lit
-   comme deux touches enfoncées ensemble. */
+/* A double tap is not a combination: it flags itself, otherwise "⌘⌘" reads as two keys
+   pressed together. */
 .marque-double {
   font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
   padding: 3px 7px; border-radius: 4px; margin-left: 7px; white-space: nowrap;
@@ -613,8 +611,8 @@ const ORDRE = ORDRE_COUCHES_JS;
 const NOMS = () => Object.fromEntries(ORDRE.map(c => [c, T("couche_" + c)]));
 
 const caps = (combo) => {
-  // « fn » s'écrit sur deux caractères : il faut le retirer avant de parcourir le reste,
-  // sinon il finirait collé à la touche principale sur une seule capsule.
+  // "fn" is written with two characters: it must be pulled out before walking the rest,
+  // otherwise it would end up stuck to the main key inside a single cap.
   const mods = [];
   let reste = combo;
   if (reste.includes("fn")) { reste = reste.replace("fn", ""); }
@@ -628,8 +626,8 @@ const caps = (combo) => {
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-/* La pile : un étage par couche, occupé si un raccourci s'y accroche.
-   L'étage gagnant est celui, le plus haut dans l'ordre, qui est occupé. */
+/* The stack: one storey per layer, occupied if a shortcut hooks there.
+   The winning storey is the highest occupied one in the ordering. */
 function pile(usages) {
   const occupees = new Set(usages.filter(u => u.actif).map(u => u.couche));
   const gagnante = ORDRE.find(c => occupees.has(c));
@@ -674,13 +672,13 @@ function rendreConflits() {
     (disputees ? disputees.has(c.combo) : c.conflit)
     && passe(f, c.combo, c.mods, c.usages, c.double));
 
-  /* Filtré sur une app, cette page ne garde que les conflits dont elle est partie
-     prenante : on y vient pour arbitrer ses propres raccourcis. Un conflit entre deux
-     outils globaux est actif pendant qu'elle est devant, mais il ne se règle pas ici —
-     il reste signalé en rouge dans « Effet d'une frappe », où la question posée est
-     bien « que se passe-t-il si je tape ça maintenant ».
-     La fiche se restreint au même contexte : les menus des *autres* apps ne sont pas
-     en lice pendant que celle-ci est au premier plan. */
+  /* Filtered on one app, this page keeps only the conflicts it is party to: you come
+     here to arbitrate your own shortcuts. A conflict between two global tools is live
+     while that app is in front, but it is not settled here — it stays flagged in red in
+     "What a keystroke does", where the question really is "what happens if I press this
+     right now".
+     The detail sheet narrows to the same context: the menus of *other* apps are not in
+     the running while this one is frontmost. */
   if (id) {
     conflits = conflits
       .map(c => ({ ...c, usages: c.usages.filter(u => u.couche !== "menu" || u.bundle_id === id) }))
@@ -692,11 +690,11 @@ function rendreConflits() {
         ? T("aucun_conflit_filtre") : ""}${T("aucun_conflit_suite")}</p>`;
 }
 
-/* Les modificateurs se cochent au lieu de se taper : presser ⌘⇧ dans un champ de
-   recherche déclencherait le raccourci qu'on cherche justement à identifier. */
-/* Les libellés de l'interface existent dans les deux langues. Le contenu, lui, est lu
-   dans macOS : chemins de menus, noms de commandes et catégories restent tels que le
-   système les fournit — les traduire reviendrait à réécrire une donnée. */
+/* Modifiers are ticked rather than typed: pressing ⌘⇧ in a search field would fire the
+   very shortcut one is trying to identify. */
+/* Interface labels exist in both languages. The content, by contrast, is read from
+   macOS: menu paths, command names and categories stay exactly as the system supplies
+   them — translating them would amount to rewriting a piece of data. */
 const TEXTES = {
   fr: {
     onglet_menu: "Commandes par menu", onglet_effet: "Effet d'une frappe",
@@ -982,7 +980,7 @@ const T = (cle) => TEXTES[LANGUE][cle];
 
 const MODS = MODS_BITS;
 const RACINE = RACINE_PROJET;
-/* Une double frappe n'engage qu'une touche, pressée deux fois. */
+/* A double tap involves one key only, pressed twice. */
 const PORTEES = () => D.libelles_portee[LANGUE] || D.libelles_portee.fr || D.libelles_portee;
 const nbTouches = (mods, double) => {
   if (double) return 1;
@@ -992,10 +990,10 @@ const nbTouches = (mods, double) => {
 };
 const toucheSeule = (combo) => combo.replace("fn", "").replace(/[⌃⌥⇧⌘]/g, "");
 
-/* Le filtre par application vaut pour les quatre vues. Désactivé, plus rien n'est
-   restreint à une app, et le champ de sélection est neutralisé.
-   Éteint au chargement : on arrive sur la vue d'ensemble, et on se restreint à une
-   app quand on a une question sur elle. */
+/* The per-application filter applies to the four shortcut views. Switched off, nothing
+   is restricted to an app any more, and the selection field is disabled.
+   Off on load: you arrive on the overall view, and narrow to an app when you have a
+   question about it. */
 let filtreApp = false;
 
 function appFiltrante() {
@@ -1017,12 +1015,12 @@ function etatFiltre() {
   };
 }
 
-/* Le même filtre sert aux trois vues : une combinaison passe si elle satisfait
-   tous les critères renseignés. Un critère vide ne filtre rien. */
+/* The same filter serves the three views: a combination passes if it satisfies every
+   criterion that has been filled in. An empty criterion filters nothing. */
 function passe(f, combo, mods, usages, double) {
   if (f.actifs && mods !== f.bits) return false;
   if (f.nombre && nbTouches(mods, double) !== f.nombre) return false;
-  // Restreint à une app : ses propres commandes, plus tout ce qui est global.
+  // Restricted to one app: its own commands, plus everything global.
   const id = appFiltrante();
   if (id && !usages.some(u => u.couche !== "menu" || u.bundle_id === id)) return false;
   const k = toucheSeule(combo);
@@ -1050,7 +1048,7 @@ function rendreCombinaisons() {
         ? `<p class="vide">${T("autres_affine")(liste.length - 400)}</p>` : "");
 }
 
-/* Un bouton coché se décoche ; côté touches, la sélection reste unique. */
+/* A ticked button unticks; on the key side, the selection stays single. */
 const rendreTout = () => { rendreConflits(); rendreCombinaisons(); rendreApp(); };
 
 function brancherFiltres() {
@@ -1078,9 +1076,9 @@ function brancherFiltres() {
     rendreTout();
   });
   document.getElementById("filtre-nombre").addEventListener("change", rendreTout);
-  // Rend le panneau de touches à son état neutre : modificateurs compris, puisqu'ils
-  // sont des touches eux aussi. Ne touche ni à la recherche de libellé ni au nombre de
-  // touches, qui répondent à d'autres questions — c'est « tout effacer » qui les vide.
+  // Returns the key panel to its neutral state: modifiers included, since they are keys
+  // too. Touches neither the label search nor the key count, which answer other
+  // questions — clearing those is what "clear all" is for.
   const viderTouches = () => {
     document.querySelectorAll("#mods button, #touches button")
       .forEach(x => x.setAttribute("aria-pressed", "false"));
@@ -1099,9 +1097,9 @@ function brancherFiltres() {
   });
 }
 
-/* Le verdict affiché doit valoir dans le contexte où on clique : depuis la vue d'une
-   app, seuls ses menus et les raccourcis globaux sont en lice. Reprendre l'arbitrage
-   global mentionnerait des apps qui ne sont pas là. */
+/* The verdict shown must hold in the context you clicked from: inside an app's view,
+   only its menus and the global shortcuts are in the running. Reusing the global
+   arbitration would name apps that are not there. */
 function verdictLocal(it) {
   const noms = [...new Set(it.vainqueurs.map(u => u.proprietaire))];
   const explication = (D.couches[LANGUE] || D.couches.fr || {})[it.couche] || "";
@@ -1154,39 +1152,39 @@ function brancherBasculeApp() {
   appliquer();
 }
 
-/* Vue par app, deux lectures complémentaires.
+/* Per-app view, two complementary readings.
 
-   « Par menu » suit la barre de menu de l'app, dans son ordre réel : lire des
-   raccourcis Mise en forme, puis Fenêtre, puis Mise en forme à nouveau ne se retient
-   pas. Les raccourcis globaux suivent, rangés selon ce sur quoi ils agissent.
+   "By menu" follows the app's menu bar in its real order: reading Format shortcuts, then
+   Window, then Format again does not stick. Global shortcuts come next, arranged by what
+   they act upon.
 
-   « Ce qui se passe » part de la frappe et non de la commande : pour chaque
-   combinaison atteignable dans cette app, qui la reçoit vraiment. Classées par nombre
-   de touches, parce qu'on cherche d'abord les combinaisons courtes. */
+   "What happens" starts from the keystroke rather than the command: for every combination
+   reachable in this app, who actually receives it. Sorted by key count, because short
+   combinations are what one looks for first. */
 
 const SOURCE_LABEL = () => ({
   systeme: T("src_systeme"), capture: T("src_outil"), global: T("src_outil"),
   pilote: T("src_pilote"), autre: T("src_outil"), menu: T("src_menu"),
 });
 
-/* Ce que reçoit une frappe donnée pendant que cette app est au premier plan :
-   ses propres menus, plus tout ce qui est global. Le reste ne la concerne pas. */
+/* What a given keystroke reaches while this app is frontmost: its own menus, plus
+   everything global. The rest does not concern it. */
 function atteignables(bundleID) {
   const f = etatFiltre();
   const out = [];
   for (const c of D.combinaisons) {
     if (!passe(f, c.combo, c.mods, c.usages, c.double)) continue;
-    // Sans application choisie, seuls les raccourcis globaux se résolvent : un menu
-    // ne répond que lorsque son app est au premier plan.
+    // With no application chosen, only global shortcuts resolve: a menu answers only
+    // while its app is frontmost.
     const candidats = c.usages.filter(u =>
       u.actif && (u.couche !== "menu" || (bundleID && u.bundle_id === bundleID)));
     if (!candidats.length) continue;
     const gagnante = ORDRE.find(couche => candidats.some(u => u.couche === couche));
     const vainqueurs = candidats.filter(u => u.couche === gagnante);
     const perdants = candidats.filter(u => u.couche !== gagnante);
-    // `meme_commande` marque les combinaisons que macOS injecte à l'identique dans
-    // le menu de chaque app (⇧⌘Q, ⌃⌘Q…). Les compter comme conflits colorerait en
-    // rouge la moitié des lignes, et contredirait l'arbitrage calculé côté Python.
+    // `meme_commande` marks the combinations macOS injects identically into every app's
+    // menu (⇧⌘Q, ⌃⌘Q…). Counting them as conflicts would paint half the rows red, and
+    // would contradict the arbitration computed on the Python side.
     out.push({ cle: c.cle, combo: c.combo, mods: c.mods, double: c.double,
                vainqueurs, perdants, couche: gagnante,
                conflit: perdants.length > 0 && !c.meme_commande && !c.convention });
@@ -1206,8 +1204,8 @@ function vueCeQuiSePasse(app) {
   if (!tailles.length) return `<p class="vide">${T("rien_atteignable")}</p>`;
 
   return tailles.map(n => {
-    // Trier sur la touche principale, pas sur la chaîne entière : classer sur « ⌘ »
-    // rassemblerait tout au même endroit alors qu'on cherche une lettre.
+    // Sort on the main key, not on the whole string: sorting on "⌘" would gather
+    // everything in one place when what one is looking for is a letter.
     const liste = parTaille.get(n).sort((a, b) =>
       toucheSeule(a.combo).localeCompare(toucheSeule(b.combo), "fr")
       || a.mods - b.mods);
@@ -1236,8 +1234,8 @@ function vueCeQuiSePasse(app) {
 function vueParMenu(app) {
   const f = etatFiltre();
   const cible = app ? app.bundleID : "";
-  // Même définition du conflit que dans « Effet d'une frappe » : une combinaison que
-  // plusieurs preneurs se disputent *pendant que cette app est au premier plan*.
+  // Same definition of a conflict as in "What a keystroke does": a combination several
+  // claimants dispute *while this app is frontmost*.
   const disputees = new Set(atteignables(cible).filter(it => it.conflit).map(it => it.combo));
   const parMenu = new Map(), parPortee = { app: [], app_externe: [], systeme: [], inconnu: [] };
   for (const c of D.combinaisons) {
@@ -1247,17 +1245,17 @@ function vueParMenu(app) {
       const marque = { ...u, conflit: disputees.has(c.combo), double: c.double, cle: c.cle };
       if (u.couche === "menu") {
         if (cible && u.bundle_id !== cible) continue;
-        // Sans app choisie, on regroupe par application avant le menu : « Fichier »
-        // de six apps différentes dans un même bloc ne veut rien dire.
+        // With no app chosen, group by application before menu: "File" from six
+        // different apps inside one block means nothing.
         const m = cible ? (u.menu || "—") : `${u.proprietaire} · ${u.menu || "—"}`;
         if (!parMenu.has(m)) parMenu.set(m, []);
         parMenu.get(m).push(marque);
       } else if (parPortee[u.portee]) parPortee[u.portee].push(marque);
     }
   }
-  // Les menus s'affichent dans l'ordre de la barre de menu, pas par ordre alphabétique.
-  // Le menu Apple n'appartient pas à l'app : il est identique partout. Il passe donc
-  // après ses menus propres, juste avant les raccourcis venus d'ailleurs.
+  // Menus are shown in menu-bar order, not alphabetically. The Apple menu does not
+  // belong to the app: it is identical everywhere. It therefore comes after the app's own
+  // menus, just before the shortcuts coming from elsewhere.
   const estApple = (x) => /(^|· )Apple$/.test(x[0]);
   const menus = [...parMenu.entries()].sort((a, b) => {
     const app = (x) => x[1][0].proprietaire;
@@ -1274,11 +1272,11 @@ function vueParMenu(app) {
       ${sousTitre ? `<span class="sous">${esc(sousTitre)}</span>` : ""}
       ${u.detail ? `<span class="sous">${esc(u.detail)}</span>` : ""}</span></div>`;
 
-  // Le menu Apple porte son logo plutôt que son nom : c'est ainsi qu'il s'affiche
-  // dans la barre de menu, où le mot « Apple » ne figure nulle part.
+  // The Apple menu carries its logo rather than its name: that is how it appears in the
+  // menu bar, where the word "Apple" is nowhere to be seen.
   const nommer = (t) => t.replace(/(^|· )Apple$/, "$1\uF8FF")
-                         // Chaque app a un menu à son nom : en mode toutes apps, le
-                         // préfixe le répétait à l'identique.
+                         // Every app has a menu named after itself: in all-apps mode the
+                         // prefix repeated it verbatim.
                          .replace(/^(.+) · \1$/, "$1");
   const bloc = (titre, pourquoi, lignes, vert) => !lignes.length ? "" :
     `<section class="groupe-portee"><h3${vert ? ' class="titre-app"' : ""}>${
@@ -1299,8 +1297,8 @@ function vueParMenu(app) {
         parPortee.inconnu.map(u => rangee(u, u.proprietaire)));
 }
 
-/* Une liste déroulante de 200 apps ne se parcourt pas : on la restreint en tapant.
-   La comparaison ignore accents et casse, pour que « appstore » trouve « AppStore ». */
+/* A dropdown of 200 apps cannot be browsed: it is narrowed by typing. The comparison
+   ignores accents and case, so that "appstore" finds "AppStore". */
 const sansAccent = (t) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const LISIBLES = D.apps.filter(a => a.statut === "ok")
   .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
@@ -1351,12 +1349,12 @@ function brancherChoixApp() {
   const champ = document.getElementById("filtre-app");
   const liste = document.getElementById("liste-app");
   champ.addEventListener("input", () => { saisieApp = champ.value; surligne = -1; ouvrirListe(true); });
-  // Au clic, le champ se vide : le nom qui s'y trouve est un affichage, pas une
-  // recherche, et le conserver réduirait la liste à cette seule app.
+  // On click the field empties: the name sitting in it is a display, not a query, and
+  // keeping it would narrow the list down to that single app.
   champ.addEventListener("focus", () => {
     saisieApp = ""; champ.value = ""; surligne = -1; ouvrirListe(true);
   });
-  // Le clic sur un élément doit passer avant la fermeture déclenchée par le blur.
+  // Clicking an item must land before the close triggered by the blur.
   champ.addEventListener("blur", () => setTimeout(() => {
     ouvrirListe(false);
     const app = LISIBLES.find(a => a.bundleID === appChoisie);
@@ -1393,7 +1391,7 @@ function rendreApp() {
       contenu.trim() ? contenu : `<p class="vide">${secours}</p>`;
   };
   if (!app) {
-    // Filtre désactivé : on montre tout, en précisant ce que « tout » veut dire ici.
+    // Filter off: show everything, while saying what "everything" means here.
     poser("vue-menu", vueParMenu(null), T("rien_app")(""));
     poser("vue-effet",
       `<p class="pourquoi" style="margin:0 0 18px">${T("sans_app")}</p>`
@@ -1424,12 +1422,11 @@ function choisirOnglet(vue) {
     x.setAttribute("aria-selected", String(x.dataset.vue === vue)));
   document.querySelectorAll("main > section").forEach(s =>
     s.hidden = s.id !== "onglet-" + vue);
-  // Le filtre par touche ne s'applique qu'aux vues de raccourcis. Sur l'écran du
-  // prochain scan il ne pilote rien : le laisser laisserait croire le contraire.
-  // Deux vues ne se filtrent ni par touche ni par application : le prochain scan, qui
-  // a sa propre zone de recherche, et les combinaisons libres, qui n'appartiennent par
-  // définition à aucune application. Y laisser les filtres laisserait croire qu'ils
-  // pilotent quelque chose.
+  // The key filter applies only to the shortcut views. On the next-scan screen it drives
+  // nothing: leaving it there would suggest otherwise.
+  // Two views are filtered neither by key nor by application: the next scan, which has its
+  // own search box, and the free combinations, which by definition belong to no
+  // application. Leaving the filters there would suggest they drive something.
   const sansFiltre = vue === "scan" || vue === "libres";
   document.querySelector(".filtre").hidden = sansFiltre;
   document.querySelector(".bloc-app").hidden = sansFiltre;
@@ -1439,11 +1436,10 @@ function choisirOnglet(vue) {
 document.querySelectorAll(".onglets button").forEach(b =>
   b.addEventListener("click", () => choisirOnglet(b.dataset.vue)));
 
-/* Prochain scan. L'écran ne lance rien lui-même : il produit la commande exacte à
-   exécuter, réglages compris. Le branchement direct viendra avec la question des
-   autorisations. Les choix vivent en mémoire jusqu'à ce que la commande les écrive
-   dans out/reglages-scan.json — ce fichier reste la seule vérité, et la page le relit
-   à chaque production. */
+/* Next scan. The screen runs nothing itself: it produces the exact command to execute,
+   settings included. Choices live in memory until the command writes them into
+   out/scan-settings.json — that file remains the single truth, and the page reads it back
+   on every generation. */
 const CATALOGUE = D.catalogue || [];
 const REGLAGES = D.reglages || {};
 const SOURCES_AUTO = new Set(D.sources || []);
@@ -1470,11 +1466,11 @@ function estExclue(l) {
   return l.excluCalcule;
 }
 
-/* Le premier nombre du numéro de version : « 3.7.8 » donne « 3 ». Une version
-   illisible ou absente compte comme un écart : mieux vaut relire pour rien que
-   présenter des raccourcis périmés comme à jour.
-   (Exemple volontairement à trois nombres : à quatre, il ressemblerait à une
-   adresse IP et ferait sonner verifier-publication.sh à tort.) */
+/* The first number of the version string: "3.7.8" gives "3". An unreadable or missing
+   version counts as a difference: better to re-read for nothing than to present stale
+   shortcuts as current.
+   (Deliberately a three-number example: with four it would look like an IP address and
+   would set off check-publication.sh for nothing.) */
 function majeur(v) { const m = String(v == null ? "" : v).match(/\d+/); return m ? m[0] : null; }
 function jamaisLue(l) { return !l.scanneLe; }
 function ecartMajeur(l) {
@@ -1493,15 +1489,15 @@ selectionConseillee();
 
 let vueScan = "tout";
 
-/* Le script actuellement à l'écran, rejoué dès que le tableau change : sans cela la
-   commande affichée décrirait une sélection périmée, et on la copierait telle quelle. */
+/* The script currently on screen, replayed as soon as the table changes: without this the
+   displayed command would describe a stale selection, and it would be copied as is. */
 const SCRIPTS = {};
 let scriptAffiche = null;
 function rejouerScript() { if (scriptAffiche) SCRIPTS[scriptAffiche](); }
 
-/* Les vues rapides répondent chacune à une question qu'on se pose vraiment devant
-   deux cents lignes : qu'est-ce que je vais scanner, qu'est-ce qui n'a jamais été lu,
-   qui accroche la touche avant les autres, qu'est-ce qui a échoué. */
+/* Each quick view answers a question one genuinely asks in front of two hundred rows:
+   what am I about to scan, what has never been read, who catches the key before the
+   others, what failed. */
 const VUES = {
   tout: () => true,
   cochees: (l) => aScanner.has(l.id),
@@ -1529,10 +1525,10 @@ function rendreLibres() {
       `<p class="libres-note">${T("libres_vide")}</p>`;
     return;
   }
-  // Une seule grille, les groupes séparés par un trait plutôt que par trois tableaux :
-  // la même touche se lit alors sur une seule ligne, du plus court au plus long.
+  // One single grid, groups separated by a rule rather than by three tables: the same key
+  // then reads along one row, from shortest to longest.
   let rang = 0;
-  const bornes = new Set();          // dernière colonne de chaque groupe
+  const bornes = new Set();          // last column of each group
   const groupes = L.groupes.map(g => {
     rang += g.n;
     bornes.add(rang - 1);
@@ -1556,8 +1552,8 @@ function rendreLibres() {
      <p class="libres-note">${esc(T("libres_cinq")(L.cinq))}</p>`;
 }
 
-/* Un clic sur une combinaison libre la met dans le presse-papiers : elle est faite
-   pour être reportée dans les réglages d'un autre logiciel. */
+/* Clicking a free combination puts it on the clipboard: it exists to be carried over
+   into another program's settings. */
 document.addEventListener("click", async (e) => {
   const bouton = e.target.closest("button.libre");
   if (!bouton) return;
@@ -1570,7 +1566,7 @@ document.addEventListener("click", async (e) => {
 
 function rendreScan() {
   const liste = scanFiltre();
-  // Les trois cases d'abord : ce qu'on décide, avant ce qu'on constate.
+  // The three checkboxes first: what one decides, before what one observes.
   const entetes = ["col_inclure", "col_exclure", "col_source", "col_app",
                    "col_version", "col_version_lue", "col_statut", "col_date",
                    "col_lus"];
@@ -1686,8 +1682,8 @@ function brancherScan() {
     rendreScan();
   });
 
-  // Cocher en masse ne porte que sur ce que le filtre laisse voir : sans cela,
-  // « tout décocher » viderait aussi les apps qu'on ne regarde pas.
+  // Bulk ticking applies only to what the filter lets through: without that, "untick all"
+  // would also clear the apps one is not looking at.
   const masse = (etat) => {
     scanFiltre().forEach(l => {
       if (etat && estExclue(l)) return;
@@ -1700,8 +1696,8 @@ function brancherScan() {
   document.getElementById("scan-defaut").addEventListener("click", () => {
     selectionConseillee(); rendreScan();
   });
-  // Ajoute à la sélection en cours plutôt que de la remplacer : on coche par
-  // couches successives, sans perdre ce qu'on venait de choisir à la main.
+  // Adds to the current selection rather than replacing it: one ticks in successive
+  // layers, without losing what was just picked by hand.
   document.getElementById("scan-majeures").addEventListener("click", () => {
     LIGNES.forEach(l => { if (!estExclue(l) && ecartMajeur(l)) aScanner.add(l.id); });
     rendreScan();
@@ -1714,8 +1710,8 @@ function brancherScan() {
     if (c.dataset.role === "inclure") {
       c.checked ? aScanner.add(id) : aScanner.delete(id);
     } else if (c.dataset.role === "exclure") {
-      // Deux listes plutôt qu'une : le programme écarte déjà les jeux et les
-      // désinstalleurs, il faut donc pouvoir dire « malgré tout, prends-la ».
+      // Two lists rather than one: the program already skips games and uninstallers, so
+      // there has to be a way to say "take it anyway".
       exclues.delete(id); incluses.delete(id);
       (c.checked ? exclues : incluses).add(id);
       if (c.checked) aScanner.delete(id);
@@ -1725,15 +1721,15 @@ function brancherScan() {
     rendreScan();
   });
 
-  // Trois gestes, trois commandes. Recenser ne coûte rien et n'ouvre aucune app ;
-  // relire les outils en ouvre une poignée ; la passe complète les ouvre toutes.
-  // Les confondre obligerait à subir la plus chère pour obtenir la moins chère.
+  // Three actions, three commands. Listing costs nothing and opens no app; re-reading the
+  // tools opens a handful; the full pass opens them all. Conflating them would force you
+  // to endure the most expensive one to get the cheapest.
 
-  /* Cite une valeur pour le shell. Entre apostrophes simples, rien n'est interprété —
-     sauf l'apostrophe elle-même, qu'il faut donc sortir de la chaîne puis réintroduire
-     échappée. Sans cela, un identifiant de bundle contenant une espace découpe la
-     commande, et un identifiant contenant une apostrophe la referme : ce qui suit
-     serait exécuté comme une commande à part entière. */
+  /* Shell-quotes a value. Inside single quotes nothing is interpreted — except the single
+     quote itself, which must therefore be pulled out of the string and put back escaped.
+     Without this, a bundle identifier containing a space splits the command, and one
+     containing an apostrophe closes it: whatever follows would be executed as a command in
+     its own right. */
   const shq = (v) => "'" + String(v).replace(/'/g, "'\\''") + "'";
 
   function afficher(commentaire, commande) {
@@ -1748,30 +1744,30 @@ function brancherScan() {
       return;
     }
     bloc.textContent = `${T("cmd_entete")}\n${commentaire}\n${commande}`;
-    // Le commentaire dit ce qu'on copie, mais ne part pas dans le presse-papiers :
-    // collé dans zsh, un « # » n'y est pas toujours traité comme un commentaire.
+    // The comment says what is being copied, but does not go to the clipboard: pasted
+    // into zsh, a "#" is not always treated as a comment there.
     bloc.dataset.commande = commande;
     bouton.hidden = false;
   }
 
-  // La commande passe par run.sh plutôt que d'appeler le moissonneur : lui seul sait
-  // le lancer par LaunchServices, la seule façon pour le bundle d'être son propre
-  // processus responsable et de se voir appliquer sa propre autorisation. Exécuté
-  // depuis le shell, c'est le terminal que macOS interrogerait. Les identifiants
-  // restent énumérés : ce qu'on colle décrit toujours exactement ce qui sera lu.
+  // The command goes through run.sh rather than calling the harvester: only run.sh knows
+  // how to launch it through LaunchServices, the one way for the bundle to be its own
+  // responsible process and have its own grant applied. Run from the shell, macOS would
+  // query the terminal instead. The identifiers stay spelled out: what you paste still
+  // describes exactly what will be read.
   function moissonner(ids) {
     const reglages = JSON.stringify({
       exclues: [...exclues], incluses: [...incluses], sources: [...sourcesChoisies],
     });
     return `cd ${shq(RACINE)} && \\
-  printf '%s' ${shq(reglages)} > out/reglages-scan.json && \\
+  printf '%s' ${shq(reglages)} > out/scan-settings.json && \\
   ./run.sh --apps ${shq(ids.join(","))}`;
   }
 
-  // Une commande affichée décrit une sélection ; si la sélection change et que la
-  // commande ne bouge pas, on copie une instruction qui ne correspond plus à ce
-  // qu'on voit. Chaque script est donc une fonction, et celui qui est à l'écran
-  // est rejoué à chaque modification du tableau.
+  // A displayed command describes a selection; if the selection changes and the command
+  // does not, you copy an instruction that no longer matches what you see. Each script is
+  // therefore a function, and the one on screen is replayed on every change to the
+  // table.
   SCRIPTS.liste = () => afficher(T("cmd_liste"), `cd ${shq(RACINE)} && ./run.sh --sources`);
 
   SCRIPTS.sources = () => {
@@ -1805,8 +1801,8 @@ rendreTout();
 """
 
 def _ordre_touche(touche):
-    """Les touches de fonction se rangent par leur numéro, pas par ordre alphabétique :
-    sinon F10 se glisse entre F1 et F2."""
+    """Function keys sort by their number, not alphabetically: otherwise F10 slips in
+    between F1 and F2."""
     if touche.startswith("F") and touche[1:].isdigit():
         return (0, int(touche[1:]), "")
     return (1, 0, touche)
@@ -1817,15 +1813,12 @@ def build(index_path):
     conflits = sum(1 for c in data["combinaisons"] if c["conflit"])
     machine = subprocess.run(["hostname", "-s"], capture_output=True, text=True).stdout.strip()
 
-    # "</" doit être neutralisé : la séquence fermerait la balise script depuis
-    # l'intérieur d'une chaîne JSON si un nom de commande la contenait.
+    # "</" must be neutralised: the sequence would close the script tag from inside a
+    # JSON string if a command name happened to contain it.
     charge = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
-    # Un bouton ne se justifie que pour une touche qu'on ne peut pas simplement écrire.
-    # Tout ce que la disposition clavier produit sans Maj — lettres, chiffres, mais
-    # aussi « $ », « ' », « ; » en AZERTY — se tape sans risque dans le champ libre.
-    # Un bouton ne se justifie que pour une touche qui n'écrit aucun caractère.
-    # Tout ce que la disposition produit, avec ou sans Maj, se tape dans le champ :
-    # en AZERTY cela couvre « $ », « ; », mais aussi « . » et « £ », qui demandent Maj.
+    # A button is only warranted for a key that writes no character at all. Everything the
+    # layout produces, with or without Shift, can be typed into the free field: on AZERTY
+    # that covers "$" and ";", but also "." and "£", which need Shift.
     keymap = json.loads((ROOT / "out" / "keymap.json").read_text(encoding="utf-8"))
     touches = keymap.get("touches", keymap)
     disposition = keymap.get("disposition", "")
@@ -1833,24 +1826,24 @@ def build(index_path):
 
     vues = {c["combo"].replace("fn", "").translate(str.maketrans("", "", "⌃⌥⇧⌘"))
             for c in data["combinaisons"]}
-    # Le pavé numérique est proposé au complet, comme les touches de fonction : il
-    # forme un bloc physique, en montrer la moitié laisserait croire que le reste
-    # n'existe pas. Les libellés viennent de la disposition active.
+    # The numeric keypad is offered in full, like the function keys: it forms a physical
+    # block, and showing half of it would suggest the rest does not exist. The labels come
+    # from the active layout.
     clavier = Keyboard()
     pave = [t for t in (clavier.label(c, 0) for c in keypad_codes()) if t]
-    # Chiffres d'abord, opérateurs ensuite : l'ordre des codes de touches n'a aucun
-    # rapport avec la façon dont on lit un pavé.
+    # Digits first, operators next: key-code order bears no relation to the way one reads
+    # a keypad.
     pave.sort(key=lambda t: (not t.split()[-1].isdigit(), t.split()[-1]))
 
     autres = sorted({t for t in vues if t.strip() and t.upper() not in ecrivables
                      and not (t.startswith("F") and t[1:].isdigit())
                      and t not in pave},
                     key=_ordre_touche)
-    # Les touches de fonction sont proposées au complet, y compris celles qu'aucun
-    # raccourci n'utilise : savoir qu'une touche est libre fait partie de la réponse.
+    # Function keys are offered in full, including those no shortcut uses: knowing a key is
+    # free is part of the answer.
     fonctions = [f"F{n}" for n in range(1, 21)]
-    # Les touches de ponctuation doivent être échappées : sur AZERTY, le guillemet
-    # est une touche, et non échappé il refermerait l'attribut HTML.
+    # Punctuation keys must be escaped: on AZERTY the quotation mark is a key, and
+    # unescaped it would close the HTML attribute.
     def capsules(touches):
         return "".join(
             '<button type="button" aria-pressed="false" data-touche="{0}">{0}</button>'.format(
@@ -1876,9 +1869,9 @@ def build(index_path):
     nombres_html = '<option value="" data-t="toutes"></option>' + "".join(
         f'<option value="{n}" data-tn="{n}"></option>' for n in tailles)
 
-    # Les petits jetons sont substitués AVANT la charge de données : dans l'autre
-    # ordre, un nom d'application contenant « MODS_BITS » verrait le jeton remplacé
-    # à l'intérieur du JSON, et la page entière deviendrait du JavaScript invalide.
+    # The small tokens are substituted BEFORE the data payload: the other way round, an
+    # application name containing "MODS_BITS" would have the token replaced inside the
+    # JSON, and the whole page would become invalid JavaScript.
     script = (JS.replace("ORDRE_COUCHES_JS", json.dumps(ORDRE_COUCHES))
                 .replace("MODS_BITS", json.dumps({"⇧": 1, "⌃": 2, "⌥": 4, "⌘": 8, "fn": 16},
                                                  ensure_ascii=False))
@@ -1933,8 +1926,8 @@ def build(index_path):
   </div>
   </div>
 </nav>
-<!-- Un seul filtre pour les trois vues : dupliquer les contrôles ferait diverger
-     leurs états, et on perdrait le filtre en changeant d'onglet. -->
+<!-- One filter for the three views: duplicating the controls would let their states
+     drift apart, and the filter would be lost when switching tabs. -->
 <div class="filtre">
   <div class="colonne-touches">
     <div class="rangee-filtre">
@@ -2041,6 +2034,6 @@ def build(index_path):
 
 if __name__ == "__main__":
     index = sys.argv[1] if len(sys.argv) > 1 else ROOT / "out" / "index.json"
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "out" / "raccourcis.html"
+    out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "out" / "shortcuts.html"
     out.write_text(build(index), encoding="utf-8")
     print(f"✅ {out}  ({out.stat().st_size // 1024} Ko)")

@@ -1,13 +1,13 @@
-"""Fiches dont la version lue ne correspond plus à la version installée.
+"""Records whose recorded version no longer matches the installed one.
 
-Sert à relire ce qui a bougé **sans ouvrir la moindre application** : la liste
-produite ici est passée au moissonneur avec --only-running, qui écarte tout ce qui
-n'est pas déjà lancé. Une app fermée garde donc sa fiche telle quelle jusqu'à ce
-qu'elle soit cochée explicitement dans la page.
+Used to re-read what has moved **without opening a single application**: the list
+produced here is passed to the harvester with --only-running, which skips anything not
+already running. A closed app therefore keeps its record as is until it is explicitly
+ticked in the page.
 
-Le test porte sur le numéro complet, pas seulement sur le premier nombre : ici on ne
-décide pas d'ouvrir une app, on relit ce qui est déjà sous la main, donc le moindre
-écart vaut la peine.
+The test looks at the full version string, not just its first number: this is not a
+decision to open an app, but a re-read of what is already at hand, so the slightest
+difference is worth it.
 """
 
 import json

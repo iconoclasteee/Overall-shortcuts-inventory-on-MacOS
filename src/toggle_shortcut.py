@@ -1,12 +1,11 @@
-"""Activer ou désactiver un raccourci système macOS, y compris ceux qu'aucun panneau
-de réglages n'expose.
+"""Enable or disable a macOS system shortcut, including those no settings panel exposes.
 
-Les raccourcis système vivent tous dans le domaine `com.apple.symbolichotkeys`, sous
-un identifiant numérique. Réglages Système n'en montre qu'une partie : ceux qu'Apple
-décrit dans ses tables de référence. Les autres ne sont modifiables que là.
+Every system shortcut lives in the `com.apple.symbolichotkeys` domain, under a numeric
+identifier. System Settings shows only some of them: the ones Apple describes in its
+reference tables. The rest can be changed only here.
 
-Rien n'est écrit sans `--oui`, et une sauvegarde horodatée du domaine complet est
-faite avant toute modification.
+Nothing is written without `--oui`, and a timestamped backup of the whole domain is taken
+before any change.
 """
 
 import argparse
@@ -31,14 +30,14 @@ def lire_domaine():
 
 
 def defauts():
-    """Valeurs d'usine brutes, pour pouvoir écrire une entrée qui n'existe pas encore."""
+    """Raw factory values, so an entry that does not exist yet can be written."""
     sys.path.insert(0, str(Path(__file__).parent))
     from system_shortcuts import raw_reference
     return raw_reference()
 
 
 def inventaire():
-    """{id: (libellé, combinaison)} d'après ce que le projet a déjà extrait."""
+    """{id: (label, combination)} from what the project has already extracted."""
     chemin = ROOT / "out" / "system-shortcuts.json"
     if not chemin.exists():
         return {}
@@ -47,7 +46,7 @@ def inventaire():
 
 
 def sauvegarder(plist):
-    dossier = ROOT / "out" / "sauvegardes"
+    dossier = ROOT / "out" / "backups"
     dossier.mkdir(parents=True, exist_ok=True)
     chemin = dossier / f"symbolichotkeys-{time.strftime('%Y%m%d-%H%M%S')}.plist"
     chemin.write_bytes(plistlib.dumps(plist))
@@ -75,8 +74,8 @@ def basculer(identifiant, activer, confirme):
     table = plist.get("AppleSymbolicHotKeys", {})
     cle = str(identifiant)
     if cle not in table:
-        # Absent des préférences = encore au réglage d'usine. macOS n'écrit l'entrée
-        # qu'au premier changement : on la crée avec la combinaison publiée par Apple.
+        # Missing from the preferences = still at factory setting. macOS writes the entry
+        # only on the first change: we create it with the combination Apple publishes.
         brut = defauts().get(identifiant)
         if brut is None:
             raise SystemExit(
@@ -107,9 +106,9 @@ def basculer(identifiant, activer, confirme):
 
     chemin = sauvegarder(plist)
     table[cle]["enabled"] = activer
-    # `defaults write` avec un plist en argument est fragile : on réimporte le domaine
-    # complet depuis un fichier, ce qui préserve les types exactement.
-    temporaire = ROOT / "out" / "sauvegardes" / "domaine-en-cours.plist"
+    # `defaults write` with a plist as an argument is brittle: the whole domain is
+    # re-imported from a file instead, which preserves the types exactly.
+    temporaire = ROOT / "out" / "backups" / "domaine-en-cours.plist"
     temporaire.write_bytes(plistlib.dumps(plist))
     subprocess.run(["defaults", "import", DOMAINE, str(temporaire)], check=True)
     temporaire.unlink(missing_ok=True)

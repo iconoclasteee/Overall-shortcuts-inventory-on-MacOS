@@ -1,13 +1,11 @@
-"""Raccourcis globaux enregistrés par les outils tiers.
+"""Global hotkeys registered by third-party tools.
 
-Ils comptent parce qu'ils **gagnent contre les menus d'application** : un menu ne
-répond que lorsque son app est au premier plan, un raccourci global répond partout.
-Les ignorer ferait rater à la détection de conflits précisément ceux qui se
-manifestent en usage réel.
+They matter because they **win against application menus**: a menu answers only while its
+app is frontmost, a global hotkey answers everywhere. Ignoring them would make conflict
+detection miss precisely the ones that show up in real use.
 
-Chaque outil est lu dans sa propre configuration, sans jamais l'écrire. Seules les
-clés décrivant un raccourci sont extraites : rien d'autre du fichier n'est parcouru
-ni conservé.
+Each tool is read from its own configuration, which is never written to. Only the keys
+describing a shortcut are extracted: nothing else in the file is walked or kept.
 """
 
 import json
@@ -30,12 +28,12 @@ def _combo(keyboard, code, mods):
 
 
 def scan_alfred(keyboard):
-    """Alfred garde ses raccourcis dans le bundle Alfred.alfredpreferences.
+    """Alfred keeps its shortcuts inside the Alfred.alfredpreferences bundle.
 
-    Couche « global » : Alfred passe par RegisterEventHotKey (Carbon).
+    Layer "global": Alfred goes through RegisterEventHotKey (Carbon).
     """
     base = HOME / "Library/Application Support/Alfred/Alfred.alfredpreferences"
-    # prefs.json indique un dossier synchronisé (Dropbox, iCloud) quand il y en a un.
+    # prefs.json points at a synced folder (Dropbox, iCloud) when there is one.
     prefs = HOME / "Library/Application Support/Alfred/prefs.json"
     if prefs.exists():
         try:
@@ -53,8 +51,8 @@ def scan_alfred(keyboard):
 
     def emit(action, spec):
         code, mask = spec.get("key"), spec.get("mod")
-        # Un raccourci sur touche seule (F19 est courant chez Alfred) a un masque nul :
-        # seul le code de touche absent signifie « non attribué ».
+        # A single-key shortcut (F19 is common with Alfred) has a null mask: only a
+        # missing key code means "unassigned".
         if code is None:
             return
         mods = from_nsevent(mask)
@@ -73,8 +71,8 @@ def scan_alfred(keyboard):
             if isinstance(value, dict) and "key" in value and "mod" in value:
                 emit(f"Alfred — {plist.parent.name} ({key})", value)
 
-    # Déclencheurs de raccourci des workflows. Un workflow désactivé n'enregistre rien,
-    # et un déclencheur sans « hotstring » n'a jamais reçu de combinaison.
+    # Workflow hotkey triggers. A disabled workflow registers nothing, and a trigger with
+    # no "hotstring" was never given a combination.
     for info in (base / "workflows").glob("*/info.plist"):
         try:
             data = plistlib.loads(info.read_bytes())
@@ -95,10 +93,10 @@ def scan_alfred(keyboard):
 
 
 def scan_keyboard_maestro(keyboard):
-    """Keyboard Maestro : bibliothèque de macros, déclencheurs de type HotKey.
+    """Keyboard Maestro: macro library, triggers of type HotKey.
 
-    Couche « capture » : son moteur intercepte via un CGEventTap, donc **avant** les
-    raccourcis système. Un groupe ou une macro désactivé n'enregistre rien.
+    Layer "capture": its engine intercepts through a CGEventTap, therefore **before**
+    system shortcuts. A disabled group or macro registers nothing.
     """
     path = HOME / "Library/Application Support/Keyboard Maestro/Keyboard Maestro Macros.plist"
     if not path.exists():
@@ -136,18 +134,19 @@ def scan_keyboard_maestro(keyboard):
     return found
 
 
-# --- Balayage générique des préférences ------------------------------------------
+# --- Generic preferences sweep ------------------------------------------
 
-# Trois conventions couvrent la plupart des apps qui enregistrent un raccourci global :
-#   · un dictionnaire {keyCode, modifierFlags} — masque NSEvent (Rectangle Pro)
-#   · une chaîne JSON portant carbonKeyCode/carbonModifiers — c'est la bibliothèque
-#     KeyboardShortcuts, très répandue (ChatGPT, CleanShot X). Repérée à son contenu
-#     et non au nom de la clé : chaque app choisit son préfixe, et une liste de
-#     préfixes codée en dur rate silencieusement la suivante.
-#   · une archive NSKeyedArchiver, que produit ShortcutRecorder (PopClip)
-# Les lire génériquement plutôt qu'app par app fait apparaître les nouvelles sources
-# sans qu'il faille les prévoir.
-# Sert seulement à alléger le libellé affiché, jamais à décider si une clé compte.
+# Three conventions cover most apps that register a global hotkey:
+#   · a {keyCode, modifierFlags} dictionary — NSEvent mask (Rectangle Pro)
+#   · a JSON string carrying carbonKeyCode/carbonModifiers — the KeyboardShortcuts
+#     library, very widespread (ChatGPT, CleanShot X). Spotted by its content and not by
+#     the key's name: every app picks its own prefix, and a hard-coded list of prefixes
+#     silently misses the next one.
+#   · an NSKeyedArchiver archive, which ShortcutRecorder produces (PopClip)
+# Reading them generically rather than app by app surfaces new sources without having to
+# anticipate them.
+# The pattern below only lightens the displayed label; it never decides whether a key
+# counts.
 PREFIXE_LIBELLE = re.compile(r"^[A-Za-z]*Shortcuts?_|^LAVA")
 
 
@@ -163,13 +162,12 @@ def _catalogue():
 
 
 def _depuis_archive(donnees):
-    """Convention 3 : raccourcis sérialisés dans une archive NSKeyedArchiver.
+    """Convention 3: shortcuts serialised in an NSKeyedArchiver archive.
 
-    C'est ce que produit ShortcutRecorder, la bibliothèque de saisie de raccourcis
-    la plus répandue (PopClip et d'autres). L'objet porte `keyCode` et
-    `modifierFlags` comme la convention 1, mais chaque valeur est remplacée par un
-    UID renvoyant vers la table `$objects` : sans déréférencement, on ne lit que des
-    numéros d'emplacement. Le masque reste celui de NSEvent.
+    This is what ShortcutRecorder produces, the most widespread shortcut-capture library
+    (PopClip and others). The object carries `keyCode` and `modifierFlags` as convention 1
+    does, but each value is replaced by a UID pointing into the `$objects` table: without
+    dereferencing, all one reads are slot numbers. The mask is still NSEvent's.
     """
     try:
         archive = plistlib.loads(donnees)
@@ -185,8 +183,8 @@ def _depuis_archive(donnees):
             return objets[indice] if 0 <= indice < len(objets) else None
         return reference
 
-    # Une archive peut sérialiser plusieurs raccourcis : s'arrêter au premier ferait
-    # disparaître les autres sans que rien ne le signale.
+    # One archive can serialise several shortcuts: stopping at the first would make the
+    # others disappear with nothing to flag it.
     trouves = []
     for objet in objets:
         if not isinstance(objet, dict) or "keyCode" not in objet:
@@ -199,11 +197,11 @@ def _depuis_archive(donnees):
 
 
 def scan_preferences(keyboard, ignorer=()):
-    """Raccourcis globaux déclarés dans les préférences, toutes apps confondues."""
-    # Un fichier de préférences survit à la désinstallation de son app. Sans ce
-    # recoupement avec les apps réellement installées, on attribuerait des raccourcis
-    # actifs à un logiciel absent — vu ici avec com.openai.chat, dont les prefs
-    # traînent alors que l'app installée est com.openai.codex.
+    """Global hotkeys declared in the preferences, across every app."""
+    # A preferences file outlives the uninstall of its app. Without this cross-check
+    # against the apps actually installed, active shortcuts would be attributed to absent
+    # software — seen with one vendor whose old preferences linger while the installed app
+    # carries a different bundle identifier.
     catalogue = _catalogue()
     orphelins = set()
     found = []
@@ -233,26 +231,26 @@ def scan_preferences(keyboard, ignorer=()):
             continue
 
         for cle, valeur in prefs.items():
-            # Convention 1 : dictionnaire à masque NSEvent.
+            # Convention 1: dictionary with an NSEvent mask.
             if isinstance(valeur, dict) and "keyCode" in valeur:
                 masque = valeur.get("modifierFlags")
                 if valeur.get("keyCode") is not None and masque is not None:
                     ajouter(bundle_id, cle, valeur["keyCode"], from_nsevent(masque))
                 continue
-            # Convention 3 : archive NSKeyedArchiver. Testée avant la convention 2,
-            # qui accepte elle aussi des octets : on ne retient la clé ici que si
-            # l'archive livre vraiment un raccourci, sinon elle poursuit sa route.
+            # Convention 3: NSKeyedArchiver archive. Tested before convention 2, which
+            # also accepts bytes: the key is claimed here only if the archive really
+            # yields a shortcut, otherwise it carries on.
             if isinstance(valeur, bytes):
                 archive = _depuis_archive(valeur)
                 if archive:
                     for code, masque in archive:
                         ajouter(bundle_id, cle, code, from_nsevent(masque))
                     continue
-            # Convention 2 : JSON à masques Carbon, reconnu à son contenu.
-            # Une clé suffixée « @contexte » décrit un raccourci valable seulement dans
-            # ce contexte — le panneau ouvert d'un permutateur de fenêtres, par exemple.
-            # Le compter comme global le ferait disputer ⌘A ou ⌘H à toutes les apps,
-            # alors qu'il ne répond que pendant l'affichage du panneau.
+            # Convention 2: JSON with Carbon masks, recognised by its content.
+            # A key suffixed "@context" describes a shortcut valid only in that context —
+            # the open panel of a window switcher, for instance. Counting it as global
+            # would have it dispute ⌘A or ⌘H with every app, when it only answers while
+            # the panel is on screen.
             if "@" in cle:
                 continue
             if not isinstance(valeur, (str, bytes)):
@@ -280,8 +278,8 @@ def scan_preferences(keyboard, ignorer=()):
 
 def scan_all(keyboard=None):
     keyboard = keyboard or Keyboard()
-    # Alfred et Keyboard Maestro ont des formats qui leur sont propres ; tout le reste
-    # passe par le balayage générique, y compris les apps qu'on n'a pas prévues.
+    # Alfred and Keyboard Maestro have formats of their own; everything else goes through
+    # the generic sweep, including apps nobody anticipated.
     return (scan_alfred(keyboard) + scan_keyboard_maestro(keyboard)
             + scan_preferences(keyboard,
                                ignorer=("com.runningwithcrayons.Alfred",

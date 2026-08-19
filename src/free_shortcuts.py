@@ -1,15 +1,15 @@
-"""Combinaisons qu'aucun raccourci ne revendique.
+"""Combinations no shortcut claims.
 
-L'espace des combinaisons est immense ; en énumérer la totalité ne rendrait pas
-service. Trois bornes le ramènent à ce qui est réellement attribuable :
+The space of combinations is vast; enumerating all of it would help nobody. Three limits
+reduce it to what can actually be assigned:
 
-* **Quatre modificateurs** — ⌃ ⌥ ⇧ ⌘. La touche Globe est écartée : macOS s'en
-  réserve l'essentiel et presque aucun outil ne permet de l'attribuer.
-* **Des touches physiques**, désignées par ce qu'elles produisent sans Maj. Sur un
-  clavier français, la rangée des chiffres donne donc « & é " ' ( » : c'est la
-  frappe réelle, et l'afficher autrement décrirait un raccourci qui n'existe pas.
-* **Lettres, rangée du haut, touches de fonction et flèches** — ce qu'un logiciel
-  accepte couramment comme touche de raccourci.
+* **Four modifiers** — ⌃ ⌥ ⇧ ⌘. The Globe key is left out: macOS reserves most of it, and
+  almost no software lets you assign it.
+* **Physical keys**, named by what they produce without Shift. On a French keyboard the
+  number row therefore reads "& é \" ' (": that is the actual keystroke, and showing it
+  any other way would describe a shortcut that does not exist.
+* **Letters, top row, function keys and arrows** — what software commonly accepts as a
+  shortcut key.
 """
 
 import sys
@@ -20,19 +20,18 @@ from model import ALT, CMD, CTRL, SHIFT, render_modifiers
 
 MODIFICATEURS = [("⌃", CTRL), ("⌥", ALT), ("⇧", SHIFT), ("⌘", CMD)]
 
-# Rangée du haut d'un clavier ANSI/ISO, dans l'ordre des codes de touches d'Apple.
+# Top row of an ANSI/ISO keyboard, in Apple's key-code order.
 RANGEE_HAUT = [18, 19, 20, 21, 23, 22, 26, 28, 25, 29]
 LETTRES = "abcdefghijklmnopqrstuvwxyz"
 
-# Touches de navigation et d'édition, dans l'ordre où on aime les lire.
+# Navigation and editing keys, in the order one likes to read them.
 NAVIGATION = ["Espace", "⇥", "⏎", "⌫", "⌦", "⎋", "←", "→", "↑", "↓",
               "⇞", "⇟", "↖", "↘", "Aide"]
 
-# Une touche qui ne sert qu'à modifier une autre frappe ne peut pas être la touche
-# d'un raccourci ; les touches propres aux claviers japonais et les commandes de
-# volume ne s'attribuent pas davantage.
-# ⇪ (Verrouillage majuscule) est écarté avec les modificateurs : macOS ne le propose
-# comme touche de raccourci nulle part, et presque aucun logiciel ne l'accepte.
+# A key whose only job is to modify another keystroke cannot be a shortcut's key; keys
+# specific to Japanese keyboards and volume controls cannot be assigned either.
+# ⇪ (Caps Lock) is left out along with the modifiers: macOS offers it as a shortcut key
+# nowhere, and almost no software accepts it.
 EXCLUES = {"⇧", "⌃", "⌘", "⌥", "fn", "⇪",
            "RightCommand", "RightControl", "RightOption", "RightShift",
            "JIS_Eisu", "JIS_Kana", "JIS_KeypadComma",
@@ -40,12 +39,12 @@ EXCLUES = {"⇧", "⌃", "⌘", "⌥", "fn", "⇪",
 
 
 def univers(keyboard):
-    """Toutes les touches attribuables, dans un ordre de lecture stable.
+    """Every assignable key, in a stable reading order.
 
-    Lettres, rangée du haut, autres touches imprimables, pavé numérique, touches de
-    fonction, puis navigation. Le pavé numérique porte ses propres codes, distincts
-    de la rangée du haut : « Pavé 4 » et « 4 » sont deux frappes différentes, et un
-    raccourci attribué à l'une ne répond pas à l'autre.
+    Letters, top row, other printable keys, numeric keypad, function keys, then
+    navigation. The numeric keypad carries its own codes, distinct from the top row:
+    "Keypad 4" and "4" are two different keystrokes, and a shortcut assigned to one does
+    not answer the other.
     """
     touches, vus, libelles = [], set(), set()
 
@@ -53,11 +52,10 @@ def univers(keyboard):
         if code is None or code in vus:
             return
         nom = keyboard.label(code, 0)
-        # Deux codes peuvent produire le même caractère : la disposition française
-        # donne « @ » et « < » à la fois sur les touches ISO et sur des touches
-        # propres aux claviers japonais, absentes d'un clavier français. Comme rien
-        # ne les distingue à l'affichage, proposer les deux offrirait une combinaison
-        # que personne ne peut viser. On garde la première rencontrée.
+        # Two codes can produce the same character: the French layout exposes "@" and "<"
+        # both on the ISO keys and on keys specific to Japanese keyboards, absent from a
+        # French one. Since nothing tells them apart on screen, offering both would offer a
+        # combination nobody can aim at. We keep the first one encountered.
         if not nom or nom in EXCLUES or nom in libelles:
             return
         vus.add(code)
@@ -66,11 +64,11 @@ def univers(keyboard):
 
     for lettre in LETTRES:
         trouve = keyboard.by_char.get(lettre)
-        if trouve and not trouve[1]:          # atteignable sans Maj
+        if trouve and not trouve[1]:          # reachable without Shift
             ajouter(trouve[0])
     for code in RANGEE_HAUT:
         ajouter(code)
-    # Le reste des touches imprimantes de la disposition — ponctuation comprise.
+    # The rest of the layout's printing keys — punctuation included.
     for code in sorted(keyboard.by_code):
         if code not in keyboard.keypad:
             ajouter(code)
@@ -87,7 +85,7 @@ def univers(keyboard):
 
 
 def _jeux_de_modificateurs(nombre):
-    """Toutes les combinaisons de `nombre` modificateurs, dans l'ordre d'Apple."""
+    """Every combination of `nombre` modifiers, in Apple's order."""
     jeux = []
     for masque in range(1, 1 << len(MODIFICATEURS)):
         bits = [MODIFICATEURS[i] for i in range(len(MODIFICATEURS)) if masque & (1 << i)]
@@ -97,21 +95,21 @@ def _jeux_de_modificateurs(nombre):
 
 
 def calculer(keyboard, occupees):
-    """Un seul tableau à double entrée, tous nombres de touches confondus.
+    """One single cross-table, all key counts together.
 
-    Les jeux de modificateurs font les colonnes, regroupés par nombre de touches ;
-    les touches font les lignes. Une case porte la combinaison entière quand elle est
-    libre, rien sinon — de sorte qu'elle se lise et se recopie telle quelle.
+    Modifier sets form the columns, grouped by key count; keys form the rows. A cell
+    carries the whole combination when it is free, and nothing otherwise — so that it can
+    be read and copied as is.
 
-    Une ligne dont aucune case n'est libre est omise : la garder allongerait le
-    tableau sans rien apprendre.
+    A row with no free cell at all is left out: keeping it would lengthen the table without
+    teaching anything.
 
-    La touche nomme la ligne par ce qu'elle produit **sans Maj**, mais la case affiche
-    la combinaison telle que macOS l'écrit — avec Maj, c'est le caractère décalé qui
-    apparaît, comme partout ailleurs dans cette page.
+    The key names its row by what it produces **without Shift**, but the cell shows the
+    combination the way macOS writes it — with Shift, the shifted character is what
+    appears, as everywhere else in this page.
 
-    Les combinaisons à cinq touches sont comptées à part, sans être listées : à cette
-    longueur il en reste toujours, et un inventaire n'y apprend rien.
+    Five-key combinations are counted separately rather than listed: at that length there
+    are always some left, and an inventory of them teaches nothing.
     """
     touches = univers(keyboard)
     colonnes, groupes = [], []

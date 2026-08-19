@@ -1,14 +1,13 @@
-"""Modèle commun à toutes les sources de raccourcis.
+"""Model shared by every source of shortcuts.
 
-Un raccourci vient d'endroits qui ne parlent pas la même langue : un menu expose un
-caractère ("V"), Keyboard Maestro un code de touche brut (9) avec un masque Carbon,
-Apple un masque NSEvent. Pour répondre à « où cette combinaison est-elle utilisée ? »,
-il faut d'abord les ramener tous à une même clé de comparaison.
+A shortcut comes from places that do not speak the same language: a menu exposes a
+character ("V"), Keyboard Maestro a raw key code (9) with a Carbon mask, Apple an NSEvent
+mask. Answering "where is this combination used?" means first bringing them all down to
+one comparison key.
 
-Cette clé est le **code de touche physique** plus les modificateurs. Le passage
-caractère → code de touche se fait avec la disposition clavier réellement active
-(`data/keymap.json`, produit par le binaire) : sur AZERTY, le code 41 produit « m »
-et non « ; », donc une table ANSI donnerait des correspondances fausses.
+That key is the **physical key code** plus the modifiers. Going from character to key code
+uses the keyboard layout actually in service (`data/keymap.json`, produced by the binary):
+on AZERTY, code 41 produces "m" and not ";", so an ANSI table would give wrong matches.
 """
 
 import json
@@ -22,14 +21,14 @@ from tables import (function_key_chars, keycode_labels, keycode_symbols,
 
 ROOT = Path(__file__).parent.parent
 
-# Représentation interne des modificateurs. Volontairement distincte des masques
-# NSEvent, Carbon et AX : chaque source a le sien, on convertit vers celui-ci.
+# Internal representation of the modifiers. Deliberately distinct from the NSEvent, Carbon
+# and AX masks: each source has its own, and everything is converted into this one.
 SHIFT, CTRL, ALT, CMD, FN = 1, 2, 4, 8, 16
 MOD_SYMBOLS = [(CTRL, "⌃"), (ALT, "⌥"), (SHIFT, "⇧"), (CMD, "⌘"), (FN, "fn")]  # ordre Apple
 
 
 def from_nsevent(mask):
-    """Masque NSEvent.ModifierFlags (plists Apple, Alfred)."""
+    """NSEvent.ModifierFlags mask (Apple plists, Alfred)."""
     mask = mask or 0
     return ((SHIFT if mask & 0x020000 else 0) | (CTRL if mask & 0x040000 else 0)
             | (ALT if mask & 0x080000 else 0) | (CMD if mask & 0x100000 else 0)
@@ -37,19 +36,19 @@ def from_nsevent(mask):
 
 
 def from_carbon(mask):
-    """Masque Carbon (Keyboard Maestro, CleanShot X, RegisterEventHotKey)."""
+    """Carbon mask (Keyboard Maestro, CleanShot X, RegisterEventHotKey)."""
     mask = mask or 0
     return ((SHIFT if mask & 512 else 0) | (CTRL if mask & 4096 else 0)
             | (ALT if mask & 2048 else 0) | (CMD if mask & 256 else 0))
 
 
 def from_ax(mask):
-    """Masque d'un élément de menu accessible.
+    """Mask of an accessible menu item.
 
-    Command y est implicite : c'est le bit 0x08 qui l'*exclut*, pas qui l'ajoute.
-    Le bit 0x10 porte la touche Globe (fn) : macOS s'en sert pour les raccourcis
-    modernes tels que 🌐F pour le plein écran. L'ignorer indexait ces raccourcis
-    sous la touche nue, où ils se mélangeaient à de vrais raccourcis sans modificateur.
+    Command is implicit here: bit 0x08 is what *excludes* it, not what adds it. Bit 0x10
+    carries the Globe (fn) key: macOS uses it for modern shortcuts such as 🌐F for full
+    screen. Ignoring it indexed those shortcuts under the bare key, where they mixed with
+    genuine modifier-less shortcuts.
     """
     mask = mask or 0
     return ((SHIFT if mask & 0x01 else 0) | (ALT if mask & 0x02 else 0)
@@ -62,7 +61,7 @@ def render_modifiers(mods):
 
 
 class Keyboard:
-    """Disposition clavier active : code de touche ↔ caractère, dans les deux sens."""
+    """Active keyboard layout: key code ↔ character, both ways."""
 
     def __init__(self, path=None):
         chemin = path or ROOT / "out" / "keymap.json"
@@ -78,9 +77,9 @@ class Keyboard:
         self.identifiant = raw.get("identifiant", "")
         self.by_code = {int(k): v for k, v in touches.items()}
         self.names = keycode_labels()      # libellés des touches sans caractère (F5, ←)
-        # Touches que macOS désigne par un point de code de la zone privée plutôt que
-        # par un caractère : c'est ainsi qu'il écrit une redéfinition visant F5 ou une
-        # flèche. Sans cette passerelle, elles restent irrésolubles.
+        # Keys macOS names by a private-use code point rather than by a character: that is
+        # how it writes a redefinition aimed at F5 or an arrow. Without this bridge they
+        # stay unresolvable.
         par_libelle = {nom: code for code, nom in self.names.items()}
         self.by_function = {car: par_libelle[nom]
                             for car, nom in function_key_chars().items()
@@ -89,15 +88,14 @@ class Keyboard:
         keypad = keypad_codes()
         self.keypad = keypad
         self.by_char = {}
-        # Deux arbitrages, dans cet ordre.
-        # 1. Le niveau non décalé prime : si deux touches produisent le même caractère,
-        #    celle qui l'atteint sans Maj est la bonne réponse.
-        # 2. À niveau égal, le plus petit code de touche gagne. Sans cela, une touche
-        #    absente du clavier l'emporterait : la disposition française donne « @ » et
-        #    « < » à la fois sur les touches ISO et sur des touches propres aux claviers
-        #    japonais. Le caractère nu et le caractère décalé de la MÊME touche
-        #    désigneraient alors deux codes différents, et deux raccourcis identiques
-        #    cesseraient de se comparer égaux.
+        # Two tie-breaks, in this order.
+        # 1. The unshifted level wins: if two keys produce the same character, the one that
+        #    reaches it without Shift is the right answer.
+        # 2. At equal level, the lower key code wins. Without this, a key absent from the
+        #    keyboard would prevail: the French layout exposes "@" and "<" both on the ISO
+        #    keys and on keys specific to Japanese keyboards. The bare character and the
+        #    shifted character of the SAME key would then point at two different codes, and
+        #    two identical shortcuts would stop comparing equal.
         for code in sorted(self.by_code):
             if code in keypad:
                 continue
@@ -110,12 +108,12 @@ class Keyboard:
                 self.by_char[plain] = (code, False)
 
     def label(self, code, mods):
-        """Libellé d'affichage. Avec Maj, Apple montre le caractère décalé (⇧⌘4)."""
-        # Le pavé numérique produit les mêmes caractères que la rangée du haut :
-        # afficher « 1 » pour l'un et pour l'autre rendrait les deux frappes
-        # indiscernables. Son nom prime donc sur son caractère.
+        """Display label. With Shift, Apple shows the shifted character (⇧⌘4)."""
+        # The numeric keypad produces the same characters as the top row: showing "1" for
+        # both would make the two keystrokes indistinguishable. Its name therefore wins
+        # over its character.
         if code in self.keypad:
-            # Le caractère vient de la disposition, le préfixe dit d'où il est tapé.
+            # The character comes from the layout, the prefix says where it is typed.
             pair = self.by_code.get(code)
             if pair and pair[0].strip():
                 return f"Pavé {pair[0]}"
@@ -124,36 +122,36 @@ class Keyboard:
         pair = self.by_code.get(code)
         if pair:
             text = pair[1] if mods & SHIFT else pair[0]
-            # Une touche peut produire un caractère invisible (l'espace) : son nom
-            # est alors plus parlant que le caractère lui-même.
+            # A key can produce an invisible character (space): its name then speaks more
+            # clearly than the character itself.
             if text.strip():
                 return text.upper()
         return self.names.get(code)
 
     def code_for(self, char):
-        """Code de touche produisant ce caractère, ou None si hors disposition."""
+        """Key code producing this character, or None if outside the layout."""
         found = self.by_char.get((char or "").lower())
         return found[0] if found else None
 
     def resoudre(self, char):
-        """(code, Maj nécessaire) pour produire ce caractère sur cette disposition.
+        """(code, Shift needed) to produce this character on this layout.
 
-        Une app déclare son raccourci par un caractère — « 2 » — sans dire quelle
-        frappe le produit. En AZERTY il faut Maj+é : la frappe réelle comporte donc
-        un Maj que le menu n'affiche pas.
+        An app declares its shortcut by a character — "2" — without saying which keystroke
+        produces it. On AZERTY that takes Shift+é: the real keystroke therefore carries a
+        Shift the menu does not display.
         """
         found = self.by_char.get((char or "").lower())
         if found:
             return found
-        # Une touche de fonction ne se frappe jamais avec Maj : le second membre est
-        # faux par construction, pas par défaut.
+        # A function key is never typed with Shift: the second member is false by
+        # construction, not by default.
         fonction = self.by_function.get(char or "")
         return (fonction, False) if fonction is not None else (None, False)
 
 
 @dataclass
 class Binding:
-    """Un raccourci, quelle que soit sa provenance."""
+    """One shortcut, whatever its origin."""
     mods: int
     combo: str                    # libellé affichable, ex. "⇧⌘4"
     action: str                   # ce que ça fait
@@ -172,9 +170,8 @@ class Binding:
     cle: str = field(default="", init=False)
 
     def __post_init__(self):
-        # Clé de comparaison. Un raccourci sans code de touche ni glyphe n'est
-        # comparable à rien : il reçoit une clé unique pour ne jamais faussement
-        # entrer en conflit.
+        # Comparison key. A shortcut with neither key code nor glyph is comparable to
+        # nothing: it gets a unique key so it can never conflict spuriously.
         if self.code is not None:
             self.cle = f"{self.mods}:k{self.code}"
         elif self.glyphe is not None:
@@ -183,10 +180,10 @@ class Binding:
             self.cle = f"{self.mods}:?{self.combo}"
 
 
-# Étages d'interception, du plus prioritaire au moins prioritaire. Modèle repris de
-# HotkeyClash (GPL-2.0) : une touche remonte cette pile et le premier étage qui la
-# réclame l'avale. L'ordre est une heuristique fiable, pas une garantie — à égalité
-# d'étage, c'est l'ordre d'enregistrement qui tranche, et il n'est écrit nulle part.
+# Interception layers, from highest priority to lowest. Model taken from HotkeyClash
+# (GPL-2.0): a key travels up this stack and the first layer that claims it swallows it.
+# The order is a reliable heuristic, not a guarantee — at equal layer, registration order
+# decides, and that is written nowhere.
 COUCHES = {
     "pilote":      (0, "Pilote clavier virtuel (Karabiner) — avant macOS et avant toute app.",
                        "Virtual keyboard driver (Karabiner) — before macOS and before any app."),

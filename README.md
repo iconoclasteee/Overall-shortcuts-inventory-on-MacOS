@@ -44,7 +44,7 @@ works offline. Six views, in French and English.
 | **Conflicts** | What is fighting over a combination, and who wins? |
 | **By combination** | Where does this combination do something, anywhere on the machine? |
 | **Free shortcuts** | What is left that I can assign without breaking anything? |
-| **Next scan** | What has changed since last time? |
+| **Next scan** | Which applications are new or freshly updated, and which should I scan? |
 
 The **Free shortcuts** view crosses modifier sets against every assignable key, numeric
 keypad included: each free cell carries the whole combination, and one click copies it.

@@ -1,55 +1,55 @@
 #!/bin/bash
-# Génère l'inventaire des raccourcis clavier.
+# Generates the keyboard shortcut inventory.
 #
-#   ./run.sh --test     6 apps représentatives, pour valider la mécanique
-#   ./run.sh --all      toutes les apps installées
-#   ./run.sh --sources  relit les raccourcis système et les outils globaux, sans
-#                       ouvrir la moindre application — quelques secondes
+#   ./run.sh --test     6 representative apps, to validate the mechanics
+#   ./run.sh --all      every installed app
+#   ./run.sh --sources  re-reads system shortcuts and global tools without opening a
+#                       single application — a few seconds
 #
-# La passe est reprenable : chaque app est écrite dans son propre fichier JSON et
-# une relance saute ce qui est déjà là. Interrompre avec Ctrl-C ne perd rien.
+# A pass is resumable: each app is written to its own JSON file and a re-run skips what
+# is already there. Interrupting with Ctrl-C loses nothing.
 set -euo pipefail
 cd "$(dirname "$0")"
-# Le moissonneur est lancé par LaunchServices, qui ne lui transmet pas le répertoire
-# courant : tous les chemins qu'on lui passe doivent être absolus.
+# The harvester is launched through LaunchServices, which does not pass on the working
+# directory: every path handed to it must be absolute.
 RACINE=$(pwd)
 
-# out/ n'est pas versionné : sur un clone frais il n'existe pas, et la première
-# redirection échouerait avant même le premier message.
+# out/ is not versioned: on a fresh clone it does not exist, and the first redirection
+# would fail before even the first message.
 mkdir -p out
-# La sortie dérive de dossiers qu'Apple garde en accès exclusif : préférences, barres
-# de menus. En laisser le produit lisible par les autres comptes de la machine
-# annulerait cette protection. Le dossier suffit : ce qu'il contient devient
-# inatteignable pour qui ne peut pas le traverser.
+# The output derives from folders Apple keeps owner-only: preferences, menu bars.
+# Leaving what comes out of them readable by the machine's other accounts would undo that
+# protection. The folder alone is enough: what it holds becomes unreachable to anyone who
+# cannot traverse it.
 chmod go-rwx out 2>/dev/null || true
 
 BUNDLE="$RACINE/bin/ShortcutHarvester.app"
 HARVESTER="$BUNDLE/Contents/MacOS/ShortcutHarvester"
 [ -x "$HARVESTER" ] || { echo "Binaire absent — lancer d'abord ./build.sh"; exit 1; }
 
-# Lance le moissonneur par LaunchServices plutôt que depuis ce shell.
+# Launches the harvester through LaunchServices rather than from this shell.
 #
-# macOS n'accorde pas l'autorisation d'accessibilité au binaire exécuté, mais au
-# **processus responsable** — celui qui l'a lancé. Exécuté directement ici, c'est le
-# terminal : lire des menus supposerait alors d'autoriser le terminal, donc tout ce
-# qu'il exécutera ensuite, aujourd'hui et plus tard. Lancé par `open`, le bundle est son
-# propre responsable, et sa seule ligne dans la liste Accessibilité suffit.
+# macOS does not grant accessibility permission to the binary being executed, but to the
+# **responsible process** — the one that launched it. Run directly from here, that is the
+# terminal: reading menus would then mean authorising the terminal, and therefore
+# everything it runs afterwards, today and later. Launched by `open`, the bundle is its
+# own responsible process, and its single line in the Accessibility list is enough.
 #
-# Le prix : `open` ne rend ni la sortie du programme ni son code d'erreur. D'où le
-# journal, relayé ici en direct, et le fichier de statut, dont l'apparition est le seul
-# signal de fin fiable.
+# The price: `open` returns neither the program's output nor its exit code. Hence the
+# journal, relayed live from here, and the status file, whose appearance is the only
+# reliable end-of-run signal.
 moissonner() {
   local dossier journal statut pid code lu total inactif
   dossier=$(mktemp -d); journal="$dossier/journal"; statut="$dossier/statut"
   : > "$journal"
 
-  # Retrouve NOTRE moissonneur, et pas un autre.
+  # Finds OUR harvester, and not another one.
   #
-  # `pgrep` apparie par nom : deux passes lancées en parallèle se confondraient, et
-  # l'interruption de l'une tuerait le moissonneur de l'autre. Le chemin du journal, lui,
-  # sort de `mktemp` et n'appartient qu'à cet appel — il est dans la ligne de commande du
-  # processus. On le croise avec le nom du programme, `open` portant le même argument
-  # dans la sienne.
+  # `pgrep` matches by name: two passes launched in parallel would be confused for one
+  # another, and interrupting one would kill the other's harvester. The journal path, by
+  # contrast, comes out of `mktemp` and belongs to this call alone — and it sits in the
+  # process's command line. We cross it with the program name, since `open` carries the
+  # same argument in its own.
   trouver_pid() {
     local candidat
     for candidat in $(pgrep -f -- "$journal" 2>/dev/null || true); do
@@ -60,10 +60,10 @@ moissonner() {
     return 1
   }
 
-  # Le piège est posé avant toute attente. Lancé par LaunchServices, le moissonneur ne
-  # descend pas de ce shell : Ctrl-C ne l'atteint pas, et une interruption survenue
-  # pendant qu'on cherche son identifiant le laisserait ouvrir les applications tout
-  # seul. Il le retrouve donc lui-même, au moment du signal.
+  # The trap is set before any waiting. Launched through LaunchServices, the harvester
+  # does not descend from this shell: Ctrl-C does not reach it, and an interrupt arriving
+  # while we are still looking for its process id would leave it opening applications on
+  # its own. So the trap finds it itself, at signal time.
   trap 'kill "$(trouver_pid)" 2>/dev/null || true; rm -rf "$dossier"; exit 130' INT TERM
 
   if ! open -n -a "$BUNDLE" --args "$@" --journal "$journal" --statut "$statut"; then
@@ -72,9 +72,9 @@ moissonner() {
     return 127
   fi
 
-  # Le journal est relu par tranches plutôt que suivi par `tail -f` : pas de tâche de
-  # fond à tuer, pas de message du shell à la tuer, et les dernières lignes sont lues
-  # à coup sûr — un `tail` interrompu peut les laisser derrière lui.
+  # The journal is re-read in slices rather than followed with `tail -f`: no background
+  # job to kill, no shell message when killing it, and the last lines are read for
+  # certain — an interrupted `tail` can leave them behind.
   lu=0
   relayer() {
     total=$(wc -l < "$journal" 2>/dev/null | tr -d " " || echo 0)
@@ -90,13 +90,13 @@ moissonner() {
     if [ -f "$statut" ]; then break; fi
     if [ -z "$pid" ]; then pid=$(trouver_pid || true); fi
     if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
-      sleep 0.5                     # laisse le temps d'écrire le statut en sortant
+      sleep 0.5                     # leaves time to write the status on the way out
       if [ ! -f "$statut" ]; then code=127; break; fi
     fi
-    # `open` a rendu la main sans erreur : le moissonneur existe, même s'il tarde à
-    # apparaître. Renoncer sur un délai court l'abandonnerait bien vivant, à ouvrir les
-    # applications hors de toute surveillance — on n'abandonne donc qu'après une longue
-    # inactivité complète, et en le disant.
+    # `open` returned without error: the harvester exists, even if it is slow to appear.
+    # Giving up on a short deadline would abandon it very much alive, opening applications
+    # with nobody watching — so we give up only after a long spell of complete inactivity,
+    # and we say so.
     if [ -z "$pid" ] && [ "$lu" -eq 0 ]; then
       inactif=$((inactif + 1))
       if [ "$inactif" -gt 1200 ]; then code=126; break; fi
@@ -119,8 +119,8 @@ moissonner() {
   return "$code"
 }
 
-# L'autorisation qui compte est celle du bundle, puisque c'est lui qui sera lancé.
-# La demander depuis ce shell interrogerait le terminal, qui n'a plus besoin de rien.
+# The permission that matters is the bundle's, since the bundle is what gets launched.
+# Asking from this shell would query the terminal, which no longer needs anything.
 autorisation_bundle() {
   local dossier verdict reponse i
   dossier=$(mktemp -d); verdict="$dossier/verdict"
@@ -131,8 +131,8 @@ autorisation_bundle() {
   fi
   i=0
   while [ ! -f "$verdict" ] && [ "$i" -lt 300 ]; do sleep 0.1; i=$((i + 1)); done
-  # Une absence de réponse n'est pas un refus : le dire évite de renvoyer l'utilisateur
-  # vers Réglages Système pour une panne de lancement.
+  # No answer is not a refusal: saying so avoids sending the user to System Settings over
+  # a launch failure.
   if [ ! -f "$verdict" ]; then
     rm -rf "$dossier"
     echo "⚠️  Le moissonneur n'a pas répondu en 30 s : autorisation non vérifiée." >&2
@@ -143,37 +143,37 @@ autorisation_bundle() {
   [ "$reponse" = accordee ]
 }
 
-# L'autorisation n'est exigée que pour lire une barre de menu. Recenser les apps,
-# exporter la disposition clavier et reconstruire la page n'en ont pas besoin — et
-# refuser de le faire rendrait la page impossible à régénérer après une recompilation,
-# qui invalide justement l'autorisation.
+# Permission is required only to read a menu bar. Listing installed apps, exporting the
+# keyboard layout and rebuilding the page need none — and refusing to do them would make
+# the page impossible to regenerate right after a rebuild, which is precisely what
+# invalidates the grant.
 AUTORISE=oui
 autorisation_bundle || AUTORISE=non
 
-# Jeu de test : chaque app couvre un mode de défaillance différent.
-#   Finder      app toujours lancée, menus riches
-#   TextEdit    app à documents, lue sans document ouvert
-#   Safari      menus natifs profonds
-#   cmux        app Electron, menus construits en JavaScript
-#   Alfred      app agent sans barre de menu classique
-#   PowerPoint  app lourde + raccourcis redéfinis par l'utilisateur
+# Test set: each app covers a different failure mode.
+#   Finder      always-running app, rich menus
+#   TextEdit    document-based app, read without a document open
+#   Safari      deep native menus
+#   cmux        Electron app, menus built in JavaScript
+#   Alfred      agent app with no conventional menu bar
+#   PowerPoint  heavy app + user-redefined shortcuts
 TEST_APPS=com.apple.finder,com.apple.TextEdit,com.apple.Safari,com.cmuxterm.app,com.runningwithcrayons.Alfred,com.microsoft.Powerpoint
 
 case "${1:---test}" in
-  --test) APPS_DIR=out/apps-test; REPORT=out/raccourcis-test.md
-          INDEX=out/index-test.json; PAGE=out/raccourcis-test.html
+  --test) APPS_DIR=out/apps-test; REPORT=out/shortcuts-test.md
+          INDEX=out/index-test.json; PAGE=out/shortcuts-test.html
           TARGET=(--bundle-ids "$TEST_APPS"); SUPPL=("${@:2}") ;;
-  --all)  APPS_DIR=out/apps;      REPORT=out/raccourcis.md
-          INDEX=out/index.json;    PAGE=out/raccourcis.html
+  --all)  APPS_DIR=out/apps;      REPORT=out/shortcuts.md
+          INDEX=out/index.json;    PAGE=out/shortcuts.html
           TARGET=(--all); SUPPL=("${@:2}") ;;
-  --sources) APPS_DIR=out/apps; REPORT=out/raccourcis.md
-          INDEX=out/index.json;  PAGE=out/raccourcis.html
+  --sources) APPS_DIR=out/apps; REPORT=out/shortcuts.md
+          INDEX=out/index.json;  PAGE=out/shortcuts.html
           TARGET=(); SUPPL=("${@:2}") ;;
-  # Liste explicite, telle que la page la produit. --force est indispensable : sans lui
-  # le moissonneur saute toute app dont la fiche existe déjà, c'est-à-dire précisément
-  # celles qu'on vient de cocher parce que leur version a changé.
-  --apps) APPS_DIR=out/apps;      REPORT=out/raccourcis.md
-          INDEX=out/index.json;    PAGE=out/raccourcis.html
+  # Explicit list, as the page produces it. --force is essential: without it the harvester
+  # skips every app whose record already exists — that is, precisely the ones just ticked
+  # because their version changed.
+  --apps) APPS_DIR=out/apps;      REPORT=out/shortcuts.md
+          INDEX=out/index.json;    PAGE=out/shortcuts.html
           [ -n "${2:-}" ] || { echo "Usage: $0 --apps <id1,id2,…>"; exit 2; }
           TARGET=(--bundle-ids "$2" --force); SUPPL=("${@:3}") ;;
   *) echo "Usage: $0 [--test|--all|--sources|--apps <id1,id2,…>]"; exit 2 ;;
@@ -189,27 +189,26 @@ echo "→ Raccourcis système"
 python3 src/system_shortcuts.py
 
 if [ ${#TARGET[@]} -eq 0 ]; then
-  # Mode --sources : les raccourcis d'application déjà lus sont conservés tels quels.
+  # --sources mode: application shortcuts already read are kept as they are.
   echo "→ Raccourcis par application : conservés ($(ls "$APPS_DIR"/*.json 2>/dev/null | wc -l | tr -d ' ') fiches)"
-  # Sauf celles dont la version a changé ET qui sont déjà ouvertes : les relire ne
-  # coûte rien et ne fait surgir aucune fenêtre. Une app fermée garde sa fiche
-  # jusqu'à ce qu'elle soit cochée dans la page — ouvrir les apps reste un geste
-  # que l'utilisateur demande, jamais un effet de bord.
-  PERIMEES=$(python3 src/perimees.py "$APPS_DIR" || true)
+  # Except those whose version changed AND that are already running: re-reading them costs
+  # nothing and makes no window appear. A closed app keeps its record until it is ticked
+  # in the page — opening apps stays something the user asks for, never a side effect.
+  PERIMEES=$(python3 src/stale.py "$APPS_DIR" || true)
   if [ -n "$PERIMEES" ] && [ "$AUTORISE" = oui ]; then
     echo "→ Fiches périmées relues, sans ouvrir d'application"
     moissonner --bundle-ids "$PERIMEES" --force --only-running \
-               --out "$RACINE/$APPS_DIR" --reglages "$RACINE/out/reglages-scan.json" \
+               --out "$RACINE/$APPS_DIR" --reglages "$RACINE/out/scan-settings.json" \
                ${SUPPL[@]+"${SUPPL[@]}"} || true
   elif [ -n "$PERIMEES" ]; then
     echo "→ Fiches périmées : relecture impossible sans l'autorisation du moissonneur"
   fi
 else
   if [ "$AUTORISE" != oui ]; then
-    # Message écrit ici, et non délégué au moissonneur : exécuté depuis ce shell, son
-    # `--check` répondrait sur le terminal — le processus responsable. Un terminal encore
-    # autorisé par une passe antérieure lui ferait afficher « autorisation accordée »
-    # juste avant que run.sh s'arrête, sans rien expliquer.
+    # Message written here rather than delegated to the harvester: run from this shell,
+    # its `--check` would answer about the terminal — the responsible process. A terminal
+    # still authorised by an earlier pass would make it print "permission granted" right
+    # before run.sh stops, explaining nothing.
     echo
     echo "⛔️ Le moissonneur n'a pas l'autorisation d'accessibilité."
     echo
@@ -227,7 +226,7 @@ else
   fi
   echo "→ Raccourcis par application"
   moissonner "${TARGET[@]}" --out "$RACINE/$APPS_DIR" \
-             --reglages "$RACINE/out/reglages-scan.json" ${SUPPL[@]+"${SUPPL[@]}"}
+             --reglages "$RACINE/out/scan-settings.json" ${SUPPL[@]+"${SUPPL[@]}"}
 fi
 
 echo "→ Index unifié (système + apps + outils tiers)"
@@ -237,10 +236,10 @@ echo "→ Restitution"
 python3 src/report.py "$APPS_DIR" "$REPORT"
 python3 src/page.py "$INDEX" "$PAGE"
 
-# Une erreur de syntaxe dans le JavaScript rend la page ENTIÈREMENT inerte : titres,
-# onglets, tableaux et libellés sont tous écrits par le script. Python produit le
-# fichier sans jamais le relire, et la génération réussit quand même — la page part
-# alors cassée en silence. Ce contrôle est le seul qui s'en aperçoive.
+# A syntax error in the JavaScript makes the page ENTIRELY inert: headings, tabs, tables
+# and labels are all written by the script. Python produces the file without ever reading
+# it back, and generation succeeds regardless — the page then ships broken, in silence.
+# This check is the only thing that notices.
 if command -v node >/dev/null 2>&1; then
   JSDIR=$(mktemp -d)
   JS="$JSDIR/page.js"
@@ -258,13 +257,13 @@ Path(sys.argv[2]).write_text(h[h.rindex("<script>") + 8:h.rindex("</script>")],
 else
   echo "   ℹ️  node absent : syntaxe du JavaScript non vérifiée"
 fi
-# Rappel de fin de passe, affiché seulement quand il sert à quelque chose.
+# End-of-pass reminder, shown only when it serves a purpose.
 #
-# Le moissonneur étant lancé par LaunchServices, il est son propre processus responsable
-# et se voit appliquer sa propre autorisation : plus aucun terminal n'a besoin du droit
-# d'accessibilité pour que la passe fonctionne. S'il se trouve que ce shell le détient
-# malgré tout, c'est un reste d'une passe antérieure — et tant qu'il reste accordé, tout
-# ce que ce terminal exécutera peut lire et piloter n'importe quelle application.
+# Since the harvester is launched through LaunchServices, it is its own responsible
+# process and its own grant applies: no terminal needs accessibility permission for a pass
+# to work any more. If this shell holds it regardless, that is a leftover from an earlier
+# pass — and for as long as it stands, everything this terminal runs can read and drive
+# any application.
 if "$HARVESTER" --check >/dev/null 2>&1; then
   echo
   echo "⚠️  Ce terminal détient l'autorisation d'accessibilité, désormais inutile."

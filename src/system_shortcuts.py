@@ -1,16 +1,16 @@
-"""Inventaire des raccourcis système macOS, en français.
+"""Inventory of macOS system shortcuts, in the system language.
 
-Deux sources, toutes deux locales et faisant autorité :
+Two sources, both local and authoritative:
 
-1. La table de référence d'Apple, livrée avec le panneau Clavier des Réglages Système :
-   KeyboardSettings.appex/.../DefaultShortcutsTable.xml  (+ .loctable pour le français)
-   -> donne TOUS les raccourcis système existants et leur combinaison par défaut.
+1. Apple's reference table, shipped with the Keyboard panel of System Settings:
+   KeyboardSettings.appex/.../DefaultShortcutsTable.xml  (+ .loctable for the labels)
+   -> gives EVERY existing system shortcut and its default combination.
 
-2. Les préférences de l'utilisateur : com.apple.symbolichotkeys
-   -> donne l'état réel : activé/désactivé, et la combinaison si elle a été changée.
+2. The user's preferences: com.apple.symbolichotkeys
+   -> gives the actual state: enabled/disabled, and the combination if it was changed.
 
-La source 1 est indispensable : le plist utilisateur ne contient que les raccourcis
-"matérialisés", donc l'utiliser seul sous-déclare silencieusement l'inventaire.
+Source 1 is indispensable: the user plist holds only the shortcuts that have been
+"materialised", so using it alone silently under-reports the inventory.
 """
 
 import json
@@ -28,17 +28,16 @@ APPEX = Path(
 )
 NO_CHAR = 65535  # sentinelle Apple : "pas de caractère, utiliser le code de touche"
 
-# Certains raccourcis système ne sont pas une combinaison mais une **double frappe**
-# sur un modificateur seul — la dictée en est l'exemple courant. Apple les stocke avec
-# `type: "modifier"` et un masque qui distingue la touche gauche de la droite.
+# Some system shortcuts are not a combination but a **double tap** on a modifier alone —
+# dictation being the common example. Apple stores them with `type: "modifier"` and a mask
+# that distinguishes the left key from the right one.
 #
-# Les bits de côté sont ceux d'IOKit (`NX_DEVICELCMDKEYMASK` = 8,
-# `NX_DEVICERCMDKEYMASK` = 16) et les libellés viennent du panneau Clavier de macOS,
-# via `load_double_labels`. Les valeurs numériques sont ici en clair, avec le nom de
-# la constante correspondante, plutôt que relues d'un second BridgeSupport pour cinq
-# entrées.
+# The side bits are IOKit's (`NX_DEVICELCMDKEYMASK` = 8, `NX_DEVICERCMDKEYMASK` = 16) and
+# the labels come from the macOS Keyboard panel, through `load_double_labels`. The numeric
+# values are written out here, next to the name of the matching constant, rather than read
+# back from a second BridgeSupport file for five entries.
 MODIFIER_DOUBLE = [
-    # (bit de modificateur NSEvent, bit de côté IOKit ou None, clé de libellé, symbole)
+    # (NSEvent modifier bit, IOKit side bit or None, label key, symbol)
     (0x100000, 8,    "DoubleTapCommandLeft",  "⌘"),
     (0x100000, 16,   "DoubleTapCommandRight", "⌘"),
     (0x100000, None, "DoubleTapCommand",      "⌘"),
@@ -48,12 +47,12 @@ MODIFIER_DOUBLE = [
 
 
 def _strip_marker(text):
-    """Retire le marqueur interne d'Apple sur les chaînes non traduites."""
+    """Strips Apple's internal marker from untranslated strings."""
     return text.removeprefix("DO_NOT_LOCALIZE: ").strip()
 
 
 def load_reference(lang="fr"):
-    """Charge la table de référence Apple, traduite dans la langue demandée."""
+    """Loads Apple's reference table, translated into the requested language."""
     table_path = APPEX / f"{lang}.lproj" / "DefaultShortcutsTable.xml"
     loc_path = APPEX / "DefaultShortcutsTable.loctable"
     if not table_path.exists():
@@ -71,8 +70,8 @@ def load_reference(lang="fr"):
     entries = {}
 
     def walk(node, cat_fr, cat_en, cat_id, path):
-        """Descend récursivement : la table Apple imbrique des sous-groupes
-        (ex. Fenêtres > Placer en mosaïque) sous la clé `elements`."""
+        """Descends recursively: Apple's table nests sub-groups (e.g. Windows > Tile)
+        under the `elements` key."""
         for element in node.get("elements", []):
             name_fr, name_en = translate(element.get("name", ""))
             sub_path = path + [name_fr]
@@ -88,8 +87,8 @@ def load_reference(lang="fr"):
                     "identifiant_categorie": cat_id,
                     "nom": " > ".join(sub_path),
                     "nom_en": name_en,
-                    # key/modifier décrivent l'entrée principale. Pour les variantes,
-                    # Apple ne publie pas de valeur par défaut : on ne compare donc rien.
+                    # key/modifier describe the main entry. For the variants, Apple
+                    # publishes no default value: so nothing is compared.
                     "defaut": _render(
                         element.get("charKey", NO_CHAR),
                         element.get("key", NO_CHAR),
@@ -102,8 +101,8 @@ def load_reference(lang="fr"):
         cat_fr, cat_en = translate(category.get("name", ""))
         walk(category, cat_fr, cat_en, category.get("identifier", ""), [])
 
-    # Apple range les raccourcis de bureaux dans un second fichier, à plat. Sans lui,
-    # « Passer au Bureau 1 » et ses quinze voisins ressortent en « non documenté ».
+    # Apple keeps the desktop shortcuts in a second, flat file. Without it, "Switch to
+    # Desktop 1" and its fifteen neighbours come out as "undocumented".
     spaces_path = APPEX / "DefaultSpacesShortcuts.xml"
     if spaces_path.exists():
         cat_fr, cat_en = translate("DO_NOT_LOCALIZE: Mission Control")
@@ -114,7 +113,7 @@ def load_reference(lang="fr"):
 
 
 def load_double_labels(lang="fr"):
-    """Libellés des doubles frappes, tels que les affiche le panneau Clavier."""
+    """Labels for double taps, as the Keyboard panel displays them."""
     path = APPEX / "Localizable.loctable"
     if not path.exists():
         return {}
@@ -123,8 +122,8 @@ def load_double_labels(lang="fr"):
 
 
 def _double_tap(mask, labels):
-    """Décrit une double frappe à partir de son masque, ou None si le masque
-    ne correspond à aucun modificateur connu."""
+    """Describes a double tap from its mask, or None if the mask matches no known
+    modifier."""
     for bit, cote, cle, symbole in MODIFIER_DOUBLE:
         if not mask & bit:
             continue
@@ -138,20 +137,19 @@ def _double_tap(mask, labels):
 
 
 def raw_reference(lang="fr"):
-    """{id: (charKey, key, modifier)} — les valeurs brutes des tables d'Apple.
+    """{id: (charKey, key, modifier)} — the raw values from Apple's tables.
 
-    Nécessaire pour réécrire une entrée dans `com.apple.symbolichotkeys` au format
-    qu'attend macOS, sans inventer la combinaison d'usine.
+    Needed to write an entry back into `com.apple.symbolichotkeys` in the format macOS
+    expects, without inventing the factory combination.
     """
     out = {}
 
     def walk(node):
         for element in node.get("elements", []):
-            # Le seul identifiant qui porte vraiment la combinaison décrite est
-            # l'identifiant principal. Ses variantes « prefs_ » et « slow_ » désignent
-            # d'autres raccourcis, dont la table ne dit rien — leur prêter la valeur du
-            # principal reviendrait à inventer une combinaison, puis à l'écrire dans les
-            # préférences système.
+            # The only identifier that really carries the described combination is the
+            # main one. Its "prefs_" and "slow_" variants name other shortcuts, about which
+            # the table says nothing — lending them the main one's value would amount to
+            # inventing a combination and then writing it into the system preferences.
             for id_key in ("sybmolichotkey",):
                 hotkey_id = element.get(id_key)
                 if hotkey_id is not None and hotkey_id not in out and "key" in element:
@@ -171,7 +169,7 @@ def raw_reference(lang="fr"):
 
 
 def load_user_state():
-    """Lit com.apple.symbolichotkeys via `defaults` (format plist XML)."""
+    """Reads com.apple.symbolichotkeys through `defaults` (XML plist format)."""
     raw = subprocess.run(
         ["defaults", "export", "com.apple.symbolichotkeys", "-"],
         capture_output=True,
@@ -199,34 +197,34 @@ _keyboard = None
 
 
 def _render(char_code, key_code, modifier_mask):
-    """Assemble une combinaison lisible et sa forme comparable.
+    """Assembles a readable combination and its comparable form.
 
-    Renvoie un dict {combo, mods, code} : `combo` pour l'affichage, `mods` et `code`
-    pour la comparaison avec les raccourcis venus des menus et des outils tiers.
+    Returns a dict {combo, mods, code}: `combo` for display, `mods` and `code` for
+    comparison against shortcuts coming from menus and third-party tools.
     """
     global _keyboard
     if _keyboard is None:
         _keyboard = Keyboard()
     labels = keycode_labels()
     mods = from_nsevent(modifier_mask or 0)
-    # charKey d'abord : c'est le caractère réellement produit, donc juste quelle que
-    # soit la disposition clavier (un code de touche brut supposerait un clavier ANSI).
-    # Mais un caractère non imprimable (espace, tabulation) n'est pas lisible tel quel :
-    # dans ce cas on retombe sur le libellé du code de touche.
+    # charKey first: it is the character actually produced, so it is right whatever the
+    # keyboard layout (a raw key code would assume an ANSI keyboard). But a non-printing
+    # character (space, tab) is not readable as is: in that case we fall back to the label
+    # of the key code.
     code = key_code if isinstance(key_code, int) and key_code != NO_CHAR else None
     if isinstance(char_code, int) and char_code not in (0, NO_CHAR) and chr(char_code).strip():
         resolu, besoin_maj = _keyboard.resoudre(chr(char_code))
         if besoin_maj:
             mods |= SHIFT
         key = chr(char_code).upper()
-        # Le caractère prime sur le code de touche. La table d'Apple stocke des codes
-        # de clavier ANSI : pour ⌘M elle donne 46, qui sur AZERTY produit « , ».
-        # macOS déclenche sur la touche portant réellement le M, donc on remonte au
-        # code par le caractère, dans la disposition active.
+        # The character wins over the key code. Apple's table stores ANSI keyboard codes:
+        # for ⌘M it gives 46, which on AZERTY produces ",". macOS fires on the key that
+        # actually carries the M, so the code is derived from the character, in the active
+        # layout.
         code = resolu if resolu is not None else code
     elif code is not None:
-        # Le libellé doit venir de la disposition active : le nom de constante ANSI
-        # dirait « 1 » là où le clavier français produit « & ».
+        # The label must come from the active layout: the ANSI constant name would say
+        # "1" where the French keyboard produces "&".
         key = _keyboard.label(code, mods) or labels.get(code, f"touche-{code}")
     else:
         return None
@@ -234,8 +232,8 @@ def _render(char_code, key_code, modifier_mask):
 
 
 def load_connus():
-    """Identifications établies hors des tables d'Apple, avec leur source."""
-    chemin = Path(__file__).parent.parent / "data" / "raccourcis-connus.json"
+    """Identifications established outside Apple's tables, with their source."""
+    chemin = Path(__file__).parent.parent / "data" / "known-shortcuts.json"
     if not chemin.exists():
         return {}
     return json.loads(chemin.read_text(encoding="utf-8")).get("connus", {})
@@ -251,7 +249,7 @@ def build():
         state = user_state.get(hotkey_id)
         record = dict(entry)
         if state is None:
-            # Absent du plist utilisateur = jamais modifié = réglage d'usine actif.
+            # Absent from the user plist = never changed = factory setting, active.
             record["touche"] = entry["defaut"]
             record["actif"] = entry["defaut"] is not None
             record["etat"] = "défaut"
@@ -276,8 +274,8 @@ def build():
         record["defaut"] = entry["defaut"]["combo"] if entry["defaut"] else None
         results.append(record)
 
-    # Les IDs présents chez l'utilisateur mais absents de la table Apple sont conservés
-    # tels quels : un identifiant brut consultable vaut mieux qu'une omission invisible.
+    # IDs present in the user's preferences but absent from Apple's table are kept as they
+    # are: a raw identifier one can look up beats an invisible omission.
     for hotkey_id, state in user_state.items():
         if hotkey_id in reference:
             continue

@@ -1,24 +1,24 @@
-"""Raccourcis redéfinis par l'utilisateur (Réglages → Clavier → Raccourcis d'app).
+"""User-redefined shortcuts (Settings → Keyboard → App Shortcuts).
 
-macOS les range dans les préférences de chaque app, indexés par **titre d'élément de
-menu**. C'est donc le titre qui sert de clé de jointure avec ce que l'accessibilité
-renvoie — et c'est aussi pourquoi un titre qui ne colle plus (app traduite, commande
-renommée) rend le raccourci inopérant sans rien signaler.
+macOS stores them in each app's preferences, indexed by **menu item title**. The title is
+therefore the join key against what accessibility returns — and it is also why a title
+that no longer matches (translated app, renamed command) leaves the shortcut inoperative
+without flagging anything.
 """
 
 import plistlib
 import subprocess
 
-# Syntaxe des équivalents clavier Cocoa telle qu'écrite dans NSUserKeyEquivalents.
+# Cocoa key-equivalent syntax, as written in NSUserKeyEquivalents.
 COCOA_MODIFIERS = [("^", "⌃"), ("~", "⌥"), ("$", "⇧"), ("@", "⌘")]
 
 
 def parse_cocoa_key_equivalent(raw):
-    """Traduit "@~^$m" en "⌃⌥⇧⌘M".
+    """Turns "@~^$m" into "⌃⌥⇧⌘M".
 
-    Les caractères @ ~ ^ $ ne désignent des modificateurs qu'**en préfixe** : sur un
-    clavier français, « $ » est une touche à part entière. Les dépouiller partout
-    ferait disparaître la touche et ajouterait un Maj fantôme à « ⌘$ ».
+    The characters @ ~ ^ $ denote modifiers only **as a prefix**: on a French keyboard,
+    "$" is a key in its own right. Stripping them everywhere would make the key vanish and
+    add a phantom Shift to "⌘$".
     """
     raw = raw or ""
     i = 0
@@ -30,10 +30,10 @@ def parse_cocoa_key_equivalent(raw):
 
 
 def decomposer(raw):
-    """(modificateurs Cocoa, touche) d'un équivalent clavier, sans les fusionner.
+    """(Cocoa modifiers, key) of a key equivalent, kept apart.
 
-    Le combo affichable ne suffit pas : pour comparer une redéfinition aux autres
-    raccourcis, il faut ses modificateurs et sa touche séparément.
+    The displayable combination is not enough: comparing a redefinition against other
+    shortcuts needs its modifiers and its key separately.
     """
     raw = raw or ""
     i = 0
@@ -43,16 +43,16 @@ def decomposer(raw):
 
 
 def normalise_title(title):
-    """Rapproche un titre de menu d'une clé NSUserKeyEquivalents.
+    """Brings a menu title and an NSUserKeyEquivalents key into the same shape.
 
-    Les deux décrivent le même élément mais pas toujours à l'identique : points de
-    suspension typographiques contre trois points, casse, espaces.
+    Both describe the same item but not always identically: a typographic ellipsis against
+    three dots, case, whitespace.
     """
     return (title or "").replace("...", "…").rstrip("… ").strip().casefold()
 
 
 def load(bundle_id):
-    """{titre normalisé: (titre d'origine, combinaison)} pour une app."""
+    """{normalised title: (original title, combination)} for one app."""
     export = subprocess.run(["defaults", "export", bundle_id, "-"], capture_output=True)
     if export.returncode != 0 or not export.stdout:
         return {}

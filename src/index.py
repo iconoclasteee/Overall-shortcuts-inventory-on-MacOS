@@ -1,12 +1,12 @@
-"""Index unifié : toutes les sources de raccourcis ramenées à un même modèle.
+"""Unified index: every source of shortcuts brought down to one model.
 
-C'est ce fichier qui rend possibles les trois questions posées :
-  - où telle combinaison est-elle utilisée ?
-  - lesquelles entrent en conflit, et qui gagne ?
-  - que puis-je taper dans telle app ?
+This file is what makes the three questions answerable:
+  - where is this combination used?
+  - which ones conflict, and who wins?
+  - what can I type in this app?
 
-Le principe : chaque raccourci reçoit une **clé de comparaison** (touche physique +
-modificateurs). Deux raccourcis qui partagent cette clé se disputent la même frappe.
+The principle: every shortcut is given a **comparison key** (physical key + modifiers). Two
+shortcuts sharing that key are fighting over the same keystroke.
 """
 
 import json
@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 import global_hotkeys
-import libres as combinaisons_libres
+import free_shortcuts
 import overrides as user_overrides
 from model import (Binding, Keyboard, ALT, CMD, CTRL, SHIFT, from_ax, rang,
                    render_modifiers, COUCHES)
@@ -27,7 +27,7 @@ ROOT = Path(__file__).parent.parent
 
 
 def load_portees():
-    data = json.loads((ROOT / "data" / "portees.json").read_text(encoding="utf-8"))
+    data = json.loads((ROOT / "data" / "scopes.json").read_text(encoding="utf-8"))
     return data["portees"], {"fr": data["libelles"], "en": data.get("libelles_en", data["libelles"])}
 
 
@@ -42,8 +42,8 @@ def system_bindings(keyboard, portees):
         portee = portees.get(entry["identifiant_categorie"], {}).get("portee", "inconnu")
         detail = entry["categorie"] + (" · désactivé" if not entry["actif"] else "")
         if entry.get("double"):
-            # Apple ne documente pas cet identifiant dans sa table de référence : on
-            # décrit le mécanisme sans affirmer la fonction.
+            # Apple does not document this identifier in its reference table: describe
+            # the mechanism without asserting the function.
             detail += " · double frappe, fonction non documentée par Apple"
         found.append(Binding(
             mods=entry["mods"], combo=entry["combinaison"], action=entry["nom"],
@@ -54,7 +54,7 @@ def system_bindings(keyboard, portees):
 
 
 def app_bindings(keyboard, apps_dir):
-    """Raccourcis de menu, une app à la fois, redéfinitions utilisateur appliquées."""
+    """Menu shortcuts, one app at a time, with user redefinitions applied."""
     found, apps = [], []
     glyphes = glyph_labels()
     glyphe_vers_code = glyph_to_keycode()
@@ -64,16 +64,16 @@ def app_bindings(keyboard, apps_dir):
         except json.JSONDecodeError:
             print(f"⚠️  illisible, ignoré : {path.name}")
             continue
-        # Une fiche tronquée (interruption en cours d'écriture) est un JSON valide
-        # mais incomplet : mieux vaut l'écarter que faire échouer tout l'index.
+        # A truncated record (interrupted mid-write) is valid but incomplete JSON: better
+        # to skip it than to fail the whole index.
         if not isinstance(app, dict) or "statut" not in app or "bundleID" not in app:
             print(f"⚠️  incomplet, ignoré : {path.name}")
             continue
         fiche = {k: app.get(k) for k in
                  ("nom", "bundleID", "version", "categorie", "statut", "detail",
                   "lance_par_nous")}
-        # La fiche ne date pas le moissonnage ; sa date d'écriture le fait. `--sources`
-        # ne réécrit pas les fiches, donc elle désigne bien la dernière lecture réelle.
+        # The record does not date the harvest; its write time does. `--sources` does not
+        # rewrite records, so that time really is the last actual read.
         fiche["scanne_le"] = datetime.fromtimestamp(
             path.stat().st_mtime).strftime("%Y-%m-%d %Hh%M")
         fiche["raccourcis"] = len(app.get("raccourcis") or [])
@@ -92,8 +92,8 @@ def app_bindings(keyboard, apps_dir):
                     mods |= SHIFT
             glyphe = item.get("glyphe")
             if code is None and glyphe is not None:
-                # Ramener le glyphe à sa touche physique : c'est ce qui permet de
-                # comparer un ⌃⇥ de menu avec un ⌃⇥ d'outil tiers.
+                # Bring the glyph back to its physical key: that is what allows a ⌃⇥ from
+                # a menu to be compared with a ⌃⇥ from a third-party tool.
                 code = glyphe_vers_code.get(glyphe)
             if code is None and glyphe is None:
                 continue
@@ -101,29 +101,28 @@ def app_bindings(keyboard, apps_dir):
             if label is None and glyphe is not None:
                 label = glyphes.get(glyphe)
             if label is None and char.strip() and char.isprintable():
-                # macOS a des glyphes récents que la table Carbon ne connaît pas
-                # (🌐 pour la touche Globe, 🎤 pour la dictée). L'app fournit alors
-                # le symbole : mieux vaut le montrer qu'afficher un numéro.
+                # macOS has recent glyphs the Carbon table does not know (🌐 for the Globe
+                # key, 🎤 for dictation). The app supplies the symbol in that case: better
+                # to show it than to display a number.
                 label = char
             combo = render_modifiers(mods) + (label or f"glyphe-{glyphe}")
 
             leaf = user_overrides.normalise_title(item["chemin"].split(" > ")[-1])
             detail = ""
             if leaf in redefinis:
-                # Une redéfinition change la frappe, pas seulement son libellé : sans
-                # recalculer modificateurs et code de touche, la détection de conflits
-                # continuerait de raisonner sur l'ancienne combinaison.
+                # A redefinition changes the keystroke, not just its label: without
+                # recomputing modifiers and key code, conflict detection would keep
+                # reasoning about the old combination.
                 combo = redefinis[leaf][1]
                 prefixe, touche = user_overrides.decomposer(redefinis[leaf][2])
                 mods = ((SHIFT if "$" in prefixe else 0) | (CTRL if "^" in prefixe else 0)
                         | (ALT if "~" in prefixe else 0) | (CMD if "@" in prefixe else 0))
                 if touche:
                     nouveau, besoin_maj = keyboard.resoudre(touche)
-                    # macOS écrit les touches de fonction et les flèches en \UF704…,
-                    # que la disposition ne sait pas résoudre. Garder l'ancien code de
-                    # touche ferait compter le raccourci sur la combinaison d'avant, et
-                    # laisserait la nouvelle annoncée libre. Sans code, la clé de
-                    # comparaison devient unique : plus juste qu'un faux voisinage.
+                    # macOS writes function keys and arrows as \UF704…, which the layout
+                    # cannot resolve. Keeping the old key code would count the shortcut on
+                    # its previous combination and leave the new one announced free. With
+                    # no code, the comparison key becomes unique: truer than a false match.
                     code, glyphe = (nouveau, None) if nouveau is not None else (None, None)
                     if besoin_maj:
                         mods |= SHIFT
@@ -142,11 +141,10 @@ def app_bindings(keyboard, apps_dir):
 
 
 def gagnant(bindings):
-    """Qui reçoit la frappe, d'après l'étage d'interception le plus bas.
+    """Who receives the keystroke, based on the lowest interception layer.
 
-    Honnête sur ses limites : à égalité d'étage, c'est l'ordre d'enregistrement qui
-    tranche et il n'est écrit dans aucun fichier. On dit « égalité » plutôt que de
-    désigner un nom au hasard.
+    Honest about its limits: at equal layer, registration order decides and it is written
+    in no file. We say "tie" rather than naming someone at random.
     """
     actifs = [b for b in bindings if b.actif]
     if not actifs:
@@ -177,19 +175,19 @@ def gagnant(bindings):
                      f"nulle part. {COUCHES[couche][1]}"}
 
 
-# Part des apps lues au-delà de laquelle une même commande de menu cesse d'être une
-# commande propre à une app pour devenir une convention de macOS. Mesuré sur cette
-# machine : ⌘M « Minimiser » est exposé par 81 % des apps, le suivant par 13 % —
-# l'écart est tel que le seuil exact n'a aucune influence.
+# Share of the apps read beyond which one menu command stops being an app's own command
+# and becomes a macOS convention. Measured on one machine: ⌘M "Minimise" is exposed by 81 %
+# of apps, the next one by 13 % — the gap is such that the exact threshold has no
+# influence.
 SEUIL_CONVENTION = 0.5
 
 
 def load_reglages():
-    """Choix posés à la main depuis la page : exclusions et apps sources.
+    """Choices made by hand from the page: exclusions and hotkey-tool apps.
 
-    Écrit par l'utilisateur, jamais par le programme — son absence est le cas normal.
+    Written by the user, never by the program — its absence is the normal case.
     """
-    chemin = ROOT / "out" / "reglages-scan.json"
+    chemin = ROOT / "out" / "scan-settings.json"
     if not chemin.exists():
         return {}
     try:
@@ -215,24 +213,22 @@ def build(apps_dir):
 
     combinaisons = []
     for cle, membres in groupes.items():
-        # Un conflit suppose au moins un raccourci global : deux menus d'apps
-        # différentes ne se croisent jamais.
+        # A conflict requires at least one global shortcut: the menus of two different
+        # apps never meet.
         globaux = [b for b in membres if b.couche != "menu" and b.actif]
         proprietaires = {b.proprietaire for b in membres if b.actif}
-        # macOS injecte ses commandes de fenêtre dans le menu de chaque app : le
-        # raccourci système et l'élément de menu désignent alors la même commande.
+        # macOS injects its window commands into every app's menu: the system shortcut and
+        # the menu item then name the same command.
         feuilles = {b.action.split(" > ")[-1].casefold().rstrip("… .")
                     for b in membres if b.actif}
         meme_commande = len(feuilles) == 1 and len(proprietaires) > 1
-        # Une commande que presque toutes les apps exposent n'est pas la leur : c'est
-        # une convention que macOS installe dans chaque barre de menu. Le raccourci
-        # système correspondant fait la même chose — il ne la conteste pas. Le test
-        # porte sur la proportion d'apps, pas sur le libellé : « Minimiser »,
-        # « Minimize » et « Réduire » désignent la même commande.
-        # Garde-fou : la règle ne vaut que si le seul prétendant hors menus est macOS
-        # lui-même. Qu'un outil tiers s'empare de ⌘C reste un vrai conflit — il le
-        # vole justement à toutes les apps, et l'ubiquité en aggrave la portée au
-        # lieu de l'excuser.
+        # A command almost every app exposes is not that app's own: it is a convention
+        # macOS installs in every menu bar. The matching system shortcut does the same
+        # thing — it does not contest it. The test looks at the share of apps, not at the
+        # label: "Minimiser", "Minimize" and "Réduire" name the same command.
+        # Guard: the rule holds only if the sole claimant outside menus is macOS itself. A
+        # third-party tool seizing ⌘C is still a real conflict — it steals it from every
+        # app precisely, and ubiquity makes the reach worse rather than excusing it.
         apps_menu = {b.bundle_id for b in membres if b.actif and b.couche == "menu"}
         tiers = any(b.couche in ("pilote", "capture", "global", "autre")
                     for b in membres if b.actif)
@@ -257,24 +253,22 @@ def build(apps_dir):
                 "menu": b.menu, "ordre": b.ordre, "double": b.double,
             } for b in sorted(membres, key=lambda b: (rang(b.couche), b.proprietaire))],
         })
-    # Un seul ordre, et il ne dépend pas du litige : faire remonter les conflits ne
-    # servait que la page « Conflits », qui les filtre déjà, et désordonnait « Par
-    # combinaison », où l'on cherche une frappe précise.
+    # One order, and it does not depend on the dispute: floating conflicts to the top only
+    # served the "Conflicts" page, which already filters them, and disordered "By
+    # combination", where one is looking for a precise keystroke.
     #
-    # Le tri porte sur le masque de modificateurs avant la chaîne. Trier la chaîne seule
-    # mélange glyphes de modificateurs et glyphes de touches dans la même comparaison :
-    # « ⇧⌫ » (U+232B) se range après « ⇧⌘A » (U+2318), et le même jeu de modificateurs se
-    # retrouve éclaté en plusieurs endroits de la liste.
+    # The sort keys on the modifier mask before the string. Sorting the string alone mixes
+    # modifier glyphs and key glyphs in the same comparison: "⇧⌫" (U+232B) sorts after
+    # "⇧⌘A" (U+2318), and the same modifier set ends up scattered across the list.
     combinaisons.sort(key=lambda c: (c["mods"], c["combo"]))
     catalogue_path = ROOT / "out" / "catalogue.json"
     catalogue = (json.loads(catalogue_path.read_text(encoding="utf-8"))
                  if catalogue_path.exists() else [])
 
-    # Apps « source de raccourcis » : celles qui accrochent la touche avant les menus.
-    # Constatées à partir de ce qu'elles déclarent réellement, plus celles que
-    # l'utilisateur a désignées à la main. Le rapprochement se fait aussi par nom :
-    # Keyboard Maestro enregistre ses raccourcis sous l'identifiant de son moteur,
-    # alors que l'app installée est son éditeur — le seul identifiant les manquerait.
+    # "Hotkey tool" apps: those that catch the key before any menu. Observed from what
+    # they actually declare, plus the ones the user has designated by hand. Matching is
+    # also done by name: Keyboard Maestro registers its shortcuts under its engine's
+    # identifier while the installed app is its editor — identifier alone would miss them.
     proprios_outils = {b.proprietaire for b in bindings
                        if b.couche in ("pilote", "capture", "global", "autre")}
     ids_outils = {b.bundle_id for b in bindings
@@ -283,14 +277,14 @@ def build(apps_dir):
                if a["bundleID"] in ids_outils or a["nom"] in proprios_outils}
     sources |= set(load_reglages().get("sources") or [])
 
-    # Une combinaison dont le seul preneur est désactivé est libre : c'est l'état
-    # réel qui compte, pas la présence d'une ligne dans l'inventaire.
+    # A combination whose only claimant is disabled is free: what counts is the actual
+    # state, not the presence of a line in the inventory.
     occupees = {c["cle"] for c in combinaisons if any(u["actif"] for u in c["usages"])}
 
     return {
         "apps": apps,
         "catalogue": catalogue,
-        "libres": combinaisons_libres.calculer(keyboard, occupees),
+        "libres": free_shortcuts.calculer(keyboard, occupees),
         "sources": sorted(sources),
         "reglages": load_reglages(),
         "combinaisons": combinaisons,

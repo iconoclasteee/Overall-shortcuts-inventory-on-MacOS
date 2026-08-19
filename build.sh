@@ -1,9 +1,9 @@
 #!/bin/bash
-# Compile le moissonneur en app autonome.
+# Builds the harvester as a stand-alone app.
 #
-# Pourquoi une app et pas un simple binaire : macOS rattache l'autorisation
-# d'accessibilité à une identité de code. Un bundle .app signé est reconnu de façon
-# stable par Réglages Système, et l'autorisation ne concerne que lui — pas le terminal.
+# Why an app rather than a plain binary: macOS ties accessibility permission to a code
+# identity. A signed .app bundle is recognised stably by System Settings, and the grant
+# covers it alone — not the terminal.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -32,22 +32,22 @@ PLIST
 swiftc -O -o "$APP/Contents/MacOS/$NAME" src/Harvester.swift \
     -framework AppKit -framework ApplicationServices
 
-# Signature ad hoc : donne au bundle une identité de code stable pour cette version.
-# Toute recompilation change cette identité — il faudra alors retirer puis remettre
-# l'app dans la liste Accessibilité.
+# Ad-hoc signature: gives the bundle a code identity that is stable for this build.
+# Any rebuild changes that identity — the app must then be removed from, and re-added
+# to, the Accessibility list.
 codesign --force --sign - "$APP" 2>&1 | sed 's/^/  /'
 
 echo "✅ $APP"
-# Le contrôle doit passer par LaunchServices : exécuté depuis le shell, il répondrait
-# sur le terminal — le processus responsable — et non sur le bundle qu'on vient de
-# signer. La recompilation vient d'invalider l'autorisation : l'empreinte a changé.
+# The check must go through LaunchServices: run from the shell, it would answer about
+# the terminal — the responsible process — rather than about the bundle just signed.
+# The rebuild has invalidated the grant: the fingerprint changed.
 echo "   ⚠️  L'autorisation d'accessibilité est à réaccorder : retirer la ligne"
 echo "      $NAME.app de Réglages Système → Confidentialité et sécurité →"
 echo "      Accessibilité avec « − », puis l'y glisser à nouveau."
 echo "   Vérifier ensuite :"
-# Le fichier est effacé d'abord, et attendu ensuite : laissé en place, il rendrait le
-# verdict de l'exécution précédente — « accordee » alors que la compilation qu'on vient
-# de faire vient justement d'invalider le droit. Exactement le faux positif à éviter.
+# The file is deleted first, then waited for: left in place, it would return the verdict
+# of the previous run — "accordee" when the build just performed has invalidated the
+# right. Exactly the false positive to avoid.
 echo "      rm -f /tmp/verdict"
 echo "      open -n -a \"\$(pwd)/$APP\" --args --check --verdict /tmp/verdict"
 echo "      until [ -f /tmp/verdict ]; do sleep 0.2; done; cat /tmp/verdict"

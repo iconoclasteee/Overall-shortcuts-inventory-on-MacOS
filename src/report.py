@@ -1,18 +1,17 @@
-"""Assemble le rapport Markdown final.
+"""Assembles the final Markdown report.
 
-Trois entrées : les raccourcis système (out/system-shortcuts.json), les raccourcis
-moissonnés app par app (out/apps/*.json), et les descriptions d'apps, qui servent
-aussi à corriger le classement d'une app.
+Three inputs: system shortcuts (out/system-shortcuts.json), the shortcuts harvested app by
+app (out/apps/*.json), and the app descriptions, which also serve to correct an app's
+classification.
 
-Les descriptions viennent de deux fichiers : `data/app-descriptions.json`, l'amorce
-versionnée qui ne décrit que des apps livrées avec macOS, et `out/app-descriptions.json`,
-propre à la machine et non versionné — c'est là que se remplissent les apps installées,
-puisque leur énumération n'a pas sa place dans un dépôt public. Le second prime sur
-la première.
+Descriptions come from two files: `data/app-descriptions.json`, the versioned seed that
+describes only apps shipped with macOS, and `out/app-descriptions.json`, machine-specific
+and not versioned — that is where installed apps get filled in, since enumerating them has
+no place in a public repository. The second overrides the first.
 
-Le classement par défaut vient de `LSApplicationCategoryType`, déclaré par l'éditeur
-dans l'app elle-même : factuel et vérifiable. Il est parfois grossier — d'où la
-possibilité de le surcharger explicitement plutôt que de deviner à la place d'Apple.
+The default classification comes from `LSApplicationCategoryType`, declared by the vendor
+inside the app itself: factual and verifiable. It is sometimes coarse — hence the ability
+to override it explicitly rather than guessing on Apple's behalf.
 """
 
 import json
@@ -55,12 +54,12 @@ CATEGORIES = {
 UNCLASSIFIED = "Non classées (aucune catégorie déclarée)"
 
 def render_shortcut(entry, glyphs, keyboard=None):
-    """Rend un raccourci AX en notation lisible (⇧⌘K).
+    """Renders an AX shortcut in readable notation (⇧⌘K).
 
-    Le décodage des modificateurs vient du modèle commun : deux implémentations
-    finiraient par diverger sans que rien ne le signale. La disposition clavier
-    intervient pour la même raison : sur un clavier français, « ? » se frappe avec
-    Maj, et l'écrire « ⌘? » décrirait une frappe qui ne déclenche rien.
+    Modifier decoding comes from the shared model: two implementations would eventually
+    drift apart with nothing to flag it. The keyboard layout is involved for the same
+    reason: on a French keyboard "?" is typed with Shift, and writing it "⌘?" would
+    describe a keystroke that triggers nothing.
     """
     bits = from_ax(entry["modificateurs"])
     char = entry.get("caractere") or ""
@@ -81,8 +80,8 @@ def render_shortcut(entry, glyphs, keyboard=None):
     return render_modifiers(bits) + key
 
 
-# Dossier des fiches d'application. Surchargé par le premier argument de ligne de
-# commande ; la valeur par défaut permet d'appeler le script sans argument.
+# Folder of application records. Overridden by the first command-line argument; the
+# default value lets the script be called with no argument at all.
 APPS_DIR = ROOT / "out" / "apps"
 
 
@@ -100,7 +99,7 @@ def load_apps():
 
 
 def load_descriptions():
-    """Amorce versionnée, puis descriptions propres à la machine qui la surchargent."""
+    """Versioned seed, then machine-specific descriptions that override it."""
     descriptions = {}
     for path in (ROOT / "data" / "app-descriptions.json",
                  ROOT / "out" / "app-descriptions.json"):
@@ -110,7 +109,7 @@ def load_descriptions():
 
 
 def escape(text):
-    """Neutralise les caractères qui casseraient une cellule de tableau Markdown."""
+    """Neutralises the characters that would break a Markdown table cell."""
     return (text or "").replace("|", "\\|").replace("\n", " ").strip()
 
 
@@ -121,8 +120,8 @@ def build_report():
     apps = load_apps()
     descriptions = load_descriptions()
 
-    # Trois états distincts : lue avec des raccourcis, lue sans en avoir, illisible.
-    # Les confondre faisait passer une app d'arrière-plan sans menu pour un échec.
+    # Three distinct states: read with shortcuts, read with none, unreadable. Conflating
+    # them made a background app with no menu look like a failure.
     harvested = [a for a in apps if a["statut"] == "ok" and a["raccourcis"]]
     sans_raccourci = [a for a in apps if a["statut"] == "ok" and not a["raccourcis"]]
     failed = [a for a in apps if a["statut"] != "ok"]
@@ -207,14 +206,14 @@ def build_report():
                     seen.add(row)
                     lines.append(f"| `{combo}` | {escape(entry['chemin'])}{suffix} |")
                 lines.append("")
-                # Une redéfinition sans élément de menu correspondant est signalée plutôt
-                # qu'ignorée : c'est souvent un titre qui ne colle plus (app traduite,
-                # commande renommée), donc un raccourci qui ne fonctionne plus.
+                # A redefinition with no matching menu item is reported rather than
+                # ignored: it usually means a title that no longer matches (translated app,
+                # renamed command), and therefore a shortcut that no longer works.
                 orphans = [(overrides[k][0], overrides[k][1])
                            for k in overrides if k not in matched]
                 if orphans:
-                    # Sans document ouvert, une partie du menu n'existe pas : l'absence
-                    # de correspondance n'y prouve pas que le raccourci est cassé.
+                    # Without a document open, part of the menu does not exist: a missing
+                    # match there does not prove the shortcut is broken.
                     cause = ("sans correspondance dans le menu lu — mais cette app a été "
                              "lue sans document ouvert, donc la commande peut simplement "
                              "être absente à ce moment-là"
@@ -247,6 +246,6 @@ def build_report():
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         globals()["APPS_DIR"] = Path(sys.argv[1])
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "out" / "raccourcis.md"
+    out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "out" / "shortcuts.md"
     out.write_text(build_report(), encoding="utf-8")
     print(f"✅ {out}")

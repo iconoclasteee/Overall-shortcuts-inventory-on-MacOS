@@ -1,110 +1,110 @@
-# Architecture et sources de données
+# Architecture and data sources
 
-Comment l'inventaire est construit, d'où viennent ses tables, et ce que le dépôt
-contient. Pour l'usage courant, voir [Utilisation](utilisation.md).
+How the inventory is built, where its lookup tables come from, and what the repository
+holds. For everyday use, see [Usage](usage.md).
 
 ---
 
-## Pourquoi construire plutôt qu'adopter
+## Why build rather than adopt
 
-| Piste | Pourquoi écartée |
+| Option | Why it was ruled out |
 |---|---|
-| Lire les bundles `.app` sur le disque | Rien à lire : les menus n'existent qu'en mémoire. Les apps Electron/Qt les construisent par code. |
-| Adopter **HotkeyClash** | Ne couvre que les apps déjà lancées, et vise la détection de conflits, pas l'inventaire. Son code de parcours de menus a en revanche servi de référence. |
-| Adopter **KeyMinder** / **CheatSheet** / **KeyCue** | Consultation de l'app active uniquement. Pas de document global. |
-| Script `osascript` | L'autorisation d'accessibilité porterait sur le terminal entier plutôt que sur un binaire dédié. |
+| Read `.app` bundles on disk | Nothing to read: menus exist only in memory. Electron and Qt apps build them in code. |
+| Adopt **HotkeyClash** | Covers only apps already running, and aims at conflict detection rather than inventory. Its menu-walking code did serve as a reference. |
+| Adopt **KeyMinder** / **CheatSheet** / **KeyCue** | Frontmost app only. No global document. |
+| An `osascript` script | Accessibility permission would apply to the whole terminal rather than to a dedicated binary. |
 
-## Qui gagne une combinaison
+## Who wins a combination
 
-Une frappe descend une pile et le premier étage qui la réclame l'avale :
-pilote clavier (Karabiner) → capture d'événements (Keyboard Maestro) → raccourci
-système macOS → raccourci global Carbon (Alfred, CleanShot X) → menu d'application.
+A keystroke descends a stack, and the first layer that claims it swallows it: keyboard
+driver (Karabiner) → event tap (Keyboard Maestro) → macOS system shortcut → Carbon global
+hotkey (Alfred, CleanShot X) → application menu.
 
-L'ordre est fiable. Le départage entre deux outils accrochés au **même** étage ne
-l'est pas : il dépend de leur ordre d'enregistrement, que rien sur le disque ne
-consigne. L'outil dit « égalité » plutôt que de désigner un gagnant au hasard.
-Modèle repris de [HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash) (GPL-2.0) —
-voir la note de licence en fin de fichier.
+That order is reliable. Deciding between two tools hooked on the **same** layer is not: it
+depends on their registration order, which nothing on disk records. The tool reports a tie
+rather than picking a winner at random. Model taken from
+[HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash) (GPL-2.0) — see the licence
+note in the [README](../README.md).
 
-## Doubles frappes
+## Double taps
 
-Certains raccourcis système ne sont pas une combinaison mais une **double frappe** sur
-un modificateur seul — la dictée en est l'exemple courant. macOS les stocke avec
-`type: "modifier"` et un masque distinguant la touche gauche de la droite (constantes
-`NX_DEVICE*KEYMASK` d'IOKit). Les libellés viennent du panneau Clavier lui-même
-(`DoubleTapCommandRight` → « Appuyer deux fois sur Commande de droite »). Ces
-raccourcis sont marqués « double frappe » dans la page, et comptés comme **une** touche.
+Some system shortcuts are not a combination but a **double tap** on a modifier alone —
+dictation being the common example. macOS stores them with `type: "modifier"` and a mask
+distinguishing the left key from the right one (IOKit's `NX_DEVICE*KEYMASK` constants).
+The labels come from the Keyboard settings panel itself (`DoubleTapCommandRight` → "Press
+Right Command Twice"). These shortcuts are marked "double tap" in the page, and counted as
+**one** key.
 
-**`out/raccourcis.md`** — le même inventaire à plat, versionnable et relisible
-hors ligne, groupé par catégorie d'app.
+## Where the data comes from
 
-## D'où viennent les données
+No lookup table is written from memory — everything is extracted from macOS:
 
-Aucune table n'est écrite de mémoire — tout est extrait de macOS :
-
-| Donnée | Source sur la machine |
+| Data | Source on the machine |
 |---|---|
-| Les raccourcis système + leurs libellés français | `KeyboardSettings.appex/…/DefaultShortcutsTable.xml` et `DefaultSpacesShortcuts.xml` (bureaux), traduits par `.loctable` |
-| État réel (activé, redéfini) | `defaults export com.apple.symbolichotkeys` |
-| Codes de touches et glyphes de menu | `HIToolbox.framework/…/BridgeSupport` (énumérations Carbon `kVK_*` et `kMenu*Glyph`) |
-| Raccourcis d'app | API d'accessibilité, attributs `AXMenuItemCmdChar` / `CmdGlyph` / `CmdModifiers` |
-| Catégorie et version d'app | `LSApplicationCategoryType` et `CFBundleShortVersionString` de chaque `Info.plist` |
-| Raccourcis redéfinis par l'utilisateur | `NSUserKeyEquivalents` dans les préférences de chaque app |
-| Correspondance touche ↔ caractère | `UCKeyTranslate` sur la disposition clavier active — indispensable en AZERTY, où le code 41 produit « m » et non « ; » |
-| Raccourcis globaux tiers | `Alfred.alfredpreferences` et `Keyboard Maestro Macros.plist` pour leurs formats propres ; pour tout le reste, un balayage de `~/Library/Preferences` reconnaissant deux conventions répandues — `{keyCode, modifierFlags}` et les clés `KeyboardShortcuts_*`. Lus, jamais écrits. Un domaine de préférences sans app installée est écarté : un fichier de prefs survit à la désinstallation. |
+| System shortcuts and their localised labels | `KeyboardSettings.appex/…/DefaultShortcutsTable.xml` and `DefaultSpacesShortcuts.xml` (desktops), translated through `.loctable` |
+| Actual state (enabled, redefined) | `defaults export com.apple.symbolichotkeys` |
+| Key codes and menu glyphs | `HIToolbox.framework/…/BridgeSupport` (Carbon enumerations `kVK_*` and `kMenu*Glyph`) |
+| Application shortcuts | Accessibility API, attributes `AXMenuItemCmdChar` / `CmdGlyph` / `CmdModifiers` |
+| Application category and version | `LSApplicationCategoryType` and `CFBundleShortVersionString` from each `Info.plist` |
+| User-redefined shortcuts | `NSUserKeyEquivalents` in each app's preferences |
+| Key ↔ character mapping | `UCKeyTranslate` on the active keyboard layout — essential on AZERTY, where code 41 produces "m" and not ";" |
+| Third-party global hotkeys | `Alfred.alfredpreferences` and `Keyboard Maestro Macros.plist` for their own formats; for everything else, a sweep of `~/Library/Preferences` recognising three widespread conventions — `{keyCode, modifierFlags}`, a JSON string carrying `carbonKeyCode`, and an `NSKeyedArchiver` archive. Read, never written. A preferences domain with no installed app is skipped: a prefs file outlives the uninstall. |
 
-Les descriptions de rôle des apps, elles, sont écrites à la main dans
-`data/app-descriptions.json`. Une app sans description s'affiche « Rôle non
-renseigné » plutôt que de recevoir une description plausible mais inventée.
+Application role descriptions, by contrast, are written by hand in
+`data/app-descriptions.json`. An app with no description shows "role not filled in" rather
+than receiving a plausible but invented one.
 
-## Structure
+## Layout
 
 ```
-build.sh              compile bin/ShortcutHarvester.app
-run.sh                orchestration : système → apps → rapport
-src/tables.py         codes de touches et glyphes, extraits de BridgeSupport
-src/system_shortcuts.py   raccourcis système → out/system-shortcuts.json
-src/Harvester.swift   moissonneur d'accessibilité → out/apps/<bundle-id>.json
-src/report.py         assemblage du Markdown final
-src/page.py           page HTML autonome, en français et en anglais
-src/libres.py         combinaisons qu'aucun raccourci ne revendique
-src/perimees.py       fiches dont la version ne correspond plus à l'installée
-src/raccourci_systeme.py  désactive ou réactive un raccourci système
-out/reglages-scan.json     exclusions et sources posées à la main (ignoré)
-data/app-descriptions.json   amorce des rôles d'app (apps macOS uniquement)
-out/app-descriptions.json    rôles des apps installées (propre à la machine, ignoré)
+build.sh              builds bin/ShortcutHarvester.app
+run.sh                orchestration: system → apps → report
+check-publication.sh  scans tracked files and git history before a push
+src/tables.py            key codes and menu glyphs, extracted from BridgeSupport
+src/system_shortcuts.py  system shortcuts → out/system-shortcuts.json
+src/Harvester.swift      accessibility harvester → out/apps/<bundle-id>.json
+src/index.py             unified index, conflict arbitration → out/index.json
+src/report.py            assembles the final Markdown
+src/page.py              self-contained HTML page, in French and English
+src/free_shortcuts.py    combinations no shortcut claims
+src/stale.py             records whose version no longer matches the installed one
+src/toggle_shortcut.py   disables or re-enables a system shortcut
+data/scopes.json            scope arbitration table (editable)
+data/known-shortcuts.json   identifications established for undocumented shortcuts
+data/app-descriptions.json  seed of app roles (macOS-shipped apps only)
+out/scan-settings.json      exclusions and hotkey tools set by hand (ignored)
+out/app-descriptions.json   roles of installed apps (machine-specific, ignored)
+out/backups/                timestamped copies of com.apple.symbolichotkeys (ignored)
 ```
 
-## Ce que le dépôt contient, et ce qu'il ne contient pas
+## What the repository holds, and what it does not
 
-Le code est publiable tel quel. Tout ce qui décrit **une machine** est produit dans
-`out/`, qui n'est pas versionné :
+The code is publishable as is. Everything that describes **a machine** is produced in
+`out/`, which is not versioned:
 
-| Versionné | Ignoré (`out/`) |
+| Versioned | Ignored (`out/`) |
 |---|---|
-| Le code, les tables d'arbitrage (`data/portees.json`) | Les raccourcis lus, app par app |
-| Les descriptions d'app renseignées à la main | La page HTML et le rapport Markdown |
-| Les identifications établies (`data/raccourcis-connus.json`) | La disposition clavier, le catalogue d'apps installées |
-| | Les sauvegardes de `com.apple.symbolichotkeys` |
+| The code, the arbitration tables (`data/scopes.json`) | The shortcuts read, app by app |
+| Hand-written app descriptions | The HTML page and the Markdown report |
+| Established identifications (`data/known-shortcuts.json`) | The keyboard layout, the census of installed apps |
+| | Backups of `com.apple.symbolichotkeys` |
 
-⚠️ **La page produite est un document personnel.** Elle contient les chemins de menus
-réels : titres de favoris du navigateur, noms de macros, nom de la session. Elle n'a
-rien à faire dans un dépôt, ni dans un partage de fichiers.
+⚠️ **The page it produces is a personal document.** It contains real menu paths: browser
+bookmark titles, macro names, the session name. It has no place in a repository, nor in a
+file share.
 
-Le dépôt ne dit rien d'une installation particulière : ni le nombre d'apps lues, ni
-les logiciels présents, ni les raccourcis désactivés. Les outils tiers ne sont nommés
-que là où le code les traite explicitement — Alfred et Keyboard Maestro ont un lecteur
-dédié, et chaque convention de stockage est illustrée par l'app qui l'emploie. Partout
-ailleurs, le texte dit « outils tiers ». Même règle pour `data/app-descriptions.json` :
-sa version versionnée ne décrit que des apps livrées avec macOS, parce qu'une version
-complétée reviendrait à publier la liste des logiciels installés.
+The repository says nothing about any particular installation: not the number of apps
+read, not the software present, not the shortcuts disabled. Third-party tools are named
+only where the code handles them explicitly — Alfred and Keyboard Maestro have a dedicated
+reader, and each storage convention is illustrated by the app that uses it. Everywhere
+else, the text says "third-party tools". The same rule applies to
+`data/app-descriptions.json`: the versioned copy describes only apps shipped with macOS,
+because a completed one would amount to publishing the list of installed software.
 
-Les listes d'exclusion, elles, sont versionnées : ce sont des réglages du programme,
-pas des données de machine. Elles ne contiennent que des identifiants de composants
-macOS et d'outils grand public — aucun identifiant relevé sur une installation
-particulière. Les désinstalleurs sont écartés par une règle sur le nom plutôt que par
-une liste d'identifiants.
+The exclusion lists, by contrast, are versioned: they are program settings, not machine
+data. They contain only identifiers of macOS components and mainstream tools — none
+observed on a particular installation. Uninstallers are skipped by a rule on the name
+rather than by a list of identifiers.
 
-Avant de publier, `./verifier-publication.sh` relit les fichiers versionnés **et
-l'historique git** à la recherche de chemins absolus, de noms d'utilisateur, d'adresses
-et d'identifiants de machine.
+Before publishing, `./check-publication.sh` re-reads the versioned files **and the git
+history**, looking for absolute paths, user names, addresses and machine identifiers.
