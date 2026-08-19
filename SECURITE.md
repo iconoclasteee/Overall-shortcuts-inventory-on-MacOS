@@ -23,8 +23,17 @@ Le point décisif est **à qui** vous l'accordez.
 - Accordée à **`ShortcutHarvester.app`**, elle ne concerne que ce programme.
 
 C'est précisément pour rendre ce choix possible que le projet compile une application
-plutôt qu'un simple script. Préférez la seconde voie. Et si vous ne comptez pas relancer
-l'outil prochainement, retirez l'autorisation après la passe.
+plutôt qu'un simple script.
+
+**Mais il faut être honnête sur ce que la passe complète demande.** `run.sh` exécute le
+binaire directement depuis le shell, et macOS attribue alors le droit au processus
+responsable — le terminal. En pratique, un scan de toutes les applications suppose donc
+le plus souvent d'avoir autorisé son terminal. Ouvrir et refermer les applications, en
+revanche, ne demande aucune permission : c'est la lecture des menus qui l'exige.
+
+Accordez cette autorisation **le temps de la passe, puis retirez-la**. `run.sh` vous le
+rappelle à la fin d'une passe qui a ouvert des applications, et se tait quand
+l'autorisation appartient bien au bundle — auquel cas il n'y a rien à retirer.
 
 ## 2. Ouvrir automatiquement toutes vos applications n'est pas anodin
 

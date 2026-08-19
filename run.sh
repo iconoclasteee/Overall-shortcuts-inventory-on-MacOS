@@ -100,6 +100,31 @@ Path(sys.argv[2]).write_text(h[h.rindex("<script>") + 8:h.rindex("</script>")],
 else
   echo "   ℹ️  node absent : syntaxe du JavaScript non vérifiée"
 fi
+# Rappel de fin de passe, affiché seulement quand il sert à quelque chose.
+#
+# Ouvrir et fermer les applications ne demande aucune autorisation ; lire leurs menus
+# si. Or le binaire est exécuté directement depuis le shell, et macOS attribue alors
+# le droit d'accessibilité au **processus responsable** — le terminal — plutôt qu'au
+# bundle. Une passe complète suppose donc en général d'avoir autorisé son terminal,
+# ce qui étend le droit à tout ce qu'il exécutera ensuite.
+#
+# Pour savoir si c'est le cas, on relance le contrôle via LaunchServices : lancé par
+# `open`, le bundle est son propre processus responsable. S'il se déclare autorisé,
+# l'autorisation lui appartient et il n'y a rien à retirer — le rappel se tait.
+if [ ${#TARGET[@]} -ne 0 ]; then
+  VERDICT_DIR=$(mktemp -d); VERDICT="$VERDICT_DIR/verdict"
+  open -W -a "$(pwd)/bin/ShortcutHarvester.app"        --args --check --verdict "$VERDICT" >/dev/null 2>&1 || true
+  if [ "$(cat "$VERDICT" 2>/dev/null)" != "accordee" ]; then
+    echo
+    echo "⚠️  Autorisation d'accessibilité — à retirer si elle était temporaire"
+    echo "   Les menus ont été lus grâce à l'autorisation de ce terminal, pas à celle"
+    echo "   du moissonneur. Tant qu'elle reste accordée, TOUT ce que ce terminal"
+    echo "   exécute peut lire et piloter n'importe quelle application."
+    echo "   Réglages Système → Confidentialité et sécurité → Accessibilité"
+  fi
+  rm -rf "$VERDICT_DIR"
+fi
+
 echo
 echo "🌐 file://$(pwd)/$PAGE"
 echo "📄 $(pwd)/$REPORT"

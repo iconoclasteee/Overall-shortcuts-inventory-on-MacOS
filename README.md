@@ -142,9 +142,49 @@ bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester --check
 
 Si la vérification échoue alors que l'app figure bien dans la liste, c'est que macOS
 attribue l'autorisation au **processus responsable** — le terminal depuis lequel le
-binaire est lancé — et non au bundle lui-même. Il faut alors choisir en connaissance de
-cause : autoriser le terminal, avec la portée que cela implique pour tout ce qu'il
-exécute.
+binaire est lancé — et non au bundle lui-même.
+
+### Ce que la passe complète demande vraiment
+
+Deux gestes distincts, deux exigences distinctes :
+
+| Geste | Autorisation |
+|---|---|
+| Ouvrir et refermer une application | **aucune** |
+| Lire sa barre de menu | accessibilité |
+
+C'est bien `ShortcutHarvester` qui ouvre et referme les applications, sans qu'aucune
+permission n'y soit nécessaire. Mais il lit les menus, et `run.sh` l'exécute
+directement depuis le shell : macOS attribue alors le droit au terminal. **Une passe
+complète suppose donc, en général, d'avoir autorisé son terminal.**
+
+C'est le geste le plus large du projet : tant que cette autorisation reste accordée,
+*tout* ce que ce terminal exécutera — chaque script, chaque installation de paquet,
+chaque commande copiée d'un forum — pourra lire et piloter n'importe quelle
+application. **Accordez-la le temps de la passe, puis retirez-la.**
+
+`run.sh` le rappelle de lui-même à la fin d'une passe qui a ouvert des applications —
+et se tait quand l'autorisation appartient bien au bundle, auquel cas il n'y a rien à
+retirer. Pour le savoir, il relance le contrôle via LaunchServices : lancé par `open`,
+le bundle est son propre processus responsable.
+
+### Où regarder
+
+Réglages Système → Confidentialité et sécurité → Accessibilité. Ce qui mérite une
+question, au-delà de ce que vous y avez mis pour ce projet :
+
+- **Terminaux** — Terminal, iTerm2, Warp, Ghostty, kitty, Alacritty, WezTerm, Hyper,
+  Tabby, cmux.
+- **Éditeurs et environnements de développement**, qui embarquent un terminal :
+  Visual Studio Code, Cursor, Zed, Sublime Text, Xcode, les IDE JetBrains, et les
+  environnements agentiques, qui exécutent des commandes de leur propre initiative.
+- **Outils d'automatisation** qui exécutent des scripts : Keyboard Maestro, Alfred,
+  Raycast, Hammerspoon, BetterTouchTool, SwiftBar, Automator, Éditeur de script,
+  Raccourcis.
+
+Les outils de la troisième catégorie ont souvent **besoin** de cette autorisation pour
+fonctionner — simuler une frappe, piloter une fenêtre. Les y trouver est normal. Ce
+qu'il faut en retenir est autre : les scripts qu'ils exécutent en héritent.
 
 ⚠️ **Recompiler change l'identité de code du bundle.** Après un `./build.sh`,
 l'autorisation tombe : `run.sh` s'arrête, et il faut retirer puis remettre l'app dans la

@@ -26,6 +26,7 @@ struct Options {
     var onlyRunning = false        // ne relire que les apps déjà ouvertes
     var includeGames = false       // les jeux sont écartés par défaut
     var dryRun = false             // lister les cibles sans rien lancer
+    var verdict: String?           // où écrire le résultat de --check
     var keymap = false             // exporter la correspondance code de touche -> caractère
     var catalogue = false          // exporter la liste des apps installées, sans rien lancer
     var keepRunning = false        // ne pas quitter les apps qu'on a lancées
@@ -44,6 +45,7 @@ func parseArgs() -> Options {
         case "--keep-running": o.keepRunning = true
         case "--include-games": o.includeGames = true
         case "--dry-run": o.dryRun = true
+        case "--verdict": o.verdict = it.next()
         case "--keymap": o.keymap = true
         case "--catalogue": o.catalogue = true
         case "--bundle-ids": o.bundleIDs = (it.next() ?? "").split(separator: ",").map(String.init)
@@ -398,6 +400,12 @@ func dumpKeymap() {
 }
 
 if options.keymap { dumpKeymap() }
+
+if let chemin = options.verdict {
+    try? (AX.isTrusted() ? "accordee" : "absente")
+        .write(toFile: chemin, atomically: true, encoding: .utf8)
+    if options.checkOnly { exit(AX.isTrusted() ? 0 : 1) }
+}
 
 guard AX.isTrusted() else {
     FileHandle.standardError.write("""
