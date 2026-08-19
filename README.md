@@ -50,14 +50,35 @@ works offline. Six views, in French and English.
 | **Free shortcuts** | What is left that I can assign without breaking anything? |
 | **Next scan** | Which applications are new or freshly updated, and which should I scan? |
 
-The **Free shortcuts** view crosses modifier sets against every assignable key, numeric
-keypad included: each free cell carries the whole combination, and one click copies it.
+### The views
 
-The **Next scan** view never runs anything itself. It states what each step costs — how
-many applications it opens, and whether it needs the harvester's permission — then builds
-the exact command for you to paste into a terminal:
+**Commands by menu** — the app's own shortcuts, in the order of its menu bar, then the
+global ones that reach it from outside.
+
+<img src="docs/images/commands-by-menu.png" alt="Commands by menu: an application's shortcuts laid out in menu-bar order, three to a row, each shown as physical keys" width="100%">
+
+**What a keystroke does** — start from the keys, not from the command. Click a
+combination and the interception stack shows who actually receives it, and why.
+
+<img src="docs/images/what-a-keystroke-does.png" alt="Detail of one combination: the interception stack with the winning layer highlighted, and the list of every claimant" width="100%">
+
+**Free shortcuts** — modifier sets against every assignable key, numeric keypad included.
+Each free cell carries the whole combination, and one click copies it.
+
+**Next scan** — the table of installed applications: version on disk against version at
+the last read, status, date, shortcuts found, and three checkboxes.
+
+<img src="docs/images/next-scan-table.png" alt="The next-scan table: one row per installed application with both versions, status, date, shortcut count and three checkboxes" width="100%">
+
+The screen runs nothing itself. It states what each step costs — how many applications it
+opens, and whether it needs the harvester's permission — then builds the exact command for
+you to paste into a terminal:
 
 <img src="docs/images/next-scan-steps.png" alt="The three scan steps: refresh the application list, re-read the system and source applications, scan the ticked applications — each with what it requires and a button to show the command" width="100%">
+
+> These screenshots are taken from the author's own machine and published deliberately.
+> Yours is not meant to be: the page lists every piece of software you have installed, and
+> [SECURITY.md](SECURITY.md) explains why that is worth keeping to yourself.
 
 A **Markdown report** carries the same inventory in flat form — versionable and readable
 offline.
