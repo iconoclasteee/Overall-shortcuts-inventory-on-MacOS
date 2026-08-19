@@ -90,14 +90,6 @@ h1 em { font-style: normal; color: var(--petrol); }
 
 /* — Lancement d'un scan — */
 .actions-scan { justify-self: center; display: flex; align-items: stretch; gap: 10px; }
-.bouton-secondaire {
-  font-family: var(--display); font-size: 12px; font-weight: 600; line-height: 1.25;
-  padding: 11px 14px; border-radius: 9px; cursor: pointer; text-align: center;
-  background: var(--plaque); color: var(--sourdine); border: 1px solid var(--creux);
-  display: flex; align-items: center; justify-content: center;
-}
-.bouton-secondaire:hover { color: var(--encre); border-color: var(--petrol); }
-.bouton-secondaire:focus-visible { outline: 2px solid var(--petrol); outline-offset: 3px; }
 .bouton-scan {
   font-family: var(--display); font-size: 15px; font-weight: 600; line-height: 1;
   height: 40px; padding: 0 22px; border-radius: var(--rayon-sm); cursor: pointer;
@@ -133,29 +125,11 @@ h1 em { font-style: normal; color: var(--petrol); }
   background: var(--plaque); color: var(--encre); overflow: hidden;
 }
 #scan::backdrop { background: rgba(0,0,0,.45); }
-.scan-corps { display: grid; grid-template-rows: auto auto 1fr auto; max-height: 86vh; }
-.scan-tete { padding: 22px 26px 14px; border-bottom: 1px solid var(--creux); }
-.scan-tete h2 { font-family: var(--display); font-size: 22px; margin: 0 0 6px; }
-.scan-tete p { margin: 0; font-size: 13.5px; color: var(--sourdine); }
 .scan-outils {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 14px 26px; border-bottom: 1px solid var(--creux);
 }
 .scan-outils input[type="search"] { flex: 1; min-width: 200px; max-width: 340px; font-size: 14px; padding: 9px 12px; }
-.scan-liste { overflow-y: auto; padding: 14px 26px; }
-.scan-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2px 32px; }
-.scan-grille label {
-  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline;
-  padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 14px;
-}
-.scan-grille label:hover { background: var(--alu); }
-.scan-grille .motif {
-  display: block; font-family: var(--mono); font-size: 10.5px; color: var(--sourdine);
-}
-.scan-pied {
-  display: flex; align-items: center; justify-content: space-between; gap: 20px;
-  padding: 16px 26px; border-top: 1px solid var(--creux); flex-wrap: wrap;
-}
 /* Boutons — anatomie reprise de shadcn/ui : hauteur constante, rayon doux, ombre
    d'un pixel, transition de couleur, et un anneau de focus épais plutôt qu'un
    contour fin. Ce qui les fait lire comme des boutons, c'est la constance : même
@@ -176,7 +150,6 @@ h1 em { font-style: normal; color: var(--petrol); }
 }
 .bouton.primaire:hover { background: color-mix(in srgb, var(--petrol) 88%, var(--encre)); }
 .bouton[disabled] { opacity: .5; cursor: not-allowed; }
-.bouton:focus-visible, .scan-grille label:focus-within,
 input:focus-visible, select:focus-visible {
   outline: 3px solid var(--anneau); outline-offset: 1px;
 }
@@ -444,7 +417,6 @@ nav button:focus-visible, input:focus-visible, select:focus-visible,
 .verdict.convention { border-left-color: var(--sourdine); color: var(--sourdine); }
 
 /* — Contrôles — */
-.controles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
 /* Deux natures de filtre : à gauche la combinaison de touches, à droite la recherche
    de libellé. Les séparer évite de les prendre pour un même réglage. */
 .filtre {
@@ -612,14 +584,6 @@ input[type="search"] { flex: 1; max-width: 560px; min-width: 260px; }
   display: block; font-family: var(--mono); font-size: 11.5px; color: var(--sourdine);
   margin-top: 3px; padding-left: 11px; border-left: 2px solid var(--creux);
 }
-.segmente { display: flex; border: 1px solid var(--creux); border-radius: 7px; overflow: hidden; }
-.segmente button {
-  font: inherit; font-size: 13.5px; padding: 9px 15px; border: 0; cursor: pointer;
-  background: var(--plaque); color: var(--sourdine);
-}
-.segmente button + button { border-left: 1px solid var(--creux); }
-.segmente button[aria-selected="true"] { background: var(--petrol); color: var(--plaque); }
-.segmente button:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
 .vide { color: var(--sourdine); font-size: 14px; padding: 40px 0; }
 footer {
   margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--creux);
@@ -798,7 +762,6 @@ const TEXTES = {
     aucun_conflit_suite: ". Chaque combinaison n'a qu'un seul preneur.",
     rien_filtre: "Aucune combinaison", rien_pour: "pour", rien_libre: "Cette combinaison est donc libre.",
     autres_affine: (n) => `${n} autres — affiner le filtre.`,
-    choisis_app: "Sélectionner une application.",
     rien_app: (nom) => `Rien dans ${nom} ne correspond au filtre.`,
     illisible: (nom, raison) => `${nom} n'a pas pu être lue : ${raison}.`,
     sans_app: "Aucune application choisie : seuls les raccourcis globaux sont résolus ici. "
@@ -811,13 +774,10 @@ const TEXTES = {
     passe_devant: "passe devant",
     src_systeme: "raccourci système macOS", src_outil: "outil global",
     src_pilote: "pilote clavier", src_menu: "menu de l'application",
-    pourquoi_propres: "Ses propres commandes de menu, actives seulement lorsqu'elle est au premier plan.",
     pourquoi_app: "Raccourcis macOS qui agissent sur l'interface de l'application.",
     pourquoi_externe: "Agissent sur la fenêtre de l'application ou par-dessus elle, sans toucher son interface.",
     pourquoi_systeme: "Fonctionnent pendant que l'application est ouverte, mais ne la concernent pas.",
     pourquoi_inconnu: "Portée non déterminée.",
-    couche_pilote: "Pilote", couche_capture: "Capture", couche_systeme: "Système",
-    couche_global: "Global", couche_autre: "Autre", couche_menu: "Menu",
     desactive: "désactivé",
     scan_avertissement: "Chaque application cochée sera ouverte, le temps de lire sa barre "
                       + "de menu, puis refermée. Les applications défilent alors au premier "
@@ -931,7 +891,6 @@ const TEXTES = {
     aucun_conflit_suite: ". Every combination has a single taker.",
     rien_filtre: "No combination", rien_pour: "for", rien_libre: "This combination is free.",
     autres_affine: (n) => `${n} more — narrow the filter.`,
-    choisis_app: "Choose an application.",
     rien_app: (nom) => `Nothing in ${nom} matches the filter.`,
     illisible: (nom, raison) => `${nom} could not be read: ${raison}.`,
     sans_app: "No application selected: only global shortcuts resolve here. "
@@ -944,13 +903,10 @@ const TEXTES = {
     passe_devant: "beats",
     src_systeme: "macOS system shortcut", src_outil: "global tool",
     src_pilote: "keyboard driver", src_menu: "app menu",
-    pourquoi_propres: "Its own menu commands. Live only while it is frontmost.",
     pourquoi_app: "macOS shortcuts acting on the app's interface.",
     pourquoi_externe: "Act on the app's window or over it, without touching its interface.",
     pourquoi_systeme: "Work while the app is open, but do not concern it.",
     pourquoi_inconnu: "Scope undetermined.",
-    couche_pilote: "Driver", couche_capture: "Event tap", couche_systeme: "System",
-    couche_global: "Global", couche_autre: "Other", couche_menu: "Menu",
     desactive: "disabled",
     scan_avertissement: "Each ticked application will be opened, just long enough to read "
                       + "its menu bar, then closed again. Applications come to the front "
@@ -1170,7 +1126,6 @@ function brancherBasculeApp() {
    « Ce qui se passe » part de la frappe et non de la commande : pour chaque
    combinaison atteignable dans cette app, qui la reçoit vraiment. Classées par nombre
    de touches, parce qu'on cherche d'abord les combinaisons courtes. */
-
 
 const SOURCE_LABEL = () => ({
   systeme: T("src_systeme"), capture: T("src_outil"), global: T("src_outil"),
@@ -1595,7 +1550,6 @@ function rendreScan() {
     `${T("scan_affichees")(liste.length, LIGNES.length)} · ${T("scan_selection")(aScanner.size)}`;
 }
 
-
 function appliquerLangue() {
   document.documentElement.lang = LANGUE;
   document.querySelectorAll("[data-t]").forEach(n => { n.textContent = T(n.dataset.t); });
@@ -1651,7 +1605,6 @@ function brancherLangues() {
     appliquerLangue();
   }));
 }
-
 
 function brancherScan() {
   document.getElementById("ouvrir-scan").addEventListener("click", () => choisirOnglet("scan"));
@@ -1765,14 +1718,12 @@ appliquerLangue();
 rendreTout();
 """
 
-
 def _ordre_touche(touche):
     """Les touches de fonction se rangent par leur numéro, pas par ordre alphabétique :
     sinon F10 se glisse entre F1 et F2."""
     if touche.startswith("F") and touche[1:].isdigit():
         return (0, int(touche[1:]), "")
     return (1, 0, touche)
-
 
 def build(index_path):
     data = json.loads(Path(index_path).read_text(encoding="utf-8"))
@@ -1987,7 +1938,6 @@ def build(index_path):
 
 <footer data-t="pied"></footer>
 </div><script>{script}</script></body></html>"""
-
 
 if __name__ == "__main__":
     index = sys.argv[1] if len(sys.argv) > 1 else ROOT / "out" / "index.json"
