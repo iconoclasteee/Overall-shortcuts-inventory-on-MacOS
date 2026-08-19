@@ -43,12 +43,19 @@ que fait ce projet, et c'est ce qu'aucun autre ne fait.
 3. **Conflits** — les combinaisons réclamées par plusieurs preneurs, avec qui gagne
    et pourquoi.
 4. **Par combinaison** — chercher une touche ou une commande, et voir partout où elle sert.
-5. **Raccourcis libres** — une grille à double entrée : les modificateurs en colonnes,
-   les touches en lignes, la combinaison entière dans chaque case libre. Un clic la met
-   dans le presse-papiers. Les combinaisons à cinq touches sont comptées, pas listées.
+5. **Raccourcis libres** — une grille unique à double entrée : les jeux de
+   modificateurs en colonnes, groupés par nombre de touches et séparés par un trait ;
+   toutes les touches attribuables en lignes, pavé numérique compris. Chaque case libre
+   porte la combinaison entière, et un clic la met dans le presse-papiers. Une ligne
+   sans aucune case libre est omise ; les combinaisons à cinq touches sont comptées,
+   pas listées — à cette longueur il en reste toujours.
 6. **Prochain scan** — le tableau des applications installées : version sur le disque,
-   version au dernier relevé, statut, date, et trois cases — scanner, exclure, source.
-   L'écran ne lance rien : il produit la commande exacte à coller dans un terminal.
+   version au dernier relevé, statut, date, et trois cases — *scanner*, *exclure*,
+   *outil de raccourcis*. Huit vues rapides restreignent la liste (à scanner, jamais
+   lues, version majeure, outils de raccourcis, 0 raccourci, illisibles, exclues), et
+   se combinent avec la recherche. L'écran ne lance rien : il produit la commande
+   exacte à coller dans un terminal, et chaque étape indique si elle exige
+   l'autorisation d'accessibilité.
 
 L'interface est disponible en **français et en anglais** (drapeaux en haut à droite,
 choix mémorisé). Le contenu lu dans macOS — chemins de menus, noms de commandes,
@@ -111,6 +118,31 @@ Les exclusions et inclusions posées à la main depuis la page vivent dans
 verrouillée — une app dont le lancement déclenche une action destructrice — ne peut pas
 être levée depuis la page.
 
+### Options du moissonneur
+
+`run.sh` les assemble ; elles sont listées ici parce que la page produit des commandes
+qui les emploient, et qu'on demande de les relire avant de les coller.
+
+| Option | Effet | Ouvre des apps |
+|---|---|---|
+| `--all` | cible toutes les apps installées non exclues | oui |
+| `--bundle-ids a,b,c` | cible cette liste précise | oui |
+| `--force` | refait les fiches déjà présentes, au lieu de les sauter | oui |
+| `--only-running` | n'agit que sur les apps **déjà ouvertes** | non |
+| `--keep-running` | ne referme pas ce qui a été ouvert | oui |
+| `--include-games` | garde les jeux, écartés par défaut | oui |
+| `--dry-run` | liste les cibles et s'arrête, avant toute écriture | non |
+| `--catalogue` | recense les apps installées sur la sortie standard | non |
+| `--keymap` | exporte la correspondance touche ↔ caractère | non |
+| `--check` | vérifie l'autorisation d'accessibilité et s'arrête | non |
+| `--verdict <fichier>` | y écrit le résultat de `--check` — seule voie de retour quand l'app est lancée par `open`, qui ne rend ni sortie ni code d'erreur | non |
+| `--reglages <fichier>` | exclusions et inclusions posées à la main | — |
+| `--out <dossier>` | où écrire les fiches (`out/apps` par défaut) | — |
+| `--timeout <secondes>` | délai par application, 25 s par défaut — il borne l'attente de la barre de menu **et** le parcours de l'arbre | — |
+
+Les modes marqués « non » ne lisent aucune barre de menu : ils n'exigent donc pas
+l'autorisation d'accessibilité.
+
 ## Autorisation d'accessibilité
 
 Lire les menus d'une autre app l'exige. `run.sh` la vérifie avant de commencer et
@@ -143,6 +175,26 @@ bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester --check
 Si la vérification échoue alors que l'app figure bien dans la liste, c'est que macOS
 attribue l'autorisation au **processus responsable** — le terminal depuis lequel le
 binaire est lancé — et non au bundle lui-même.
+
+### Trois cases, et ce qu'elles veulent dire
+
+- **Scanner** — l'application sera relue à la prochaine passe. Cochée d'office
+  lorsqu'elle n'a jamais été lue, ou que le premier nombre de son numéro de version a
+  changé. Le programme ne coche jamais rien de lui-même en dehors de cette proposition :
+  `run.sh` ne scanne que ce qui est explicitement demandé.
+- **Exclure** — l'application est écartée de toute passe, et le choix est conservé dans
+  `out/reglages-scan.json`. Quelques exclusions sont verrouillées : celles dont le
+  lancement déclenche une action lourde ou destructrice.
+- **Outil de raccourcis** — l'application déclare des raccourcis globaux, qui
+  l'emportent sur les menus de toutes les autres. La case est cochée **par le
+  programme** quand il en a trouvé dans ses préférences : c'est un constat, il ne se
+  décoche pas. Les autres cases restent libres, pour désigner une application dont le
+  format de rangement n'est pas encore reconnu.
+
+Le statut répond à une question étroite : « la barre de menu était-elle lisible ». Une
+lecture qui aboutit sans rien trouver s'affiche donc **0 raccourci** plutôt qu'un « ok »
+trompeur — c'est le cas d'une application arrêtée sur un sélecteur de projet, comme des
+utilitaires qui n'ont pas de barre de menu classique.
 
 ### Ce que la passe complète demande vraiment
 
@@ -185,6 +237,22 @@ question, au-delà de ce que vous y avez mis pour ce projet :
 Les outils de la troisième catégorie ont souvent **besoin** de cette autorisation pour
 fonctionner — simuler une frappe, piloter une fenêtre. Les y trouver est normal. Ce
 qu'il faut en retenir est autre : les scripts qu'ils exécutent en héritent.
+
+### Pourquoi la commande produite est longue
+
+Elle énumère chaque identifiant d'application au lieu de renvoyer à un fichier. C'est
+délibéré : **ce que vous collez est ce qui s'exécute.** Quatre opérations, toutes
+visibles — se placer, écrire les réglages, moissonner cette liste-là, reconstruire. Un
+identifiant anormal s'y verrait.
+
+Une forme abrégée dirait « exécute ce qui se trouve dans ce fichier » : vous colleriez
+alors une instruction dont l'effet n'apparaît pas dans le texte collé, et qui dépend
+d'un fichier pouvant changer entre la copie et l'exécution. Le gain serait cosmétique,
+la perte réelle.
+
+La commande affichée suit la sélection : cocher ou décocher une case la recalcule
+aussitôt. Le presse-papiers, lui, garde ce qu'on y a mis — **copiez juste avant de
+coller**.
 
 ⚠️ **Recompiler change l'identité de code du bundle.** Après un `./build.sh`,
 l'autorisation tombe : `run.sh` s'arrête, et il faut retirer puis remettre l'app dans la

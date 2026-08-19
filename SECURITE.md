@@ -100,9 +100,17 @@ identifiants des applications que vous cochez, le chemin du projet. Ces valeurs 
 citées pour le shell, apostrophes comprises, de sorte qu'une espace ou un caractère
 inattendu dans un identifiant ne puisse pas découper la commande ni en ouvrir une autre.
 
-Cela dit : **le bouton « copier » ne dispense pas de lire.** La commande tient en quatre
-lignes. C'est le seul endroit du projet où une donnée venue du système devient une
-instruction que vous exécutez.
+Cela dit : **le bouton « copier » ne dispense pas de lire.** C'est le seul endroit du
+projet où une donnée venue du système devient une instruction que vous exécutez.
+
+C'est aussi pourquoi la commande énumère chaque identifiant d'application plutôt que de
+renvoyer à un fichier : ce que vous collez est ce qui s'exécute, et rien ne s'exécute
+qui ne soit écrit là. Une forme abrégée serait plus agréable à lire et strictement moins
+sûre — l'effet réel dépendrait d'un fichier pouvant changer entre la copie et
+l'exécution.
+
+La commande affichée est recalculée à chaque modification de la sélection ; le
+presse-papiers, lui, garde ce qu'on y a mis. Copiez juste avant de coller.
 
 ## 6. Le balayage des préférences ouvre bien plus que des raccourcis
 
