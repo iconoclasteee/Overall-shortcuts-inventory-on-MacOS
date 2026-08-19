@@ -57,10 +57,13 @@ global ones that reach it from outside.
 
 <img src="docs/images/commands-by-menu.png" alt="Commands by menu: an application's shortcuts laid out in menu-bar order, three to a row, each shown as physical keys" width="100%">
 
-**What a keystroke does** — start from the keys, not from the command. Click a
-combination and the interception stack shows who actually receives it, and why.
+**What a keystroke does** — pick an application, pick a combination, and see who actually
+receives it there. Below, inside PowerPoint, ⇧⌘2 never reaches the menu command it belongs
+to: a global hotkey from a screenshot tool catches the key first. The interception stack
+names the layer that won and says why — this is the same conflict the Conflicts view
+lists, seen from inside the app where it bites.
 
-<img src="docs/images/what-a-keystroke-does.png" alt="Detail of one combination: the interception stack with the winning layer highlighted, and the list of every claimant" width="100%">
+<img src="docs/images/what-a-keystroke-does.png" alt="Inside PowerPoint, the combination ⇧⌘2 goes to a screenshot tool rather than to the menu command: the interception stack highlights the winning layer and lists both claimants" width="100%">
 
 **Free shortcuts** — modifier sets against every assignable key, numeric keypad included.
 Each free cell carries the whole combination, and one click copies it.
