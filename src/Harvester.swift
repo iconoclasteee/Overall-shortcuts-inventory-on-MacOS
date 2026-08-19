@@ -543,6 +543,16 @@ struct Installee: Encodable {
 /// Exclusions posées à la main depuis la page. Le fichier est écrit par l'utilisateur,
 /// pas par le programme : son absence est le cas normal, pas une erreur.
 func reglagesManuels(_ chemin: String) -> (exclues: Set<String>, incluses: Set<String>) {
+    // Absent, le fichier donne le même résultat que vide : aucune exclusion. C'est le cas
+    // normal sur une installation neuve, mais c'est aussi ce qui arriverait si le chemin
+    // était relatif et le programme lancé par `open` — les exclusions posées à la main
+    // seraient alors ignorées en silence, et des apps écartées s'ouvriraient quand même.
+    if !FileManager.default.fileExists(atPath: chemin) {
+        FileHandle.standardError.write(
+            "ℹ️  Aucun réglage manuel : \(URL(fileURLWithPath: chemin).path) est absent.\n"
+                .data(using: .utf8)!)
+        return ([], [])
+    }
     guard let data = FileManager.default.contents(atPath: chemin),
           let objet = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     else { return ([], []) }
@@ -712,12 +722,44 @@ if options.dryRun {
     sortir(0)
 }
 
+// Le dossier de sortie est éprouvé AVANT d'ouvrir la moindre application. Sans ce
+// contrôle, une passe entière peut se dérouler — chaque app ouverte, lue, refermée —
+// pour n'écrire nulle part, et le programme sortait quand même en annonçant un succès.
+//
+// Le cas n'a rien de théorique : LaunchServices ne transmet pas le répertoire courant,
+// donc un programme lancé par `open` démarre à la racine du disque. Un chemin relatif y
+// désigne « /out/apps », où rien n'est inscriptible. D'où le rappel du chemin absolu
+// réellement visé, qui rend la cause lisible d'un coup d'œil.
+do {
+    try FileManager.default.createDirectory(atPath: options.outDir,
+                                            withIntermediateDirectories: true)
+} catch {
+    FileHandle.standardError.write("""
+    ⛔️ Dossier de sortie inutilisable : \(options.outDir)
+       \(error.localizedDescription)
+       Chemin absolu visé   : \(URL(fileURLWithPath: options.outDir).path)
+       Répertoire courant   : \(FileManager.default.currentDirectoryPath)
+
+       Un chemin relatif ne veut rien dire pour un programme lancé par `open` :
+       passer --out avec un chemin absolu.
+
+    """.data(using: .utf8)!)
+    sortir(1)
+}
+guard FileManager.default.isWritableFile(atPath: options.outDir) else {
+    FileHandle.standardError.write(
+        "⛔️ Dossier de sortie en lecture seule : \(URL(fileURLWithPath: options.outDir).path)\n"
+            .data(using: .utf8)!)
+    sortir(1)
+}
 exigerAutorisation()
 
-try? FileManager.default.createDirectory(atPath: options.outDir,
-                                         withIntermediateDirectories: true)
 let encoder = JSONEncoder()
 encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+
+/// Écritures qui ont échoué. Une passe qui n'a rien pu écrire doit le dire par son code
+/// de sortie : run.sh ne lit pas les messages, il lit le statut.
+var echecsEcriture = 0
 
 func runAll() {
     for (index, bundleID) in targets.enumerated() {
@@ -764,6 +806,7 @@ func runAll() {
             try encoder.encode(outcome).write(to: URL(fileURLWithPath: file))
             ecrit = true
         } catch {
+            echecsEcriture += 1
             FileHandle.standardError.write(
                 "⛔️ Écriture impossible : \(file) — \(error.localizedDescription)\n"
                     .data(using: .utf8)!)
@@ -782,6 +825,10 @@ func runAll() {
 // cette boucle : bloquer le thread principal en l'attendant provoquerait un interblocage.
 DispatchQueue.global(qos: .userInitiated).async {
     runAll()
-    sortir(0)
+    if echecsEcriture > 0 {
+        FileHandle.standardError.write(
+            "⛔️ \(echecsEcriture) fiche(s) n'ont pas pu être écrites.\n".data(using: .utf8)!)
+    }
+    sortir(echecsEcriture > 0 ? 1 : 0)
 }
 RunLoop.main.run()
