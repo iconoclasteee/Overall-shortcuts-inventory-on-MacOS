@@ -249,6 +249,9 @@ input:focus-visible, select:focus-visible {
 }
 .etape + .etape { border-top: 1px solid var(--alu); }
 .etape:hover { background: var(--zebre); }
+/* L'étape dont la commande est à l'écran : sans ce repère, trois blocs identiques
+   et une seule commande visible, on ne sait plus laquelle on s'apprête à copier. */
+.etape.choisie { background: var(--zebre); box-shadow: inset 3px 0 0 var(--petrol); }
 .puce {
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 30px; border-radius: 999px; font-family: var(--display);
@@ -1482,6 +1485,12 @@ selectionConseillee();
 
 let vueScan = "tout";
 
+/* Le script actuellement à l'écran, rejoué dès que le tableau change : sans cela la
+   commande affichée décrirait une sélection périmée, et on la copierait telle quelle. */
+const SCRIPTS = {};
+let scriptAffiche = null;
+function rejouerScript() { if (scriptAffiche) SCRIPTS[scriptAffiche](); }
+
 /* Les vues rapides répondent chacune à une question qu'on se pose vraiment devant
    deux cents lignes : qu'est-ce que je vais scanner, qu'est-ce qui n'a jamais été lu,
    qui accroche la touche avant les autres, qu'est-ce qui a échoué. */
@@ -1593,6 +1602,7 @@ function rendreScan() {
     : `<p class="vide">${T("scan_aucune")}</p>`;
   document.getElementById("scan-total").textContent =
     `${T("scan_affichees")(liste.length, LIGNES.length)} · ${T("scan_selection")(aScanner.size)}`;
+  rejouerScript();
 }
 
 function appliquerLangue() {
@@ -1746,22 +1756,33 @@ function brancherScan() {
   ./run.sh --sources`;
   }
 
-  document.getElementById("script-liste").addEventListener("click", () => {
-    afficher(T("cmd_liste"), `cd ${shq(RACINE)} && ./run.sh --sources`);
-  });
+  // Une commande affichée décrit une sélection ; si la sélection change et que la
+  // commande ne bouge pas, on copie une instruction qui ne correspond plus à ce
+  // qu'on voit. Chaque script est donc une fonction, et celui qui est à l'écran
+  // est rejoué à chaque modification du tableau.
+  SCRIPTS.liste = () => afficher(T("cmd_liste"), `cd ${shq(RACINE)} && ./run.sh --sources`);
 
-  document.getElementById("script-sources").addEventListener("click", () => {
+  SCRIPTS.sources = () => {
     const ids = LIGNES
       .filter(l => !estExclue(l) && (SOURCES_AUTO.has(l.id) || sourcesChoisies.has(l.id)))
       .map(l => l.id);
     if (!ids.length) return afficher(T("aucune_source"), null);
     afficher(T("cmd_sources"), moissonner(ids));
-  });
+  };
 
-  document.getElementById("script-global").addEventListener("click", () => {
+  SCRIPTS.global = () => {
     if (!aScanner.size) return afficher(T("scan_rien_coche"), null);
     afficher(T("cmd_global"), moissonner([...aScanner]));
-  });
+  };
+
+  for (const nom of ["liste", "sources", "global"]) {
+    document.getElementById("script-" + nom).addEventListener("click", () => {
+      scriptAffiche = nom;
+      document.querySelectorAll(".etape").forEach(e =>
+        e.classList.toggle("choisie", e.contains(document.getElementById("script-" + nom))));
+      SCRIPTS[nom]();
+    });
+  }
 }
 
 document.getElementById("recherche").addEventListener("input", rendreTout);
