@@ -12,7 +12,7 @@ import json
 import platform
 import subprocess
 import sys
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -1374,7 +1374,7 @@ def build(index_path):
 <body><div class="enveloppe">
 <header>
   <div><h1>Overall-shortcuts-inventory-on-MacOS</h1>
-  <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · clavier {disposition or "inconnu"} · {date.today().isoformat()}</p></div>
+  <p class="eyebrow" style="margin:6px 0 0">{machine} · macOS {platform.mac_ver()[0]} · clavier {disposition or "inconnu"} · {datetime.now().strftime("%Y-%m-%d %Hh%M")}</p></div>
   <div class="actions-scan">
     <button type="button" id="ouvrir-scan" class="bouton-scan">
       <span data-t="scanner"></span>
