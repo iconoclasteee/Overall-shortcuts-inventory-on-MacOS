@@ -745,7 +745,7 @@ const TEXTES = {
     script_sources: "Relire le système et les applications sources",
     script_global: "Scanner les applications cochées",
     commencer_ici: "commencer ici",
-    exige_autorisation: "autorisation d'accessibilité",
+    exige_autorisation: "autorisation du moissonneur",
     sans_autorisation: "aucune autorisation",
     voir_commande: "Voir la commande",
     note_liste: "Le tableau ci-dessous ne connaît que les applications recensées lors de "
@@ -757,9 +757,9 @@ const TEXTES = {
     note_global: "Rouvre une par une les applications cochées dans le tableau. C'est la "
                + "passe longue : compter plusieurs minutes.",
     cmd_entete: "# ⚠️  COMMANDE À COPIER, PUIS À COLLER DANS UN TERMINAL.\n"
-              + "#    Le navigateur ne peut pas la lancer lui-même : lire les menus d'une\n"
-              + "#    application exige l'autorisation d'accessibilité de macOS, que le\n"
-              + "#    terminal possède déjà et qu'une page web n'obtiendra jamais.\n#",
+              + "#    Le navigateur ne peut pas la lancer lui-même : une page web n'a aucun\n"
+              + "#    moyen d'exécuter un programme. Le terminal, lui, n'a besoin d'aucune\n"
+              + "#    autorisation particulière — le moissonneur détient la sienne.\n#",
     cmd_liste: "# Recense les applications installées, relit les raccourcis système et les\n"
              + "# préférences des outils, puis reconstruit la page.\n"
              + "# N'ouvre aucune application.",
@@ -884,7 +884,7 @@ const TEXTES = {
     script_sources: "Re-read the system and source applications",
     script_global: "Scan the ticked applications",
     commencer_ici: "start here",
-    exige_autorisation: "accessibility permission",
+    exige_autorisation: "harvester permission",
     sans_autorisation: "no permission needed",
     voir_commande: "Show the command",
     note_liste: "The table below only knows the applications listed during the last "
@@ -895,9 +895,9 @@ const TEXTES = {
     note_global: "Reopens the ticked applications one by one. This is the long pass: "
                + "expect several minutes.",
     cmd_entete: "# ⚠️  COPY THIS COMMAND AND PASTE IT INTO A TERMINAL.\n"
-              + "#    The browser cannot run it: reading an application's menus requires\n"
-              + "#    the macOS accessibility permission, which your terminal already has\n"
-              + "#    and a web page will never get.\n#",
+              + "#    The browser cannot run it itself: a web page has no way to execute a\n"
+              + "#    program. The terminal needs no permission of its own — the harvester\n"
+              + "#    holds its own.\n#",
     cmd_liste: "# Lists installed applications, re-reads system shortcuts and tool\n"
              + "# preferences, then rebuilds the page.\n"
              + "# Opens no application.",
@@ -1715,7 +1715,6 @@ function brancherScan() {
   // Trois gestes, trois commandes. Recenser ne coûte rien et n'ouvre aucune app ;
   // relire les outils en ouvre une poignée ; la passe complète les ouvre toutes.
   // Les confondre obligerait à subir la plus chère pour obtenir la moins chère.
-  const MOISSONNEUR = "bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester";
 
   /* Cite une valeur pour le shell. Entre apostrophes simples, rien n'est interprété —
      sauf l'apostrophe elle-même, qu'il faut donc sortir de la chaîne puis réintroduire
@@ -1742,18 +1741,18 @@ function brancherScan() {
     bouton.hidden = false;
   }
 
-  // --force est indispensable dès qu'on relit : sans lui le moissonneur saute toute
-  // app dont la fiche existe déjà, c'est-à-dire précisément celles qu'on vient
-  // cocher parce que leur version a changé.
+  // La commande passe par run.sh plutôt que d'appeler le moissonneur : lui seul sait
+  // le lancer par LaunchServices, la seule façon pour le bundle d'être son propre
+  // processus responsable et de se voir appliquer sa propre autorisation. Exécuté
+  // depuis le shell, c'est le terminal que macOS interrogerait. Les identifiants
+  // restent énumérés : ce qu'on colle décrit toujours exactement ce qui sera lu.
   function moissonner(ids) {
     const reglages = JSON.stringify({
       exclues: [...exclues], incluses: [...incluses], sources: [...sourcesChoisies],
     });
     return `cd ${shq(RACINE)} && \\
   printf '%s' ${shq(reglages)} > out/reglages-scan.json && \\
-  ${MOISSONNEUR} \\
-    --bundle-ids ${shq(ids.join(","))} --force --out out/apps && \\
-  ./run.sh --sources`;
+  ./run.sh --apps ${shq(ids.join(","))}`;
   }
 
   // Une commande affichée décrit une sélection ; si la sélection change et que la

@@ -38,4 +38,12 @@ swiftc -O -o "$APP/Contents/MacOS/$NAME" src/Harvester.swift \
 codesign --force --sign - "$APP" 2>&1 | sed 's/^/  /'
 
 echo "✅ $APP"
-echo "   Vérifier l'autorisation : $APP/Contents/MacOS/$NAME --check"
+# Le contrôle doit passer par LaunchServices : exécuté depuis le shell, il répondrait
+# sur le terminal — le processus responsable — et non sur le bundle qu'on vient de
+# signer. La recompilation vient d'invalider l'autorisation : l'empreinte a changé.
+echo "   ⚠️  L'autorisation d'accessibilité est à réaccorder : retirer la ligne"
+echo "      $NAME.app de Réglages Système → Confidentialité et sécurité →"
+echo "      Accessibilité avec « − », puis l'y glisser à nouveau."
+echo "   Vérifier ensuite :"
+echo "      open -n -a \"\$(pwd)/$APP\" --args --check --verdict /tmp/verdict"
+echo "      sleep 1 && cat /tmp/verdict"

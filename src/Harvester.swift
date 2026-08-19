@@ -30,9 +30,52 @@ struct Options {
     var keymap = false             // exporter la correspondance code de touche -> caractère
     var catalogue = false          // exporter la liste des apps installées, sans rien lancer
     var keepRunning = false        // ne pas quitter les apps qu'on a lancées
+    var journal: String?           // où recopier les sorties standard et d'erreur
+    var statut: String?            // où écrire le code de sortie
+}
+
+/// Où écrire le code de sortie. Nil tant que les options ne sont pas lues.
+var cheminStatut: String?
+
+/// Seule sortie du programme.
+///
+/// Lancé par `open` — la seule façon pour ce bundle d'être son propre processus
+/// responsable, donc de se voir appliquer sa propre autorisation d'accessibilité plutôt
+/// que celle du terminal — le programme ne rend ni sortie standard ni code d'erreur à
+/// qui l'a lancé. Ce fichier est alors l'unique canal de retour, et son apparition le
+/// seul signal de fin fiable.
+func sortir(_ code: Int32) -> Never {
+    if let chemin = cheminStatut {
+        try? "\(code)".write(toFile: chemin, atomically: true, encoding: .utf8)
+    }
+    exit(code)
+}
+
+/// Ouvre le canal de retour avant toute autre chose.
+///
+/// Il doit être en place avant l'analyse des options, puisque c'est elle qui rejette
+/// une option inconnue : sans ce préalable, son message partirait dans le vide et
+/// run.sh attendrait un statut qui n'arriverait jamais.
+func preparerCanaux() {
+    let args = CommandLine.arguments
+    func valeur(_ nom: String) -> String? {
+        guard let i = args.firstIndex(of: nom), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }
+    cheminStatut = valeur("--statut")
+    guard let chemin = valeur("--journal") else { return }
+    let fd = open(chemin, O_WRONLY | O_CREAT | O_APPEND, 0o600)
+    guard fd >= 0 else { return }
+    dup2(fd, STDOUT_FILENO)
+    dup2(fd, STDERR_FILENO)
+    close(fd)
+    // Vers un fichier, la sortie standard passe en tampon de bloc : la progression
+    // n'apparaîtrait qu'à la toute fin. Ligne à ligne, elle se lit pendant la passe.
+    setvbuf(stdout, nil, _IOLBF, 0)
 }
 
 func parseArgs() -> Options {
+    preparerCanaux()
     var o = Options()
     var it = CommandLine.arguments.dropFirst().makeIterator()
     while let arg = it.next() {
@@ -46,6 +89,8 @@ func parseArgs() -> Options {
         case "--include-games": o.includeGames = true
         case "--dry-run": o.dryRun = true
         case "--verdict": o.verdict = it.next()
+        case "--journal": o.journal = it.next()
+        case "--statut": o.statut = it.next()
         case "--keymap": o.keymap = true
         case "--catalogue": o.catalogue = true
         case "--bundle-ids": o.bundleIDs = (it.next() ?? "").split(separator: ",").map(String.init)
@@ -53,7 +98,7 @@ func parseArgs() -> Options {
         case "--timeout": o.timeout = Double(it.next() ?? "") ?? o.timeout
         default:
             FileHandle.standardError.write("Option inconnue : \(arg)\n".data(using: .utf8)!)
-            exit(2)
+            sortir(2)
         }
     }
     return o
@@ -357,6 +402,17 @@ func process(bundleID: String, options: Options) -> AppResult {
 
 let options = parseArgs()
 
+// Le journal réunit sortie standard et sortie d'erreur — c'est ce qu'on veut d'une
+// progression destinée à être lue. Mais --catalogue et --keymap émettent leurs données
+// sur la sortie standard : les y mêler produirait un JSON invalide, sans que rien ne le
+// signale. Le refus vaut mieux qu'un fichier corrompu.
+if options.journal != nil && (options.catalogue || options.keymap) {
+    FileHandle.standardError.write(
+        "--journal est incompatible avec --catalogue et --keymap, dont la sortie standard porte les données.\n"
+            .data(using: .utf8)!)
+    sortir(2)
+}
+
 // Correspondance code de touche -> caractère, pour la disposition clavier active.
 //
 // Indispensable pour comparer des raccourcis venus de sources différentes : les menus
@@ -369,7 +425,7 @@ func dumpKeymap() {
           let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
     else {
         FileHandle.standardError.write("Disposition clavier illisible\n".data(using: .utf8)!)
-        exit(1)
+        sortir(1)
     }
     // La disposition conditionne toutes les combinaisons affichées : son nom fait
     // partie du résultat, pas d'un commentaire.
@@ -429,7 +485,7 @@ func dumpKeymap() {
       }
     }
     """)
-    exit(0)
+    sortir(0)
 }
 
 if options.keymap { dumpKeymap() }
@@ -445,25 +501,29 @@ func exigerAutorisation() {
         FileHandle.standardError.write("""
         ⛔️ Autorisation d'accessibilité absente.
 
-        Ouvre Réglages Système → Confidentialité et sécurité → Accessibilité,
-        ajoute ce binaire, et relance :
+        Ouvrir Réglages Système → Confidentialité et sécurité → Accessibilité, puis
+        y faire glisser ce bundle :
           \(Bundle.main.bundleURL.path)
 
+        S'il y figure déjà, c'est que la ligne date d'une compilation antérieure : la
+        retirer avec « − » puis la remettre. L'autorisation est liée à l'empreinte
+        exacte du binaire, qu'un aller-retour de l'interrupteur ne réenregistre pas.
+
         """.data(using: .utf8)!)
-        exit(1)
+        sortir(1)
     }
 }
 
 if let chemin = options.verdict {
     try? (AX.isTrusted() ? "accordee" : "absente")
         .write(toFile: chemin, atomically: true, encoding: .utf8)
-    if options.checkOnly { exit(AX.isTrusted() ? 0 : 1) }
+    if options.checkOnly { sortir(AX.isTrusted() ? 0 : 1) }
 }
 
 if options.checkOnly {
     exigerAutorisation()
     print("✅ Autorisation d'accessibilité accordée.")
-    exit(0)
+    sortir(0)
 }
 
 struct Installee: Encodable {
@@ -623,7 +683,7 @@ if options.catalogue {
                          exclues: reglages.exclues, incluses: reglages.incluses)
     if let data = try? catalogueEncoder.encode(liste),
        let texte = String(data: data, encoding: .utf8) { print(texte) }
-    exit(0)
+    sortir(0)
 }
 
 var targets = options.bundleIDs
@@ -641,7 +701,7 @@ if options.scanAll {
 
 guard !targets.isEmpty else {
     FileHandle.standardError.write("Rien à faire : passe --bundle-ids ou --all.\n".data(using: .utf8)!)
-    exit(2)
+    sortir(2)
 }
 
 // Sortie avant toute écriture et tout lancement : --dry-run doit rester inoffensif.
@@ -649,7 +709,7 @@ if options.dryRun {
     for (index, bundleID) in targets.enumerated() {
         print("[\(index + 1)/\(targets.count)] \(bundleID)")
     }
-    exit(0)
+    sortir(0)
 }
 
 exigerAutorisation()
@@ -722,6 +782,6 @@ func runAll() {
 // cette boucle : bloquer le thread principal en l'attendant provoquerait un interblocage.
 DispatchQueue.global(qos: .userInitiated).async {
     runAll()
-    exit(0)
+    sortir(0)
 }
 RunLoop.main.run()

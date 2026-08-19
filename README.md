@@ -99,6 +99,8 @@ voir la note de licence en fin de fichier.
 ./run.sh --sources  # ~10 s, n'ouvre aucune application
 ./run.sh --test     # 6 apps représentatives, pour valider la mécanique
 ./run.sh --all      # les apps installées
+./run.sh --apps com.apple.Safari,com.apple.mail   # une liste précise
+
 
 # Lister les cibles sans rien lancer :
 bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester --all --dry-run
@@ -111,7 +113,9 @@ l'application soit déjà ouverte** (`--only-running`) — et refuse d'écraser 
 pleine par une fiche vide, une app ouverte sans document exposant moins de commandes.
 
 La passe est **reprenable** : chaque app est écrite dans son propre JSON, une relance
-saute ce qui existe déjà. `Ctrl-C` ne perd rien. `--force` refait tout.
+saute ce qui existe déjà. `Ctrl-C` ne perd rien, et arrête aussi le moissonneur — lancé
+par LaunchServices, il ne descend pas du shell et l'interruption ne l'atteindrait pas de
+lui-même. `--force` refait tout.
 
 Les exclusions et inclusions posées à la main depuis la page vivent dans
 `out/reglages-scan.json`, que le moissonneur relit (`--reglages`). Une exclusion
@@ -135,7 +139,9 @@ qui les emploient, et qu'on demande de les relire avant de les coller.
 | `--catalogue` | recense les apps installées sur la sortie standard | non |
 | `--keymap` | exporte la correspondance touche ↔ caractère | non |
 | `--check` | vérifie l'autorisation d'accessibilité et s'arrête | non |
-| `--verdict <fichier>` | y écrit le résultat de `--check` — seule voie de retour quand l'app est lancée par `open`, qui ne rend ni sortie ni code d'erreur | non |
+| `--verdict <fichier>` | y écrit le résultat de `--check` | non |
+| `--journal <fichier>` | y recopie sortie standard et sortie d'erreur — `open` ne les relaie pas | — |
+| `--statut <fichier>` | y écrit le code de sortie — `open` ne le rend pas davantage | — |
 | `--reglages <fichier>` | exclusions et inclusions posées à la main | — |
 | `--out <dossier>` | où écrire les fiches (`out/apps` par défaut) | — |
 | `--timeout <secondes>` | délai par application, 25 s par défaut — il borne l'attente de la barre de menu **et** le parcours de l'arbre | — |
@@ -148,9 +154,19 @@ l'autorisation d'accessibilité.
 Lire les menus d'une autre app l'exige. `run.sh` la vérifie avant de commencer et
 s'arrête avec un message clair si elle manque.
 
-Si le moissonneur est lancé depuis un terminal qui possède déjà l'autorisation, il en
-hérite — c'est commode, mais c'est la voie la plus large : macOS étend alors le droit à
-**tout** ce que ce terminal exécute. Préférer l'autoriser lui seul.
+macOS n'accorde jamais ce droit au binaire exécuté, mais au **processus responsable** —
+celui qui l'a lancé. Un binaire lancé depuis un terminal rend donc le terminal
+responsable, et c'est *lui* qu'il faudrait autoriser : le droit s'étendrait alors à tout
+ce que ce terminal exécute, aujourd'hui et plus tard.
+
+C'est pourquoi `run.sh` ne lance pas le moissonneur depuis le shell, mais **par
+LaunchServices** (`open`). Le bundle est alors son propre processus responsable :
+l'autoriser lui seul suffit, et **aucun terminal n'a besoin de quoi que ce soit**.
+
+Le prix du détour : `open` ne rend ni la sortie du programme, ni son code d'erreur. Le
+moissonneur recopie donc sa progression dans le fichier passé à `--journal`, que `run.sh`
+relaie en direct, et son code de sortie dans celui passé à `--statut`, dont l'apparition
+est le seul signal de fin fiable.
 
 ### Autoriser le moissonneur
 
@@ -166,15 +182,18 @@ glisser l'app depuis la fenêtre du Finder** dans la liste. Le bouton `+` s'ouvr
 `/Applications` et navigue mal vers un dossier de projet ; le glisser-déposer est plus
 sûr.
 
-Vérifier ensuite depuis le terminal :
+Vérifier ensuite — en passant par LaunchServices, sans quoi c'est le terminal qu'on
+interroge et non le bundle :
 
 ```bash
-bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester --check
+open -n -a "$(pwd)/bin/ShortcutHarvester.app" --args --check --verdict /tmp/verdict
+sleep 1 && cat /tmp/verdict          # « accordee » ou « absente »
 ```
 
-Si la vérification échoue alors que l'app figure bien dans la liste, c'est que macOS
-attribue l'autorisation au **processus responsable** — le terminal depuis lequel le
-binaire est lancé — et non au bundle lui-même.
+Si la réponse est `absente` alors que l'app figure bien dans la liste, l'entrée date
+d'une compilation antérieure : l'autorisation est liée à l'empreinte exacte du binaire,
+qu'un aller-retour de l'interrupteur ne réenregistre pas. La retirer avec `−`, puis la
+remettre.
 
 ### Trois cases, et ce qu'elles veulent dire
 
@@ -206,19 +225,15 @@ Deux gestes distincts, deux exigences distinctes :
 | Lire sa barre de menu | accessibilité |
 
 C'est bien `ShortcutHarvester` qui ouvre et referme les applications, sans qu'aucune
-permission n'y soit nécessaire. Mais il lit les menus, et `run.sh` l'exécute
-directement depuis le shell : macOS attribue alors le droit au terminal. **Une passe
-complète suppose donc, en général, d'avoir autorisé son terminal.**
+permission n'y soit nécessaire. Et comme `run.sh` le lance par LaunchServices, c'est lui
+que macOS interroge pour la lecture des menus : **une passe complète ne demande aucune
+autorisation au terminal.**
 
-C'est le geste le plus large du projet : tant que cette autorisation reste accordée,
-*tout* ce que ce terminal exécutera — chaque script, chaque installation de paquet,
-chaque commande copiée d'un forum — pourra lire et piloter n'importe quelle
-application. **Accordez-la le temps de la passe, puis retirez-la.**
-
-`run.sh` le rappelle de lui-même à la fin d'une passe qui a ouvert des applications —
-et se tait quand l'autorisation appartient bien au bundle, auquel cas il n'y a rien à
-retirer. Pour le savoir, il relance le contrôle via LaunchServices : lancé par `open`,
-le bundle est son propre processus responsable.
+C'était le geste le plus large du projet, et il n'est plus nécessaire. `run.sh` vérifie
+donc l'inverse en fin de passe : si le shell d'où il tourne détient malgré tout
+l'autorisation d'accessibilité — reste d'une version antérieure de cet outil, ou d'un
+autre besoin — il le signale. Tant qu'elle reste accordée, *tout* ce que ce terminal
+exécutera pourra lire et piloter n'importe quelle application.
 
 ### Où regarder
 
@@ -241,9 +256,9 @@ qu'il faut en retenir est autre : les scripts qu'ils exécutent en héritent.
 ### Pourquoi la commande produite est longue
 
 Elle énumère chaque identifiant d'application au lieu de renvoyer à un fichier. C'est
-délibéré : **ce que vous collez est ce qui s'exécute.** Quatre opérations, toutes
-visibles — se placer, écrire les réglages, moissonner cette liste-là, reconstruire. Un
-identifiant anormal s'y verrait.
+délibéré : **ce que vous collez est ce qui s'exécute.** Trois opérations, toutes
+visibles — se placer, écrire les réglages, moissonner cette liste-là puis reconstruire.
+Un identifiant anormal s'y verrait.
 
 Une forme abrégée dirait « exécute ce qui se trouve dans ce fichier » : vous colleriez
 alors une instruction dont l'effet n'apparaît pas dans le texte collé, et qui dépend

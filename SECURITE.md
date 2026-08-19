@@ -25,15 +25,19 @@ Le point décisif est **à qui** vous l'accordez.
 C'est précisément pour rendre ce choix possible que le projet compile une application
 plutôt qu'un simple script.
 
-**Mais il faut être honnête sur ce que la passe complète demande.** `run.sh` exécute le
-binaire directement depuis le shell, et macOS attribue alors le droit au processus
-responsable — le terminal. En pratique, un scan de toutes les applications suppose donc
-le plus souvent d'avoir autorisé son terminal. Ouvrir et refermer les applications, en
-revanche, ne demande aucune permission : c'est la lecture des menus qui l'exige.
+**Ce qui décide à qui macOS l'accorde n'est pas le binaire exécuté, mais le processus
+responsable** — celui qui l'a lancé. Un binaire lancé depuis un terminal rend le terminal
+responsable, et c'est alors lui qu'il faudrait autoriser.
 
-Accordez cette autorisation **le temps de la passe, puis retirez-la**. `run.sh` vous le
-rappelle à la fin d'une passe qui a ouvert des applications, et se tait quand
-l'autorisation appartient bien au bundle — auquel cas il n'y a rien à retirer.
+`run.sh` lance donc le moissonneur **par LaunchServices** plutôt que depuis le shell. Le
+bundle est son propre processus responsable, et aucun terminal n'a besoin de
+l'autorisation — pas même pour une passe complète. Ouvrir et refermer les applications
+n'en demande de toute façon aucune : c'est la lecture des menus qui l'exige.
+
+Si un terminal détient malgré tout ce droit — reste d'une version antérieure de cet
+outil, ou d'un autre besoin — `run.sh` le signale en fin de passe. Le retirer : tant
+qu'il reste accordé, chaque script, chaque installation de paquet, chaque commande copiée
+d'un forum pourra lire et piloter n'importe quelle application.
 
 ## 2. Ouvrir automatiquement toutes vos applications n'est pas anodin
 
