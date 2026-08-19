@@ -2,111 +2,112 @@
 
 # Overall-shortcuts-inventory-on-MacOS
 
-**Tous les raccourcis clavier de votre Mac, dans une seule page.**
+**Every keyboard shortcut on your Mac, in a single page.**
 
-Le système, les outils tiers, et chaque application installée — lus un par un,
-puis rassemblés dans une page qu'on ouvre d'un double-clic.
+The system, your third-party tools, and every installed application — read one by one,
+then gathered into a page you open with a double-click.
 
-![macOS 14 ou plus récent](https://img.shields.io/badge/macOS-14%2B-1d1d1f?logo=apple&logoColor=white)
-![Licence GPL-2.0](https://img.shields.io/badge/licence-GPL--2.0-0a6b7c)
-![Interface en français et en anglais](https://img.shields.io/badge/interface-fran%C3%A7ais%20%7C%20english-6b5b95)
-![Aucun accès réseau](https://img.shields.io/badge/acc%C3%A8s%20r%C3%A9seau-aucun-2e7d32)
+![macOS 14 or later](https://img.shields.io/badge/macOS-14%2B-1d1d1f?logo=apple&logoColor=white)
+![GPL-2.0 licence](https://img.shields.io/badge/licence-GPL--2.0-0a6b7c)
+![Interface in French and English](https://img.shields.io/badge/interface-fran%C3%A7ais%20%7C%20english-6b5b95)
+![No network access](https://img.shields.io/badge/network%20access-none-2e7d32)
 
 </div>
 
 > [!WARNING]
-> Cet outil exige l'**autorisation d'accessibilité** de macOS et **ouvre automatiquement
-> vos applications** pour lire leurs menus. Lisez [SECURITE.md](SECURITE.md) avant la
-> première passe : ce qu'il demande, ce qu'il produit, et ce qu'il ne fait pas.
+> This tool requires macOS **accessibility permission** and **launches your applications
+> automatically** to read their menus. Read [SECURITE.md](SECURITE.md) before the first
+> pass: what it asks of your machine, what it produces, and what it does not do.
+> *(Documentation is in French; the tool's own interface is French and English.)*
 
-## Le problème
+## The problem
 
-Vous voulez attribuer un raccourci et vous ne savez pas ce qui est déjà pris. Vous en
-tapez un, et c'est une autre commande qui répond. Personne ne peut vous dire quelles
-touches sont libres sur votre machine.
+You want to assign a shortcut and you have no idea what is already taken. You press one,
+and a different command answers. Nothing on your Mac can tell you which keys are free.
 
-Aucun outil ne le dit, et pour une raison de fond : **les raccourcis d'une application ne
-sont écrits nulle part sur le disque.** Ils sont construits en mémoire à son lancement, et
-ne sont lisibles que dans la barre de menu vivante. Les outils existants se contentent
-donc de l'application active, ou de celles déjà ouvertes.
+No tool can, and there is a reason: **an application's shortcuts are written nowhere on
+disk.** They are built in memory when the app launches, and can only be read from the live
+menu bar. Existing tools therefore settle for the frontmost application, or for the ones
+already running.
 
-Celui-ci les ouvre une par une pour les lire, puis les referme.
+This one opens them one by one to read them, then closes them again.
 
-## Ce que vous obtenez
+## What you get
 
-Une page HTML **autonome** — aucun serveur, aucune dépendance, elle s'ouvre dans le
-navigateur et fonctionne hors ligne. Six vues, en français et en anglais.
+A **self-contained** HTML page — no server, no dependencies, opens in your browser and
+works offline. Six views, in French and English.
 
-| Vue | La question à laquelle elle répond |
+| View | The question it answers |
 |---|---|
-| **Commandes par menu** | Qu'est-ce qui est tapable dans cette application ? |
-| **Effet d'une frappe** | Si j'appuie là-dessus ici, qui reçoit la touche ? |
-| **Conflits** | Qu'est-ce qui se dispute une combinaison, et qui gagne ? |
-| **Par combinaison** | Où cette combinaison sert-elle, partout sur la machine ? |
-| **Raccourcis libres** | Qu'est-ce qui reste, que je peux attribuer sans rien casser ? |
-| **Prochain scan** | Qu'est-ce qui a bougé depuis la dernière fois ? |
+| **Commands by menu** | What can I actually type in this application? |
+| **What a keystroke does** | If I press this here, who receives the key? |
+| **Conflicts** | What is fighting over a combination, and who wins? |
+| **By combination** | Where does this combination do something, anywhere on the machine? |
+| **Free shortcuts** | What is left that I can assign without breaking anything? |
+| **Next scan** | What has changed since last time? |
 
-La vue **Raccourcis libres** croise les jeux de modificateurs et toutes les touches
-attribuables, pavé numérique compris : chaque case libre porte la combinaison entière, et
-un clic la met dans le presse-papiers.
+The **Free shortcuts** view crosses modifier sets against every assignable key, numeric
+keypad included: each free cell carries the whole combination, and one click copies it.
 
-Un **rapport Markdown** reprend le même inventaire à plat, versionnable et relisible
-hors ligne.
+A **Markdown report** carries the same inventory in flat form — versionable and readable
+offline.
 
-## Démarrer
+## Getting started
 
 ```bash
 git clone https://github.com/iconoclasteee/Overall-shortcuts-inventory-on-MacOS.git
 cd Overall-shortcuts-inventory-on-MacOS
 
-./build.sh          # compile le moissonneur (une fois)
-./run.sh --sources  # ~10 s, n'ouvre aucune application
+./build.sh          # builds the harvester (once)
+./run.sh --sources  # ~10 s, opens no application
 open out/raccourcis.html
 ```
 
-`--sources` donne déjà les raccourcis système, ceux des outils tiers et ceux que vous
-avez redéfinis. Pour couvrir vos applications, il faut les ouvrir une par une : la page
-fabrique la commande exacte, vous la collez dans un terminal.
+`--sources` already gives you system shortcuts, third-party hotkeys, and the ones you have
+redefined yourself. Covering your applications means opening them one by one: the page
+builds the exact command, and you paste it into a terminal.
 
-Autoriser le moissonneur est un geste à part, décrit dans
-[Utilisation](docs/utilisation.md#autorisation-daccessibilité).
+Authorising the harvester is a separate step, described in
+[docs/utilisation.md](docs/utilisation.md#autorisation-daccessibilité).
 
-## Ce qui rend l'inventaire juste
+## What makes the inventory correct
 
-Trois partis pris qui distinguent cet outil d'une liste recopiée :
+Three deliberate choices that separate this from a list copied from somewhere:
 
-- **La disposition clavier fait foi, pas le code de touche.** Une table ANSI donne des
-  résultats faux en AZERTY. La correspondance est demandée au système pour la disposition
-  réellement en service, aux deux niveaux — avec et sans Maj.
-- **Un conflit se tranche par couche d'interception.** Une frappe descend une pile —
-  pilote clavier, capture d'événements, raccourci système, raccourci global, menu — et le
-  premier étage servi avale la touche. À égalité d'étage, rien sur le disque ne dit qui
-  gagne : l'outil annonce « égalité » plutôt que de désigner un vainqueur au hasard.
-- **Aucune table n'est écrite de mémoire.** Codes de touches, glyphes de menu, raccourcis
-  système et leurs libellés traduits sont extraits des fichiers de macOS lui-même.
+- **The keyboard layout decides, not the key code.** An ANSI table gives wrong answers on
+  AZERTY. The mapping is asked of the system for the layout actually in use, at both
+  levels — with and without Shift.
+- **A conflict is settled by interception layer.** A keystroke descends a stack — keyboard
+  driver, event tap, system shortcut, global hotkey, application menu — and the first
+  layer served swallows the key. Between two claimants on the *same* layer, nothing on
+  disk says who wins: the tool reports a tie rather than picking a winner at random.
+- **No lookup table is written from memory.** Key codes, menu glyphs, system shortcuts and
+  their localised labels are all extracted from macOS's own files.
 
-Et ce qu'il ne fait pas, vérifiable dans le code : **aucun accès réseau, aucune commande
-passée au shell**, écritures confinées à `out/`, qui n'est jamais versionné — la page
-produite est un portrait de votre machine.
+And what it does not do, verifiable in the source: **no network access, no shell
+command**, writes confined to `out/`, which is never committed — the page it produces is a
+portrait of your machine.
 
-## Aller plus loin
+## Going further
+
+Reference documentation is in French.
 
 | | |
 |---|---|
-| [**SECURITE.md**](SECURITE.md) | Ce que l'outil demande à votre machine, et pourquoi. **À lire avant la première passe.** |
-| [**docs/utilisation.md**](docs/utilisation.md) | Modes, options, autorisation d'accessibilité, ce qui n'est jamais lancé, limites connues |
-| [**docs/architecture.md**](docs/architecture.md) | D'où viennent les données, comment un conflit est tranché, structure du dépôt |
+| [**SECURITE.md**](SECURITE.md) | What the tool asks of your machine, and why. **Read this before the first pass.** |
+| [**docs/utilisation.md**](docs/utilisation.md) | Modes, options, accessibility permission, what is never launched, known limits |
+| [**docs/architecture.md**](docs/architecture.md) | Where the data comes from, how a conflict is settled, repository layout |
 
 ## Licence
 
-**GPL-2.0** — voir [LICENSE](LICENSE).
+**GPL-2.0** — see [LICENSE](LICENSE).
 
-Le modèle de priorité entre couches d'interception, ainsi que la manière de lire les
-raccourcis de menu via l'API d'accessibilité, sont repris de
-[HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash) de Wunderlandmedia,
-distribué sous GPL-2.0. Ce projet adopte donc la même licence.
+The interception-layer priority model, and the way menu shortcuts are read through the
+accessibility API, are taken from
+[HotkeyClash](https://github.com/Wunderlandmedia/HotkeyClash) by Wunderlandmedia, released
+under GPL-2.0. This project therefore adopts the same licence.
 
-Alternatives étudiées avant de construire — CheatSheet, KeyCue,
-[KeyMinder](https://keyminder.app/), HotkeyClash : toutes sont des consultations à la
-volée, aucune ne produit d'inventaire complet. Le détail de l'arbitrage est dans
+Alternatives considered before building — CheatSheet, KeyCue,
+[KeyMinder](https://keyminder.app/), HotkeyClash: all are look-up-as-you-go viewers, none
+produces a complete inventory. The reasoning is in
 [docs/architecture.md](docs/architecture.md).
