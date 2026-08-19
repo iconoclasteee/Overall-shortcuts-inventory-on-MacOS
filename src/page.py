@@ -26,9 +26,13 @@ ORDRE_COUCHES = ["pilote", "capture", "systeme", "global", "autre", "menu"]
 CSS = """
 :root {
   --alu: #DAD8D3; --plaque: #F4F3F0; --creux: #C3C0B9; --encre: #16181C;
-  --sourdine: #6E7078; --petrol: #0B6E6E; --vermillon: #B8352A; --ambre: #9A5B12;
+  --sourdine: #6E7078; --petrol: #0B6E6E; --vermillon: #B8352A; --ambre: #9A5B12; --zebre: #EAE8E4; --survol: #E1DED8;
   --touche-haut: #FBFAF8; --touche-bas: #D8D5CE; --ombre: rgba(22,24,28,.18);
   --largeur-combo: 168px;
+  --rayon: 8px; --rayon-sm: 6px;
+  --anneau: color-mix(in srgb, var(--petrol) 45%, transparent);
+  --ombre-sm: 0 1px 2px 0 rgba(22,24,28,.06);
+  --ombre-md: 0 1px 3px 0 rgba(22,24,28,.10), 0 1px 2px -1px rgba(22,24,28,.10);
   --display: "Space Grotesk", "Avenir Next Condensed", system-ui, sans-serif;
   --corps: "IBM Plex Sans", -apple-system, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -36,8 +40,10 @@ CSS = """
 @media (prefers-color-scheme: dark) {
   :root {
     --alu: #131519; --plaque: #1C1F25; --creux: #2E323A; --encre: #E8E7E3;
-    --sourdine: #94979F; --petrol: #4FD1C5; --vermillon: #F0776A; --ambre: #E0A458;
+    --sourdine: #94979F; --petrol: #4FD1C5; --vermillon: #F0776A; --ambre: #E0A458; --zebre: #191C22; --survol: #23272F;
     --touche-haut: #333842; --touche-bas: #1E2128; --ombre: rgba(0,0,0,.5);
+    --ombre-sm: 0 1px 2px 0 rgba(0,0,0,.35);
+    --ombre-md: 0 1px 3px 0 rgba(0,0,0,.45), 0 1px 2px -1px rgba(0,0,0,.45);
   }
 }
 * { box-sizing: border-box; }
@@ -92,15 +98,13 @@ h1 em { font-style: normal; color: var(--petrol); }
 }
 .bouton-secondaire:hover { color: var(--encre); border-color: var(--petrol); }
 .bouton-secondaire:focus-visible { outline: 2px solid var(--petrol); outline-offset: 3px; }
-.bouton-scan { font-family: var(--display); font-size: 15px; font-weight: 600;
-  padding: 11px 24px; border-radius: 9px; cursor: pointer;
+.bouton-scan {
+  font-family: var(--display); font-size: 15px; font-weight: 600; line-height: 1;
+  height: 40px; padding: 0 22px; border-radius: var(--rayon-sm); cursor: pointer;
   background: var(--petrol); color: var(--plaque); border: 1px solid var(--petrol);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; line-height: 1.2;
-}
-.bouton-scan #compte-scan {
-  font-family: var(--mono); font-size: 10.5px; font-weight: 400; opacity: .8;
-  letter-spacing: .04em;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: var(--ombre-md);
+  transition: background-color .15s ease;
 }
 .bouton-scan:hover { background: color-mix(in srgb, var(--petrol) 85%, var(--encre)); }
 .bouton-scan:focus-visible { outline: 2px solid var(--encre); outline-offset: 3px; }
@@ -152,12 +156,39 @@ h1 em { font-style: normal; color: var(--petrol); }
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
   padding: 16px 26px; border-top: 1px solid var(--creux); flex-wrap: wrap;
 }
+/* Boutons — anatomie reprise de shadcn/ui : hauteur constante, rayon doux, ombre
+   d'un pixel, transition de couleur, et un anneau de focus épais plutôt qu'un
+   contour fin. Ce qui les fait lire comme des boutons, c'est la constance : même
+   hauteur, même rayon, même retrait au clic, partout dans la page. */
 .bouton {
-  font: inherit; font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 7px;
-  cursor: pointer; border: 1px solid var(--creux); background: var(--alu); color: var(--encre);
+  font: inherit; font-size: 14px; font-weight: 500; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 36px; padding: 0 16px; border-radius: var(--rayon-sm); cursor: pointer;
+  border: 1px solid var(--creux); background: var(--plaque); color: var(--encre);
+  box-shadow: var(--ombre-sm); white-space: nowrap;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.bouton.primaire { background: var(--petrol); border-color: var(--petrol); color: var(--plaque); }
-.bouton:focus-visible, .scan-grille label:focus-within { outline: 2px solid var(--petrol); outline-offset: 2px; }
+.bouton:hover { background: var(--survol); border-color: var(--sourdine); }
+.bouton:active { transform: translateY(.5px); }
+.bouton.primaire {
+  background: var(--petrol); border-color: var(--petrol); color: var(--plaque);
+  font-weight: 600;
+}
+.bouton.primaire:hover { background: color-mix(in srgb, var(--petrol) 88%, var(--encre)); }
+.bouton[disabled] { opacity: .5; cursor: not-allowed; }
+.bouton:focus-visible, .scan-grille label:focus-within,
+input:focus-visible, select:focus-visible {
+  outline: 3px solid var(--anneau); outline-offset: 1px;
+}
+
+/* Champs de saisie — même hauteur et même rayon que les boutons : c'est cet
+   alignement qui fait qu'une barre d'outils se lit comme un ensemble. */
+.scan-outils input[type="search"], #filtre-app, #recherche, #touche-libre {
+  height: 36px; border-radius: var(--rayon-sm); border: 1px solid var(--creux);
+  background: var(--plaque); color: var(--encre); padding: 0 12px; font: inherit;
+  font-size: 14px; box-shadow: var(--ombre-sm);
+}
+
 .bloc-commande { position: relative; margin: 0 26px 18px; }
 .commande {
   display: block; font-family: var(--mono); font-size: 12.5px;
@@ -179,28 +210,71 @@ h1 em { font-style: normal; color: var(--petrol); }
 .scan-outils { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; flex-wrap: wrap; }
 .scan-outils input { flex: 0 0 260px; }
 .scan-outils .sous { margin-left: auto; }
-.scan-scripts { display: flex; gap: 10px; margin: 0 0 16px; flex-wrap: wrap; }
-#tableau-scan { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* Trois étapes numérotées plutôt que trois boutons côte à côte : l'ordre compte,
+   et une rangée de boutons identiques ne dit pas par lequel commencer. */
+.etapes {
+  list-style: none; margin: 0 0 18px; padding: 6px;
+  border: 1px solid var(--creux); border-radius: var(--rayon);
+  background: var(--plaque); box-shadow: var(--ombre-sm);
+}
+.etape {
+  display: grid; grid-template-columns: 30px 1fr auto; gap: 14px; align-items: center;
+  padding: 12px 14px; border-radius: var(--rayon-sm);
+}
+.etape + .etape { border-top: 1px solid var(--alu); }
+.etape:hover { background: var(--zebre); }
+.puce {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 999px; font-family: var(--display);
+  font-size: 14px; font-weight: 700; background: var(--alu); color: var(--sourdine);
+  border: 1px solid var(--creux);
+}
+.etape:first-child .puce { background: var(--petrol); color: var(--plaque); border-color: var(--petrol); }
+.etape-texte { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.etape-texte b { font-family: var(--display); font-size: 15px; }
+.etape-texte span { font-size: 13px; color: var(--sourdine); line-height: 1.45; }
+.ici {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  font-style: normal; color: var(--petrol); border: 1px solid currentColor;
+  border-radius: 999px; padding: 1px 7px; margin-left: 10px; vertical-align: 2px;
+}
+#tableau-scan { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 #tableau-scan th {
   text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: .08em;
   text-transform: uppercase; color: var(--sourdine); font-weight: 600;
   padding: 0 10px 8px; border-bottom: 1px solid var(--creux); white-space: nowrap;
 }
-#tableau-scan td { padding: 5px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
-#tableau-scan tr:hover td { background: var(--alu); }
-#tableau-scan .num { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
-#tableau-scan .cocher { width: 1%; text-align: center; }
-/* La couleur porte l'information : pourquoi cette ligne est cochée, et ce qui cloche.
-   Le motif est répété en toutes lettres — une couleur seule ne se lit pas. */
-#tableau-scan tr.neuve td:nth-child(2) { color: var(--petrol); font-weight: 600; }
+#tableau-scan td { padding: 6px 10px; border-bottom: 1px solid var(--alu); vertical-align: middle; }
+/* Une ligne sur deux teintée : à plus de deux cents lignes et huit colonnes, l'œil
+   perd la ligne entre la première case et la date. */
+#tableau-scan tbody tr:nth-child(even) { background: var(--zebre); }
+#tableau-scan tbody tr:hover { background: var(--survol); }
+#tableau-scan th:nth-child(-n+3) { text-align: center; width: 76px; }
+#tableau-scan .cocher { text-align: center; }
+#tableau-scan input[type="checkbox"] { accent-color: var(--petrol); width: 15px; height: 15px; }
+/* Écarter est un geste qui retranche : il se signale comme tel, pas comme un choix
+   neutre parmi d'autres. */
+#tableau-scan .case-exclure { accent-color: var(--vermillon); }
+/* Un numéro de version peut être long sans mériter la place qu'il prend. On borne à
+   une quinzaine de caractères et on laisse revenir à la ligne les rares qui débordent. */
+#tableau-scan th:nth-child(5), #tableau-scan th:nth-child(6) { width: 15ch; }
+#tableau-scan th:nth-child(7) { width: 11ch; }
+#tableau-scan th:nth-child(8) { width: 16ch; }
+#tableau-scan .num {
+  font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; line-height: 1.35;
+}
+#tableau-scan tr.neuve .app { color: var(--petrol); font-weight: 600; }
 #tableau-scan tr.majeure .num.installee { color: var(--ambre); font-weight: 600; }
 #tableau-scan tr.exclue td { color: var(--sourdine); }
-#tableau-scan tr.exclue td:nth-child(2) { text-decoration: line-through; }
+#tableau-scan tr.exclue .app,
+#tableau-scan tr.exclue .statut { text-decoration: line-through; }
+#tableau-scan tr.exclue .app { color: var(--vermillon); font-weight: 600; }
 #tableau-scan .statut-ok { color: var(--sourdine); }
 #tableau-scan .statut-ko { color: var(--vermillon); font-weight: 600; }
 #tableau-scan .marque {
   font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
   padding: 1px 6px; border-radius: 999px; border: 1px solid currentColor; margin-left: 8px;
+  white-space: nowrap;
 }
 #tableau-scan .m-neuve { color: var(--petrol); }
 #tableau-scan .m-majeure { color: var(--ambre); }
@@ -211,13 +285,25 @@ nav {
   display: flex; justify-content: space-between; align-items: center; gap: 28px;
   margin: 0 0 22px; border-bottom: 1px solid var(--creux);
 }
-.onglets { display: flex; gap: 4px; }
-nav button {
-  font-family: var(--display); font-size: 15px; font-weight: 600; letter-spacing: -.01em;
-  background: none; border: 0; border-bottom: 3px solid transparent;
-  padding: 16px 18px; color: var(--sourdine); cursor: pointer;
+/* Onglets — la pilule de shadcn/ui : un rail creusé, l'onglet actif posé dessus
+   comme une carte. Un soulignement se lit comme un titre ; une pastille surélevée
+   se lit comme un contrôle sur lequel on clique. */
+.onglets {
+  display: inline-flex; gap: 2px; background: var(--alu); padding: 4px;
+  border-radius: var(--rayon); border: 1px solid var(--creux);
 }
-nav button[aria-selected="true"] { color: var(--encre); border-bottom-color: var(--petrol); }
+nav button {
+  font-family: var(--display); font-size: 14px; font-weight: 600; letter-spacing: -.01em;
+  background: none; border: 1px solid transparent; border-radius: var(--rayon-sm);
+  padding: 8px 14px; color: var(--sourdine); cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+nav button:hover { color: var(--encre); }
+nav button[aria-selected="true"] {
+  color: var(--encre); background: var(--plaque);
+  border-color: var(--creux); box-shadow: var(--ombre-sm);
+}
+nav button:focus-visible { outline: 3px solid var(--anneau); outline-offset: 1px; }
 nav button:hover { color: var(--encre); }
 nav button:focus-visible, input:focus-visible, select:focus-visible,
 .ligne:focus-visible { outline: 2px solid var(--petrol); outline-offset: 3px; }
@@ -568,7 +654,7 @@ const TEXTES = {
     onglet_conflits: "Conflits", onglet_combinaisons: "Par combinaison",
     stat_combinaisons: "combinaisons", stat_conflits: "en conflit",
     stat_apps: "applications lues",
-    scanner: "Scanner tout le Mac", scanner_apps: "apps",
+    scanner: "Mettre à jour les raccourcis",
     bascule_app: "Filtre par application", toutes_apps: "Toutes applications",
     cherche_app: "Cherche une application",
     l_modificateurs: "Modificateurs", l_touche: "Touche",
@@ -585,12 +671,31 @@ const TEXTES = {
     motif_neuf: "nouvelle", motif_majeur: "version majeure",
     scan_selection: (n) => `${n} à scanner`,
     scan_majeures: "Cocher les versions majeures",
-    script_liste: "1 · Mettre à jour la liste des apps",
-    script_sources: "2 · Scanner le système et les apps sources",
-    script_global: "3 · Scanner tout ce qui est coché",
-    cmd_liste: "# Recense les apps installées, relit les raccourcis système et les préférences\n# des outils, puis reconstruit la page. N'ouvre aucune application. ~10 s.",
-    cmd_sources: (n) => `# Rouvre les ${n} apps qui déclarent des raccourcis globaux pour relire leurs\n# menus, puis reconstruit tout. Ce sont elles qui l'emportent sur les autres.`,
-    cmd_global: (n) => `# Rouvre les ${n} apps cochées une par une. Compte plusieurs minutes,\n# et une app au premier plan à chaque fois.`,
+    script_liste: "Mettre à jour la liste des applications",
+    script_sources: "Relire le système et les applications sources",
+    script_global: "Scanner les applications cochées",
+    commencer_ici: "commence ici",
+    voir_commande: "Voir la commande",
+    note_liste: "Le tableau ci-dessous ne connaît que les applications recensées lors de "
+              + "la dernière passe. Sans cette étape, une application installée depuis "
+              + "n'y figure pas. N'ouvre aucune application.",
+    note_sources: "Rouvre seulement les applications qui déclarent des raccourcis "
+                + "globaux. Ce sont elles qui l'emportent sur toutes les autres, et une "
+                + "poignée suffit à changer l'inventaire.",
+    note_global: "Rouvre une par une les applications cochées dans le tableau. C'est la "
+               + "passe longue : compte plusieurs minutes.",
+    cmd_entete: "# ⚠️  COPIE CETTE COMMANDE ET COLLE-LA DANS UN TERMINAL.\n"
+              + "#    Le navigateur ne peut pas la lancer lui-même : lire les menus d'une\n"
+              + "#    application exige l'autorisation d'accessibilité de macOS, que ton\n"
+              + "#    terminal possède déjà et qu'une page web n'obtiendra jamais.\n#",
+    cmd_liste: "# Recense les applications installées, relit les raccourcis système et les\n"
+             + "# préférences des outils, puis reconstruit la page.\n"
+             + "# N'ouvre aucune application.",
+    cmd_sources: "# Rouvre les applications qui déclarent des raccourcis globaux pour relire\n"
+               + "# leurs menus, puis reconstruit tout. Ce sont elles qui l'emportent sur les\n"
+               + "# autres : leurs raccourcis accrochent la touche avant les menus.",
+    cmd_global: "# Rouvre une par une les applications cochées dans le tableau.\n"
+              + "# Compte plusieurs minutes, et une application au premier plan à chaque fois.",
     aucune_source: "Aucune app source : rien à scanner ici.",
     ph_touche: "ou tape la touche", ph_texte: "copier, capture, plein écran…",
     toutes: "Toutes", touche_s: (n) => `${n} touche${n > 1 ? "s" : ""}`,
@@ -624,18 +729,13 @@ const TEXTES = {
     couche_pilote: "Pilote", couche_capture: "Capture", couche_systeme: "Système",
     couche_global: "Global", couche_autre: "Autre", couche_menu: "Menu",
     desactive: "désactivé",
-    scan_titre: "Scanner tout le Mac",
     scan_intro: "Chaque application cochée sera ouverte le temps de lire sa barre de menu, "
               + "puis refermée. À lancer quand tu n'utilises pas la machine.",
     scan_filtrer: "Filtrer la liste…", scan_tout: "Tout cocher", scan_rien: "Tout décocher",
-    scan_defaut: "Rétablir les exclusions", scan_lancer: "Lancer le scan",
+    scan_defaut: "Sélection conseillée",
     scan_affichees: (n, total) => `${n} affichées sur ${total}`,
-    scan_a_scanner: (n) => `${n} application${n > 1 ? "s" : ""} à scanner`,
-    scan_ecartee: (raison) => `écartée par défaut — ${raison}`,
     scan_aucune: "Aucune application pour cette recherche.",
     scan_rien_coche: "Aucune application cochée : rien à scanner.",
-    scan_defaut_cmd: "# Sélection par défaut — la commande complète suffit",
-    scan_perso_cmd: "# Sélection personnalisée — à coller dans le terminal",
     pied: "Les raccourcis d'une app ne vivent que dans sa barre de menu : ils sont lus app "
         + "par app. Une app lue sans document ouvert expose moins de commandes qu'en usage "
         + "réel. L'ordre des étages est fiable, mais deux outils accrochés au même étage "
@@ -649,7 +749,7 @@ const TEXTES = {
     onglet_conflits: "Conflicts", onglet_combinaisons: "By combination",
     stat_combinaisons: "combinations", stat_conflits: "in conflict",
     stat_apps: "apps read",
-    scanner: "Scan the whole Mac", scanner_apps: "apps",
+    scanner: "Update the shortcuts",
     bascule_app: "Filter by app", toutes_apps: "All applications",
     cherche_app: "Search an application",
     l_modificateurs: "Modifiers", l_touche: "Key",
@@ -666,12 +766,30 @@ const TEXTES = {
     motif_neuf: "new", motif_majeur: "major version",
     scan_selection: (n) => `${n} to scan`,
     scan_majeures: "Tick major versions",
-    script_liste: "1 · Refresh the app list",
-    script_sources: "2 · Scan system and source apps",
-    script_global: "3 · Scan everything ticked",
-    cmd_liste: "# Lists installed apps, re-reads system shortcuts and tool preferences,\n# then rebuilds the page. Opens no application. ~10 s.",
-    cmd_sources: (n) => `# Reopens the ${n} apps that declare global hotkeys to re-read their menus,\n# then rebuilds everything. These are the ones that win over the rest.`,
-    cmd_global: (n) => `# Reopens the ${n} ticked apps one by one. Expect several minutes,\n# with an app coming to the front each time.`,
+    script_liste: "Refresh the application list",
+    script_sources: "Re-read the system and source applications",
+    script_global: "Scan the ticked applications",
+    commencer_ici: "start here",
+    voir_commande: "Show the command",
+    note_liste: "The table below only knows the applications listed during the last "
+              + "pass. Without this step, an application installed since will not "
+              + "appear. Opens no application.",
+    note_sources: "Reopens only the applications that declare global hotkeys. They win "
+                + "over every other one, and a handful is enough to change the inventory.",
+    note_global: "Reopens the ticked applications one by one. This is the long pass: "
+               + "expect several minutes.",
+    cmd_entete: "# ⚠️  COPY THIS COMMAND AND PASTE IT INTO A TERMINAL.\n"
+              + "#    The browser cannot run it: reading an application's menus requires\n"
+              + "#    the macOS accessibility permission, which your terminal already has\n"
+              + "#    and a web page will never get.\n#",
+    cmd_liste: "# Lists installed applications, re-reads system shortcuts and tool\n"
+             + "# preferences, then rebuilds the page.\n"
+             + "# Opens no application.",
+    cmd_sources: "# Reopens the applications that declare global hotkeys to re-read their\n"
+               + "# menus, then rebuilds everything. These are the ones that win over the\n"
+               + "# rest: their shortcuts catch the key before any menu does.",
+    cmd_global: "# Reopens the ticked applications one by one.\n"
+              + "# Expect several minutes, with an application coming to the front each time.",
     aucune_source: "No source app: nothing to scan here.",
     ph_touche: "or type the key", ph_texte: "copy, capture, full screen…",
     toutes: "All", touche_s: (n) => `${n} key${n > 1 ? "s" : ""}`,
@@ -705,18 +823,13 @@ const TEXTES = {
     couche_pilote: "Driver", couche_capture: "Event tap", couche_systeme: "System",
     couche_global: "Global", couche_autre: "Other", couche_menu: "Menu",
     desactive: "disabled",
-    scan_titre: "Scan the whole Mac",
     scan_intro: "Each checked application will be opened just long enough to read its menu "
               + "bar, then closed. Run it when you are not using the machine.",
     scan_filtrer: "Filter the list…", scan_tout: "Check all", scan_rien: "Uncheck all",
-    scan_defaut: "Restore exclusions", scan_lancer: "Start the scan",
+    scan_defaut: "Recommended selection",
     scan_affichees: (n, total) => `${n} shown of ${total}`,
-    scan_a_scanner: (n) => `${n} application${n > 1 ? "s" : ""} to scan`,
-    scan_ecartee: (raison) => `excluded by default — ${raison}`,
     scan_aucune: "No application for this search.",
     scan_rien_coche: "No application checked: nothing to scan.",
-    scan_defaut_cmd: "# Default selection — the plain command is enough",
-    scan_perso_cmd: "# Custom selection — paste into the terminal",
     pied: "An app's shortcuts live only in its menu bar, so they are read app by app. An app "
         + "read with no document open exposes fewer commands than in real use. The layer "
         + "order is reliable, but two tools hooking the same layer are decided by their "
@@ -1238,8 +1351,9 @@ function scanFiltre() {
 
 function rendreScan() {
   const liste = scanFiltre();
-  const entetes = ["col_inclure", "col_app", "col_version", "col_version_lue",
-                   "col_statut", "col_date", "col_exclure", "col_source"];
+  // Les trois cases d'abord : ce qu'on décide, avant ce qu'on constate.
+  const entetes = ["col_inclure", "col_exclure", "col_source", "col_app",
+                   "col_version", "col_version_lue", "col_statut", "col_date"];
   const corps = liste.map(l => {
     const exclue = estExclue(l);
     const neuve = jamaisLue(l), majeure = ecartMajeur(l);
@@ -1252,18 +1366,18 @@ function rendreScan() {
     return `<tr class="${classes}">
       <td class="cocher"><input type="checkbox" data-role="inclure" data-id="${esc(l.id)}"
           ${aScanner.has(l.id) ? "checked" : ""} ${exclue ? "disabled" : ""}></td>
-      <td>${esc(l.nom)}${marque}</td>
-      <td class="num installee">${esc(l.installee || "—")}</td>
-      <td class="num">${esc(l.lue || "—")}</td>
-      <td class="${l.statut === "ok" ? "statut-ok" : l.statut ? "statut-ko" : "statut-ok"}">${
-        esc(l.statut || T("jamais"))}</td>
-      <td class="num">${esc(l.scanneLe || "—")}</td>
-      <td class="cocher"><input type="checkbox" data-role="exclure" data-id="${esc(l.id)}"
-          ${exclue ? "checked" : ""} ${l.verrou ? "disabled" : ""}
+      <td class="cocher"><input type="checkbox" class="case-exclure" data-role="exclure"
+          data-id="${esc(l.id)}" ${exclue ? "checked" : ""} ${l.verrou ? "disabled" : ""}
           title="${l.verrou ? esc(T("verrouille")) : ""}"></td>
       <td class="cocher"><input type="checkbox" data-role="source" data-id="${esc(l.id)}"
           ${auto || sourcesChoisies.has(l.id) ? "checked" : ""} ${auto ? "disabled" : ""}
           title="${auto ? esc(T("auto_source")) : ""}"></td>
+      <td class="app">${esc(l.nom)}${marque}</td>
+      <td class="num installee">${esc(l.installee || "—")}</td>
+      <td class="num">${esc(l.lue || "—")}</td>
+      <td class="statut ${l.statut === "ok" || !l.statut ? "statut-ok" : "statut-ko"}">${
+        esc(l.statut || T("jamais"))}</td>
+      <td class="num date">${esc(l.scanneLe || "—")}</td>
     </tr>`;
   }).join("");
   document.getElementById("vue-scan").innerHTML = liste.length
@@ -1272,7 +1386,6 @@ function rendreScan() {
     : `<p class="vide">${T("scan_aucune")}</p>`;
   document.getElementById("scan-total").textContent =
     `${T("scan_affichees")(liste.length, LIGNES.length)} · ${T("scan_selection")(aScanner.size)}`;
-  document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
 }
 
 
@@ -1292,7 +1405,6 @@ function appliquerLangue() {
   document.getElementById("detail-fermer").setAttribute("aria-label", T("fermer"));
   const champ = document.getElementById("filtre-app");
   if (!filtreApp) champ.value = T("toutes_apps");
-  document.getElementById("compte-scan").textContent = `${aScanner.size} ${T("scanner_apps")}`;
   rendreTout();
 }
 
@@ -1393,7 +1505,7 @@ function brancherScan() {
       bouton.hidden = true;
       return;
     }
-    bloc.textContent = `${commentaire}\n${commande}`;
+    bloc.textContent = `${T("cmd_entete")}\n${commentaire}\n${commande}`;
     // Le commentaire dit ce qu'on copie, mais ne part pas dans le presse-papiers :
     // collé dans zsh, un « # » n'y est pas toujours traité comme un commentaire.
     bloc.dataset.commande = commande;
@@ -1423,12 +1535,12 @@ function brancherScan() {
       .filter(l => !estExclue(l) && (SOURCES_AUTO.has(l.id) || sourcesChoisies.has(l.id)))
       .map(l => l.id);
     if (!ids.length) return afficher(T("aucune_source"), null);
-    afficher(T("cmd_sources")(ids.length), moissonner(ids));
+    afficher(T("cmd_sources"), moissonner(ids));
   });
 
   document.getElementById("script-global").addEventListener("click", () => {
     if (!aScanner.size) return afficher(T("scan_rien_coche"), null);
-    afficher(T("cmd_global")(aScanner.size), moissonner([...aScanner]));
+    afficher(T("cmd_global"), moissonner([...aScanner]));
   });
 }
 
@@ -1534,7 +1646,6 @@ def build(index_path):
   <div class="actions-scan">
     <button type="button" id="ouvrir-scan" class="bouton-scan">
       <span data-t="scanner"></span>
-      <span id="compte-scan"></span>
     </button>
   </div>
   <div class="chiffres">
@@ -1610,11 +1721,32 @@ def build(index_path):
       <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
       <span id="scan-total" class="sous"></span>
     </div>
-    <div class="scan-scripts">
-      <button type="button" class="bouton" id="script-liste" data-t="script_liste"></button>
-      <button type="button" class="bouton" id="script-sources" data-t="script_sources"></button>
-      <button type="button" class="bouton primaire" id="script-global" data-t="script_global"></button>
-    </div>
+    <ol class="etapes">
+      <li class="etape">
+        <span class="puce">1</span>
+        <div class="etape-texte">
+          <b data-t="script_liste"></b><em class="ici" data-t="commencer_ici"></em>
+          <span data-t="note_liste"></span>
+        </div>
+        <button type="button" class="bouton primaire" id="script-liste" data-t="voir_commande"></button>
+      </li>
+      <li class="etape">
+        <span class="puce">2</span>
+        <div class="etape-texte">
+          <b data-t="script_sources"></b>
+          <span data-t="note_sources"></span>
+        </div>
+        <button type="button" class="bouton" id="script-sources" data-t="voir_commande"></button>
+      </li>
+      <li class="etape">
+        <span class="puce">3</span>
+        <div class="etape-texte">
+          <b data-t="script_global"></b>
+          <span data-t="note_global"></span>
+        </div>
+        <button type="button" class="bouton" id="script-global" data-t="voir_commande"></button>
+      </li>
+    </ol>
     <div class="bloc-commande" id="bloc-scan-commande" hidden>
       <code class="commande" id="scan-commande"></code>
       <button type="button" class="copier" data-t="copier"></button>
