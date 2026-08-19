@@ -23,18 +23,43 @@ MODIFICATEURS = [("⌃", CTRL), ("⌥", ALT), ("⇧", SHIFT), ("⌘", CMD)]
 # Rangée du haut d'un clavier ANSI/ISO, dans l'ordre des codes de touches d'Apple.
 RANGEE_HAUT = [18, 19, 20, 21, 23, 22, 26, 28, 25, 29]
 LETTRES = "abcdefghijklmnopqrstuvwxyz"
-FLECHES = [123, 124, 125, 126]
+
+# Touches de navigation et d'édition, dans l'ordre où on aime les lire.
+NAVIGATION = ["Espace", "⇥", "⏎", "⌫", "⌦", "⎋", "⇪", "←", "→", "↑", "↓",
+              "⇞", "⇟", "↖", "↘", "Aide"]
+
+# Une touche qui ne sert qu'à modifier une autre frappe ne peut pas être la touche
+# d'un raccourci ; les touches propres aux claviers japonais et les commandes de
+# volume ne s'attribuent pas davantage.
+EXCLUES = {"⇧", "⌃", "⌘", "⌥", "fn", "⇪fn",
+           "RightCommand", "RightControl", "RightOption", "RightShift",
+           "JIS_Eisu", "JIS_Kana", "JIS_KeypadComma",
+           "ContextualMenu", "Volume +", "Volume -", "Silence"}
 
 
 def univers(keyboard):
-    """Touches candidates, dans l'ordre où on veut les lire."""
-    touches = []
-    vus = set()
+    """Toutes les touches attribuables, dans un ordre de lecture stable.
+
+    Lettres, rangée du haut, autres touches imprimables, pavé numérique, touches de
+    fonction, puis navigation. Le pavé numérique porte ses propres codes, distincts
+    de la rangée du haut : « Pavé 4 » et « 4 » sont deux frappes différentes, et un
+    raccourci attribué à l'une ne répond pas à l'autre.
+    """
+    touches, vus, libelles = [], set(), set()
 
     def ajouter(code):
-        if code is None or code in vus or code not in keyboard.by_code:
+        if code is None or code in vus:
+            return
+        nom = keyboard.label(code, 0)
+        # Deux codes peuvent produire le même caractère : la disposition française
+        # donne « @ » et « < » à la fois sur les touches ISO et sur des touches
+        # propres aux claviers japonais, absentes d'un clavier français. Comme rien
+        # ne les distingue à l'affichage, proposer les deux offrirait une combinaison
+        # que personne ne peut viser. On garde la première rencontrée.
+        if not nom or nom in EXCLUES or nom in libelles:
             return
         vus.add(code)
+        libelles.add(nom)
         touches.append(code)
 
     for lettre in LETTRES:
@@ -43,14 +68,19 @@ def univers(keyboard):
             ajouter(trouve[0])
     for code in RANGEE_HAUT:
         ajouter(code)
+    # Le reste des touches imprimantes de la disposition — ponctuation comprise.
+    for code in sorted(keyboard.by_code):
+        if code not in keyboard.keypad:
+            ajouter(code)
+    for code in sorted(keyboard.keypad):
+        ajouter(code)
     for code, nom in sorted(keyboard.names.items(),
-                            key=lambda kv: int(kv[1][1:]) if kv[1][1:].isdigit() else 99):
+                            key=lambda kv: int(kv[1][1:]) if kv[1][1:].isdigit() else 0):
         if nom.startswith("F") and nom[1:].isdigit():
-            vus.add(code)
-            touches.append(code)
-    for code in FLECHES:
-        vus.add(code)
-        touches.append(code)
+            ajouter(code)
+    par_nom = {nom: code for code, nom in keyboard.names.items()}
+    for nom in NAVIGATION:
+        ajouter(par_nom.get(nom))
     return touches
 
 

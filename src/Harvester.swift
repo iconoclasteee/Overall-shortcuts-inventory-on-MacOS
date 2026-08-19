@@ -598,6 +598,17 @@ encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes
 
 func runAll() {
     for (index, bundleID) in targets.enumerated() {
+        // Un identifiant de bundle sert ici de nom de fichier. Il est lu sur le disque,
+        // donc il n'est pas de confiance : un « / » y ferait écrire hors du dossier de
+        // sortie. Les caractères admis sont ceux qu'Apple recommande pour un identifiant.
+        guard !bundleID.isEmpty,
+              bundleID.allSatisfy({ $0.isLetter || $0.isNumber || ".-_ ".contains($0) })
+        else {
+            FileHandle.standardError.write(
+                "⛔️ Identifiant refusé, caractères inattendus : \(bundleID)\n"
+                    .data(using: .utf8)!)
+            continue
+        }
         let file = "\(options.outDir)/\(bundleID).json"
         // Reprise : une passe interrompue ne recommence pas ce qui est déjà sur le disque.
         if !options.force && FileManager.default.fileExists(atPath: file) {

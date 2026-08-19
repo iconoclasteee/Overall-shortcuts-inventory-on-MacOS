@@ -14,6 +14,11 @@ cd "$(dirname "$0")"
 # out/ n'est pas versionné : sur un clone frais il n'existe pas, et la première
 # redirection échouerait avant même le premier message.
 mkdir -p out
+# La sortie dérive de dossiers qu'Apple garde en accès exclusif : préférences, barres
+# de menus. En laisser le produit lisible par les autres comptes de la machine
+# annulerait cette protection. Le dossier suffit : ce qu'il contient devient
+# inatteignable pour qui ne peut pas le traverser.
+chmod go-rwx out 2>/dev/null || true
 
 HARVESTER=bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester
 [ -x "$HARVESTER" ] || { echo "Binaire absent — lance d'abord ./build.sh"; exit 1; }

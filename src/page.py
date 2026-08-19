@@ -647,8 +647,8 @@ const caps = (combo) => {
           reste ? `<span class="cap${reste.length > 1 ? " large" : ""}">${esc(reste)}</span>` : ""
          ].join("");
 };
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 /* La pile : un étage par couche, occupé si un raccourci s'y accroche.
    L'étage gagnant est celui, le plus haut dans l'ordre, qui est occupé. */
@@ -742,8 +742,9 @@ const TEXTES = {
         + "presse-papiers. Une ligne dont aucune case n'est libre est omise.</p>"
         + "<p>Trois bornes ramènent l'espace des combinaisons à ce qui est réellement "
         + "attribuable : les quatre modificateurs que tout logiciel sait enregistrer "
-        + "(⌃ ⌥ ⇧ ⌘, la touche Globe étant réservée par macOS) ; les lettres, la rangée du "
-        + "haut, les touches de fonction et les flèches ; et des <b>touches physiques</b>, "
+        + "(⌃ ⌥ ⇧ ⌘, la touche Globe étant réservée par macOS) ; toutes les touches sauf "
+        + "les modificateurs eux-mêmes — pavé numérique compris, dont les touches sont "
+        + "distinctes de la rangée du haut ; et des <b>touches physiques</b>, "
         + "désignées par ce qu'elles produisent sans Maj — sur un clavier français la rangée "
         + "des chiffres donne donc « &amp; é \" ' ( », qui est la frappe réelle.</p>",
     libres_section: (n) => `${n} touches`,
@@ -875,7 +876,8 @@ const TEXTES = {
         + "left out.</p>"
         + "<p>Three limits reduce the space of combinations to what can actually be assigned: "
         + "the four modifiers every piece of software can register (⌃ ⌥ ⇧ ⌘, the Globe key "
-        + "being reserved by macOS); letters, the top row, function keys and arrows; and "
+        + "being reserved by macOS); every key except the modifiers themselves — including "
+        + "the numeric keypad, whose keys are distinct from the top row; and "
         + "<b>physical keys</b>, named by what they produce without Shift — on a French "
         + "keyboard the number row therefore reads « &amp; é \" ' ( », which is the actual "
         + "keystroke.</p>",
@@ -1699,6 +1701,13 @@ function brancherScan() {
   // Les confondre obligerait à subir la plus chère pour obtenir la moins chère.
   const MOISSONNEUR = "bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester";
 
+  /* Cite une valeur pour le shell. Entre apostrophes simples, rien n'est interprété —
+     sauf l'apostrophe elle-même, qu'il faut donc sortir de la chaîne puis réintroduire
+     échappée. Sans cela, un identifiant de bundle contenant une espace découpe la
+     commande, et un identifiant contenant une apostrophe la referme : ce qui suit
+     serait exécuté comme une commande à part entière. */
+  const shq = (v) => "'" + String(v).replace(/'/g, "'\\''") + "'";
+
   function afficher(commentaire, commande) {
     const bloc = document.getElementById("scan-commande");
     const cadre = document.getElementById("bloc-scan-commande");
@@ -1724,15 +1733,15 @@ function brancherScan() {
     const reglages = JSON.stringify({
       exclues: [...exclues], incluses: [...incluses], sources: [...sourcesChoisies],
     });
-    return `cd ${RACINE} && \\
-  printf '%s' '${reglages}' > out/reglages-scan.json && \\
+    return `cd ${shq(RACINE)} && \\
+  printf '%s' ${shq(reglages)} > out/reglages-scan.json && \\
   ${MOISSONNEUR} \\
-    --bundle-ids ${ids.join(",")} --force --out out/apps && \\
+    --bundle-ids ${shq(ids.join(","))} --force --out out/apps && \\
   ./run.sh --sources`;
   }
 
   document.getElementById("script-liste").addEventListener("click", () => {
-    afficher(T("cmd_liste"), `cd ${RACINE} && ./run.sh --sources`);
+    afficher(T("cmd_liste"), `cd ${shq(RACINE)} && ./run.sh --sources`);
   });
 
   document.getElementById("script-sources").addEventListener("click", () => {
