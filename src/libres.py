@@ -25,13 +25,15 @@ RANGEE_HAUT = [18, 19, 20, 21, 23, 22, 26, 28, 25, 29]
 LETTRES = "abcdefghijklmnopqrstuvwxyz"
 
 # Touches de navigation et d'édition, dans l'ordre où on aime les lire.
-NAVIGATION = ["Espace", "⇥", "⏎", "⌫", "⌦", "⎋", "⇪", "←", "→", "↑", "↓",
+NAVIGATION = ["Espace", "⇥", "⏎", "⌫", "⌦", "⎋", "←", "→", "↑", "↓",
               "⇞", "⇟", "↖", "↘", "Aide"]
 
 # Une touche qui ne sert qu'à modifier une autre frappe ne peut pas être la touche
 # d'un raccourci ; les touches propres aux claviers japonais et les commandes de
 # volume ne s'attribuent pas davantage.
-EXCLUES = {"⇧", "⌃", "⌘", "⌥", "fn", "⇪fn",
+# ⇪ (Verrouillage majuscule) est écarté avec les modificateurs : macOS ne le propose
+# comme touche de raccourci nulle part, et presque aucun logiciel ne l'accepte.
+EXCLUES = {"⇧", "⌃", "⌘", "⌥", "fn", "⇪",
            "RightCommand", "RightControl", "RightOption", "RightShift",
            "JIS_Eisu", "JIS_Kana", "JIS_KeypadComma",
            "ContextualMenu", "Volume +", "Volume -", "Silence"}

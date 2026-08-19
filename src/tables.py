@@ -59,6 +59,44 @@ _SPECIAL = {
 }
 
 
+APPKIT = Path(
+    "/System/Library/Frameworks/AppKit.framework/Versions/C/Resources/BridgeSupport"
+    "/AppKit.bridgesupport"
+)
+
+# Passerelle entre le nom AppKit d'une touche et le libellé que porte la table Carbon.
+# Les deux fichiers décrivent la même touche sous deux noms ; c'est une équivalence de
+# nommage, pas une valeur recopiée — les codes viennent des fichiers, ici comme ailleurs.
+_EQUIVALENCES = {
+    "NSUpArrowFunctionKey": "↑", "NSDownArrowFunctionKey": "↓",
+    "NSLeftArrowFunctionKey": "←", "NSRightArrowFunctionKey": "→",
+    "NSPageUpFunctionKey": "⇞", "NSPageDownFunctionKey": "⇟",
+    "NSHomeFunctionKey": "↖", "NSEndFunctionKey": "↘",
+    "NSDeleteFunctionKey": "⌦", "NSHelpFunctionKey": "Aide",
+}
+
+
+def function_key_chars():
+    """{caractère → libellé de touche} pour ce que macOS écrit en \\UF7xx.
+
+    Une redéfinition utilisateur visant F5 ou une flèche n'est pas rangée par macOS
+    sous un caractère imprimable, mais sous un point de code de la zone privée. Sans
+    cette table, la touche reste irrésoluble : le raccourci est compté sur son ancienne
+    combinaison, et la nouvelle est annoncée libre.
+    """
+    if not APPKIT.exists():
+        return {}
+    texte = APPKIT.read_text(encoding="utf-8", errors="replace")
+    out = {}
+    for nom, valeur in re.findall(r"name='(NS[A-Za-z0-9]*FunctionKey)'[^>]*"
+                                  r"value64='(\d+)'", texte):
+        fonction = re.fullmatch(r"NSF(\d+)FunctionKey", nom)
+        libelle = f"F{fonction.group(1)}" if fonction else _EQUIVALENCES.get(nom)
+        if libelle:
+            out[chr(int(valeur))] = libelle
+    return out
+
+
 def _keycode_label(name):
     """Traduit un nom de constante kVK_* en libellé affichable."""
     body = name[len("kVK_"):]

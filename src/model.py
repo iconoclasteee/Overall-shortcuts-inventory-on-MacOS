@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from tables import keycode_labels, keycode_symbols, keypad_codes
+from tables import (function_key_chars, keycode_labels, keycode_symbols,
+                    keypad_codes)
 
 ROOT = Path(__file__).parent.parent
 
@@ -77,6 +78,13 @@ class Keyboard:
         self.identifiant = raw.get("identifiant", "")
         self.by_code = {int(k): v for k, v in touches.items()}
         self.names = keycode_labels()      # libellés des touches sans caractère (F5, ←)
+        # Touches que macOS désigne par un point de code de la zone privée plutôt que
+        # par un caractère : c'est ainsi qu'il écrit une redéfinition visant F5 ou une
+        # flèche. Sans cette passerelle, elles restent irrésolubles.
+        par_libelle = {nom: code for code, nom in self.names.items()}
+        self.by_function = {car: par_libelle[nom]
+                            for car, nom in function_key_chars().items()
+                            if nom in par_libelle}
         self.symboles = keycode_symbols()  # symboles officiels (⌤, ⌧, ⏎)
         keypad = keypad_codes()
         self.keypad = keypad
@@ -135,7 +143,12 @@ class Keyboard:
         un Maj que le menu n'affiche pas.
         """
         found = self.by_char.get((char or "").lower())
-        return (None, False) if not found else found
+        if found:
+            return found
+        # Une touche de fonction ne se frappe jamais avec Maj : le second membre est
+        # faux par construction, pas par défaut.
+        fonction = self.by_function.get(char or "")
+        return (fonction, False) if fonction is not None else (None, False)
 
 
 @dataclass

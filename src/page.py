@@ -723,12 +723,15 @@ const TEXTES = {
     col_app: "Application", col_version: "Version installée",
     col_version_lue: "Version au dernier scan", col_statut: "Statut",
     col_date: "Dernier scan", col_inclure: "Scanner", col_exclure: "Exclure",
-    col_source: "Source", jamais: "jamais lue", aucun_lu: "0 raccourci",
-    lus: (n) => `${n} raccourcis lus`, auto_source: "constaté : cette app déclare des raccourcis globaux",
+    col_source: "Outil de raccourcis", jamais: "jamais lue", aucun_lu: "0 raccourci",
+    lus: (n) => `${n} raccourcis lus`, auto_source: "coché par le programme : des raccourcis globaux ont été trouvés dans les préférences de cette application. Le constat ne se corrige pas à la main.",
     verrouille: "exclusion non modifiable : le lancement déclenche une action lourde",
     motif_neuf: "nouvelle", motif_majeur: "version majeure",
     scan_selection: (n) => `${n} à scanner`,
     scan_majeures: "Cocher les versions majeures",
+    vue_tout: "Toutes", vue_cochees: "À scanner", vue_neuves: "Jamais lues",
+    vue_majeures: "Version majeure", vue_outils: "Outils de raccourcis",
+    vue_vides: "0 raccourci", vue_echecs: "Illisibles", vue_exclues: "Exclues",
     script_liste: "Mettre à jour la liste des applications",
     script_sources: "Relire le système et les applications sources",
     script_global: "Scanner les applications cochées",
@@ -799,9 +802,12 @@ const TEXTES = {
         + "<li><b>Exclure</b> — l'application est écartée de toute passe. Les jeux et les "
         + "désinstalleurs le sont déjà ; quelques-unes, dont l'ouverture déclenche une "
         + "action lourde ou destructrice, ne peuvent pas être réintégrées.</li>"
-        + "<li><b>Source</b> — l'application déclare des raccourcis globaux, qui l'emportent "
-        + "sur les menus de toutes les autres. Constatée automatiquement, elle peut aussi "
-        + "être désignée manuellement.</li></ul>"
+        + "<li><b>Outil de raccourcis</b> — l'application déclare des raccourcis globaux, qui "
+        + "l'emportent sur les menus de toutes les autres. La case est cochée <b>par le "
+        + "programme</b> lorsqu'il a trouvé de tels raccourcis dans les préférences de "
+        + "l'application : c'est un constat, il ne se décoche pas. Les autres cases "
+        + "restent libres, pour désigner une application dont le format de rangement "
+        + "n'est pas encore reconnu.</li></ul>"
         + "<p>Ces réglages sont conservés dans le fichier que la commande produite écrit "
         + "avant de lancer le relevé.</p>",
     scan_filtrer: "Filtrer la liste…", scan_tout: "Tout cocher", scan_rien: "Tout décocher",
@@ -854,12 +860,15 @@ const TEXTES = {
     col_app: "Application", col_version: "Installed version",
     col_version_lue: "Version at last scan", col_statut: "Status",
     col_date: "Last scan", col_inclure: "Scan", col_exclure: "Exclude",
-    col_source: "Source", jamais: "never read", aucun_lu: "0 shortcuts",
-    lus: (n) => `${n} shortcuts read`, auto_source: "observed: this app declares global hotkeys",
+    col_source: "Hotkey tool", jamais: "never read", aucun_lu: "0 shortcuts",
+    lus: (n) => `${n} shortcuts read`, auto_source: "ticked by the program: global hotkeys were found in this application’s preferences. An observation, not a choice.",
     verrouille: "exclusion cannot be lifted: launching triggers a heavy action",
     motif_neuf: "new", motif_majeur: "major version",
     scan_selection: (n) => `${n} to scan`,
     scan_majeures: "Tick major versions",
+    vue_tout: "All", vue_cochees: "To scan", vue_neuves: "Never read",
+    vue_majeures: "Major version", vue_outils: "Hotkey tools",
+    vue_vides: "0 shortcuts", vue_echecs: "Unreadable", vue_exclues: "Excluded",
     script_liste: "Refresh the application list",
     script_sources: "Re-read the system and source applications",
     script_global: "Scan the ticked applications",
@@ -927,9 +936,11 @@ const TEXTES = {
         + "<li><b>Exclude</b> — the application is kept out of every pass. Games and "
         + "uninstallers already are; a few, whose launch triggers a heavy or destructive "
         + "action, cannot be brought back in.</li>"
-        + "<li><b>Source</b> — the application declares global hotkeys, which win over every "
-        + "other application's menus. Detected automatically, it can also be set by "
-        + "hand.</li></ul>"
+        + "<li><b>Hotkey tool</b> — the application declares global hotkeys, which win over "
+        + "every other application's menus. The box is ticked <b>by the program</b> when it "
+        + "found such hotkeys in the application's preferences: an observation, not a "
+        + "choice, so it cannot be unticked. The other boxes stay free, to flag an "
+        + "application whose storage format is not recognised yet.</li></ul>"
         + "<p>These settings are stored in the file the generated command writes before "
         + "starting the pass.</p>",
     scan_filtrer: "Filter the list…", scan_tout: "Check all", scan_rien: "Uncheck all",
@@ -1459,11 +1470,27 @@ function selectionConseillee() {
 }
 selectionConseillee();
 
+let vueScan = "tout";
+
+/* Les vues rapides répondent chacune à une question qu'on se pose vraiment devant
+   deux cents lignes : qu'est-ce que je vais scanner, qu'est-ce qui n'a jamais été lu,
+   qui accroche la touche avant les autres, qu'est-ce qui a échoué. */
+const VUES = {
+  tout: () => true,
+  cochees: (l) => aScanner.has(l.id),
+  neuves: (l) => jamaisLue(l),
+  majeures: (l) => ecartMajeur(l),
+  outils: (l) => SOURCES_AUTO.has(l.id) || sourcesChoisies.has(l.id),
+  vides: (l) => l.statut === "ok" && l.lus === 0,
+  echecs: (l) => !!l.statut && l.statut !== "ok",
+  exclues: (l) => estExclue(l),
+};
+
 function scanFiltre() {
   const q = sansAccent(document.getElementById("scan-recherche").value.trim());
-  return q ? LIGNES.filter(l => sansAccent(l.nom).includes(q)
-                             || sansAccent(l.id).includes(q))
-           : LIGNES;
+  const garde = VUES[vueScan] || VUES.tout;
+  return LIGNES.filter(l => garde(l)
+    && (!q || sansAccent(l.nom).includes(q) || sansAccent(l.id).includes(q)));
 }
 
 const LIBRES = D.libres || [];
@@ -1617,6 +1644,14 @@ function brancherLangues() {
 function brancherScan() {
   document.getElementById("ouvrir-scan").addEventListener("click", () => choisirOnglet("scan"));
   document.getElementById("scan-recherche").addEventListener("input", rendreScan);
+  document.getElementById("scan-vues").addEventListener("click", (e) => {
+    const bouton = e.target.closest("button[data-vue-scan]");
+    if (!bouton) return;
+    vueScan = bouton.dataset.vueScan;
+    document.querySelectorAll("#scan-vues button").forEach(b =>
+      b.setAttribute("aria-pressed", String(b === bouton)));
+    rendreScan();
+  });
 
   // Cocher en masse ne porte que sur ce que le filtre laisse voir : sans cela,
   // « tout décocher » viderait aussi les apps qu'on ne regarde pas.
@@ -1905,6 +1940,16 @@ def build(index_path):
       <button type="button" class="bouton" id="scan-tout" data-t="scan_tout"></button>
       <button type="button" class="bouton" id="scan-rien" data-t="scan_rien"></button>
       <span id="scan-total" class="sous"></span>
+    </div>
+    <div class="scan-vues" id="scan-vues" role="group">
+      <button type="button" data-vue-scan="tout" aria-pressed="true" data-t="vue_tout"></button>
+      <button type="button" data-vue-scan="cochees" aria-pressed="false" data-t="vue_cochees"></button>
+      <button type="button" data-vue-scan="neuves" aria-pressed="false" data-t="vue_neuves"></button>
+      <button type="button" data-vue-scan="majeures" aria-pressed="false" data-t="vue_majeures"></button>
+      <button type="button" data-vue-scan="outils" aria-pressed="false" data-t="vue_outils"></button>
+      <button type="button" data-vue-scan="vides" aria-pressed="false" data-t="vue_vides"></button>
+      <button type="button" data-vue-scan="echecs" aria-pressed="false" data-t="vue_echecs"></button>
+      <button type="button" data-vue-scan="exclues" aria-pressed="false" data-t="vue_exclues"></button>
     </div>
     <ol class="etapes">
       <li class="etape">
