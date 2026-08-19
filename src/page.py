@@ -206,36 +206,37 @@ input:focus-visible, select:focus-visible {
 .copier:hover { border-color: var(--petrol); color: var(--petrol); }
 
 /* — Raccourcis libres — */
-.libres-bloc { margin: 0 0 30px; }
-.libres-bloc h2 {
-  font-family: var(--display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--sourdine); font-weight: 600; margin: 0 0 10px;
-  display: flex; align-items: baseline; gap: 12px;
-}
-.libres-total { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
-.libres-note { font-size: 14px; color: var(--sourdine); margin: 0; }
-/* Tableau à double entrée : les modificateurs en colonnes, les touches en lignes.
-   Une ligne sans aucune case libre est omise à la construction — la garder
-   allongerait le tableau sans rien apprendre. */
-.libres-table { border-collapse: collapse; font-size: 13px; }
+.libres-note { font-size: 14px; color: var(--sourdine); margin: 18px 0 0; }
+/* Une seule grille à double entrée : les modificateurs en colonnes, groupés par
+   nombre de touches et séparés par un trait ; les touches en lignes. Rien ne revient
+   à la ligne — une combinaison coupée en deux ne se lit plus. */
+.libres-table { border-collapse: collapse; font-size: 15px; }
+.libres-table th, .libres-table td { white-space: nowrap; }
 .libres-table thead th {
-  position: sticky; top: 0; z-index: 2; background: var(--alu);
-  box-shadow: inset 0 -1px 0 var(--creux); padding: 8px 10px; text-align: center;
+  position: sticky; background: var(--alu); text-align: center; padding: 6px 8px;
+  z-index: 2;
 }
+.libres-table thead tr:first-child th { top: 0; }
+.libres-table thead tr:last-child th { top: 32px; box-shadow: inset 0 -1px 0 var(--creux); }
+.libres-table .groupe {
+  font-family: var(--display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--sourdine); font-weight: 600; padding-bottom: 4px;
+}
+.libres-total { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; margin-left: 10px; }
 .libres-table th[scope="row"] {
-  font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right;
-  padding: 0 12px 0 0; color: var(--sourdine); white-space: nowrap;
+  font-family: var(--mono); font-size: 15px; font-weight: 600; text-align: right;
+  padding: 0 14px 0 0; color: var(--sourdine);
 }
 .libres-table td { padding: 2px 3px; }
 .libres-table tbody tr:nth-child(even) { background: var(--zebre); }
-.libres-table .pris { }
+.libres-table .borne { border-right: 2px solid var(--creux); padding-right: 10px; }
 /* Chaque combinaison libre est un bouton : un clic la copie, puisqu'elle a vocation
    à être reportée dans les réglages d'un autre logiciel. */
 .libres-table .libre {
-  font: inherit; font-family: var(--mono); font-size: 12.5px; cursor: pointer;
-  display: block; width: 100%; padding: 3px 9px; border-radius: 5px;
+  font: inherit; font-family: var(--mono); font-size: 14.5px; cursor: pointer;
+  display: block; width: 100%; padding: 4px 10px; border-radius: 5px;
   background: var(--touche-haut); border: 1px solid var(--creux); border-bottom-width: 2px;
-  color: var(--encre); white-space: nowrap;
+  color: var(--encre);
   transition: background-color .12s ease, border-color .12s ease;
 }
 .libres-table .libre:hover { border-color: var(--petrol); color: var(--petrol); }
@@ -1505,30 +1506,37 @@ function scanFiltre() {
 const LIBRES = D.libres || [];
 
 function rendreLibres() {
-  const html = LIBRES.map(section => {
-    if (section.touches === 5) {
-      return `<section class="libres-bloc"><h2>${T("libres_section")(5)}</h2>`
-           + `<p class="libres-note">${esc(T("libres_cinq")(section.total))}</p></section>`;
-    }
-    if (!section.lignes.length) {
-      return `<section class="libres-bloc"><h2>${T("libres_section")(section.touches)}</h2>`
-           + `<p class="libres-note">${T("libres_vide")}</p></section>`;
-    }
-    const entete = section.colonnes.map(c =>
-      `<th><span class="combo">${esc(c)}</span></th>`).join("");
-    const corps = section.lignes.map(l =>
-      `<tr><th scope="row">${esc(l.touche)}</th>${
-        l.cases.map(c => c
-          ? `<td><button type="button" class="libre" data-combo="${esc(c)}">${esc(c)}</button></td>`
-          : `<td class="pris"></td>`).join("")}</tr>`).join("");
-    return `<section class="libres-bloc">
-        <h2>${T("libres_section")(section.touches)}
-          <span class="libres-total">${T("libres_total")(section.total)}</span></h2>
-        <table class="libres-table"><thead><tr><th></th>${entete}</tr></thead>
-          <tbody>${corps}</tbody></table>
-      </section>`;
+  const L = LIBRES;
+  if (!L.lignes || !L.lignes.length) {
+    document.getElementById("vue-libres").innerHTML =
+      `<p class="libres-note">${T("libres_vide")}</p>`;
+    return;
+  }
+  // Une seule grille, les groupes séparés par un trait plutôt que par trois tableaux :
+  // la même touche se lit alors sur une seule ligne, du plus court au plus long.
+  let rang = 0;
+  const bornes = new Set();          // dernière colonne de chaque groupe
+  const groupes = L.groupes.map(g => {
+    rang += g.n;
+    bornes.add(rang - 1);
+    return `<th colspan="${g.n}" class="groupe">${T("libres_section")(g.touches)}`
+         + `<span class="libres-total">${T("libres_total")(g.total)}</span></th>`;
   }).join("");
-  document.getElementById("vue-libres").innerHTML = html;
+  const classe = (i) => bornes.has(i) && i !== L.colonnes.length - 1 ? " borne" : "";
+  const entete = L.colonnes.map((c, i) =>
+    `<th class="mods${classe(i)}"><span class="combo">${esc(c.mods)}</span></th>`).join("");
+  const corps = L.lignes.map(l =>
+    `<tr><th scope="row">${esc(l.touche)}</th>${
+      l.cases.map((c, i) => c
+        ? `<td class="${classe(i).trim()}"><button type="button" class="libre" `
+          + `data-combo="${esc(c)}">${esc(c)}</button></td>`
+        : `<td class="pris${classe(i)}"></td>`).join("")}</tr>`).join("");
+  document.getElementById("vue-libres").innerHTML =
+    `<table class="libres-table"><thead>
+       <tr><th></th>${groupes}</tr>
+       <tr><th></th>${entete}</tr></thead>
+     <tbody>${corps}</tbody></table>
+     <p class="libres-note">${esc(T("libres_cinq")(L.cinq))}</p>`;
 }
 
 /* Un clic sur une combinaison libre la met dans le presse-papiers : elle est faite

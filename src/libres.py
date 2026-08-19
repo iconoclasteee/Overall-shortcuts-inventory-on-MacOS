@@ -65,40 +65,54 @@ def _jeux_de_modificateurs(nombre):
 
 
 def calculer(keyboard, occupees):
-    """Sections « n touches », chacune sous forme de tableau à double entrée.
+    """Un seul tableau à double entrée, tous nombres de touches confondus.
 
-    Les jeux de modificateurs font les colonnes, les touches les lignes. Une case
-    porte la combinaison entière quand elle est libre, rien sinon — de sorte qu'elle
-    se lise et se recopie telle quelle.
+    Les jeux de modificateurs font les colonnes, regroupés par nombre de touches ;
+    les touches font les lignes. Une case porte la combinaison entière quand elle est
+    libre, rien sinon — de sorte qu'elle se lise et se recopie telle quelle.
 
     Une ligne dont aucune case n'est libre est omise : la garder allongerait le
     tableau sans rien apprendre.
 
-    La touche nomme la ligne par ce qu'elle produit **sans Maj**, mais la case
-    affiche la combinaison telle que macOS l'écrit — avec Maj, c'est le caractère
-    décalé qui apparaît, comme partout ailleurs dans cette page.
+    La touche nomme la ligne par ce qu'elle produit **sans Maj**, mais la case affiche
+    la combinaison telle que macOS l'écrit — avec Maj, c'est le caractère décalé qui
+    apparaît, comme partout ailleurs dans cette page.
+
+    Les combinaisons à cinq touches sont comptées à part, sans être listées : à cette
+    longueur il en reste toujours, et un inventaire n'y apprend rien.
     """
     touches = univers(keyboard)
-    sections = []
-    for nombre in (1, 2, 3, 4):
+    colonnes, groupes = [], []
+    for nombre in (1, 2, 3):
         jeux = _jeux_de_modificateurs(nombre)
-        colonnes = [render_modifiers(mods) for mods in jeux]
-        lignes, total = [], 0
-        for code in touches:
-            nom = keyboard.label(code, 0)
-            if not nom:
-                continue
-            cases = []
-            for mods in jeux:
-                libelle = keyboard.label(code, mods)
-                if not libelle or f"{mods}:k{code}" in occupees:
+        groupes.append({"touches": nombre + 1, "n": len(jeux)})
+        colonnes.extend({"mods": render_modifiers(m), "masque": m} for m in jeux)
+
+    lignes, totaux = [], {g["touches"]: 0 for g in groupes}
+    for code in touches:
+        nom = keyboard.label(code, 0)
+        if not nom:
+            continue
+        cases, rang = [], 0
+        for groupe in groupes:
+            for colonne in colonnes[rang:rang + groupe["n"]]:
+                masque = colonne["masque"]
+                libelle = keyboard.label(code, masque)
+                if not libelle or f"{masque}:k{code}" in occupees:
                     cases.append(None)
                 else:
-                    cases.append(render_modifiers(mods) + libelle)
-            libres = sum(1 for c in cases if c)
-            if libres:
-                lignes.append({"touche": nom, "cases": cases})
-                total += libres
-        sections.append({"touches": nombre + 1, "total": total,
-                         "colonnes": colonnes, "lignes": lignes})
-    return sections
+                    cases.append(render_modifiers(masque) + libelle)
+                    totaux[groupe["touches"]] += 1
+            rang += groupe["n"]
+        if any(cases):
+            lignes.append({"touche": nom, "cases": cases})
+
+    for groupe in groupes:
+        groupe["total"] = totaux[groupe["touches"]]
+
+    quatre = _jeux_de_modificateurs(4)[0]
+    cinq = sum(1 for code in touches
+               if keyboard.label(code, quatre) and f"{quatre}:k{code}" not in occupees)
+
+    return {"colonnes": [{"mods": c["mods"]} for c in colonnes],
+            "groupes": groupes, "lignes": lignes, "cinq": cinq}
