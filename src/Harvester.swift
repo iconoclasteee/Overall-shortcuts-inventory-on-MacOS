@@ -189,11 +189,19 @@ func waitForMenuBar(pid: pid_t, deadline: Date, timeout: Double) -> EtatMenu {
         let app = AX.app(pid, timeout: Float(min(timeout, 5)))
         if let bar = AX.element(app, kAXMenuBarAttribute as String) {
             barreVue = true
-            let menus = AX.children(bar).count
+            let titres = AX.children(bar)
+            // Deux conditions, et la seconde compte autant que la première. Des titres
+            // de menus peuvent exister alors qu'aucun n'a encore de contenu : c'est
+            // l'état d'une app arrêtée sur un sélecteur de projet ou une fenêtre
+            // modale. S'en contenter donnait un statut « ok » à une lecture qui
+            // rapportait zéro raccourci — un échec présenté comme un succès.
+            let peuple = titres.contains { !AX.children($0).isEmpty }
             // Plus d'un menu = barre construite. Un seul menu peut être un état
             // transitoire au lancement : on ne l'accepte qu'une fois le délai de
             // grâce passé, faute de quoi une app à menu unique expirerait.
-            if menus > 1 || (menus >= 1 && Date() > finDeGrace) { return .pret }
+            if peuple && (titres.count > 1 || (titres.count >= 1 && Date() > finDeGrace)) {
+                return .pret
+            }
         }
         // Les apps d'arrière-plan n'ont pas de barre de menu classique : leurs
         // raccourcis vivent dans le menu de leur icône de statut.
@@ -339,7 +347,8 @@ func process(bundleID: String, options: Options) -> AppResult {
         detail = "Aucune barre de menu exposée (app sans menu, ou agent d'arrière-plan)"
     case .expire:
         statut = "timeout"
-        detail = "Barre de menu non peuplée avant expiration du délai"
+        detail = "Barre de menu présente mais jamais peuplée avant expiration du "
+               + "délai — l'app est peut-être arrêtée sur un sélecteur ou une fenêtre modale"
     }
     return result(statut, detail, shortcuts, running: wasRunning, launched: launchedByUs)
 }

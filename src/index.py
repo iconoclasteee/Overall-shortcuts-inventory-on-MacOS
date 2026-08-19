@@ -76,6 +76,7 @@ def app_bindings(keyboard, apps_dir):
         # ne réécrit pas les fiches, donc elle désigne bien la dernière lecture réelle.
         fiche["scanne_le"] = datetime.fromtimestamp(
             path.stat().st_mtime).strftime("%Y-%m-%d %Hh%M")
+        fiche["raccourcis"] = len(app.get("raccourcis") or [])
         apps.append(fiche)
         if app["statut"] != "ok":
             continue

@@ -315,6 +315,9 @@ input:focus-visible, select:focus-visible {
 #tableau-scan tr.exclue .app { color: var(--vermillon); font-weight: 600; }
 #tableau-scan .statut-ok { color: var(--sourdine); }
 #tableau-scan .statut-ko { color: var(--vermillon); font-weight: 600; }
+/* Lue sans encombre, mais sans rien trouver : ce n'est pas un échec, ce n'est pas
+   un succès non plus. Le dire vaut mieux qu'afficher « ok ». */
+#tableau-scan .statut-vide { color: var(--ambre); font-weight: 600; }
 #tableau-scan .marque {
   font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
   padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; margin-left: 8px;
@@ -720,7 +723,8 @@ const TEXTES = {
     col_app: "Application", col_version: "Version installée",
     col_version_lue: "Version au dernier scan", col_statut: "Statut",
     col_date: "Dernier scan", col_inclure: "Scanner", col_exclure: "Exclure",
-    col_source: "Source", jamais: "jamais lue", auto_source: "constaté : cette app déclare des raccourcis globaux",
+    col_source: "Source", jamais: "jamais lue", aucun_lu: "0 raccourci",
+    lus: (n) => `${n} raccourcis lus`, auto_source: "constaté : cette app déclare des raccourcis globaux",
     verrouille: "exclusion non modifiable : le lancement déclenche une action lourde",
     motif_neuf: "nouvelle", motif_majeur: "version majeure",
     scan_selection: (n) => `${n} à scanner`,
@@ -850,7 +854,8 @@ const TEXTES = {
     col_app: "Application", col_version: "Installed version",
     col_version_lue: "Version at last scan", col_statut: "Status",
     col_date: "Last scan", col_inclure: "Scan", col_exclure: "Exclude",
-    col_source: "Source", jamais: "never read", auto_source: "observed: this app declares global hotkeys",
+    col_source: "Source", jamais: "never read", aucun_lu: "0 shortcuts",
+    lus: (n) => `${n} shortcuts read`, auto_source: "observed: this app declares global hotkeys",
     verrouille: "exclusion cannot be lifted: launching triggers a heavy action",
     motif_neuf: "new", motif_majeur: "major version",
     scan_selection: (n) => `${n} to scan`,
@@ -1421,6 +1426,7 @@ const LIGNES = CATALOGUE.map(a => {
     id: a.bundleID, nom: a.nom,
     installee: a.version || null, lue: f.version || null,
     statut: f.statut || null, scanneLe: f.scanne_le || null,
+    lus: typeof f.raccourcis === "number" ? f.raccourcis : null,
     raison: a.raison || null, verrou: !!a.verrou, excluCalcule: !!a.exclu,
   };
 });
@@ -1535,8 +1541,10 @@ function rendreScan() {
       <td class="num installee" title="${esc(l.installee || "")}"><span>${
         esc(l.installee || "—")}</span></td>
       <td class="num" title="${esc(l.lue || "")}"><span>${esc(l.lue || "—")}</span></td>
-      <td class="statut ${l.statut === "ok" || !l.statut ? "statut-ok" : "statut-ko"}">${
-        esc(l.statut || T("jamais"))}</td>
+      <td class="statut ${l.statut && l.statut !== "ok" ? "statut-ko"
+                        : l.lus === 0 ? "statut-vide" : "statut-ok"}"
+          title="${l.lus === null ? "" : esc(T("lus")(l.lus))}">${
+        esc(l.statut ? (l.lus === 0 ? T("aucun_lu") : l.statut) : T("jamais"))}</td>
       <td class="num date"><span>${esc(l.scanneLe || "—")}</span></td>
       <td class="appoint"></td>
     </tr>`;
