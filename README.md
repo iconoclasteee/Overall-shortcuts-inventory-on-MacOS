@@ -117,11 +117,40 @@ Lire les menus d'une autre app l'exige. `run.sh` la vérifie avant de commencer 
 s'arrête avec un message clair si elle manque.
 
 Si le moissonneur est lancé depuis un terminal qui possède déjà l'autorisation, il en
-hérite. Sinon, ajouter `bin/ShortcutHarvester.app` dans Réglages Système →
-Confidentialité et sécurité → Accessibilité.
+hérite — c'est commode, mais c'est la voie la plus large : macOS étend alors le droit à
+**tout** ce que ce terminal exécute. Préférer l'autoriser lui seul.
 
-⚠️ **Recompiler change l'identité de code du bundle.** Après un `./build.sh`, une
-autorisation accordée explicitement doit être retirée puis remise.
+### Autoriser le moissonneur
+
+Le bundle est compilé dans le projet, pas installé : il n'apparaît **pas** dans
+`/Applications`, et il n'a pas d'icône dans le Dock. Il faut donc aller le chercher.
+
+```bash
+open -R bin/ShortcutHarvester.app        # le révèle dans le Finder
+```
+
+Ouvrir Réglages Système → **Confidentialité et sécurité** → Accessibilité, puis **faire
+glisser l'app depuis la fenêtre du Finder** dans la liste. Le bouton `+` s'ouvre sur
+`/Applications` et navigue mal vers un dossier de projet ; le glisser-déposer est plus
+sûr.
+
+Vérifier ensuite depuis le terminal :
+
+```bash
+bin/ShortcutHarvester.app/Contents/MacOS/ShortcutHarvester --check
+```
+
+Si la vérification échoue alors que l'app figure bien dans la liste, c'est que macOS
+attribue l'autorisation au **processus responsable** — le terminal depuis lequel le
+binaire est lancé — et non au bundle lui-même. Il faut alors choisir en connaissance de
+cause : autoriser le terminal, avec la portée que cela implique pour tout ce qu'il
+exécute.
+
+⚠️ **Recompiler change l'identité de code du bundle.** Après un `./build.sh`,
+l'autorisation tombe : `run.sh` s'arrête, et il faut retirer puis remettre l'app dans la
+liste. C'est une protection — elle interdit de substituer un programme au vôtre pour
+hériter de vos droits. Elle implique aussi de regarder ce qui a changé avant de
+reconstruire : voir [SECURITE.md](SECURITE.md).
 
 ## Ce qui n'est jamais lancé
 
